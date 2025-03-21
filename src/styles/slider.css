@@ -1,0 +1,31 @@
+.farm-slider {
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+}
+
+.farm-slider .farm-card {
+    display: flex;
+    flex-shrink: 0;
+    margin-right: 30px; /* Reduced the gap */
+    animation: slideAnimation 30s linear infinite; /* Continuous animation */
+}
+
+@keyframes slideAnimation {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(-200%);
+    }
+    75% {
+        transform: translateX(-300%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
