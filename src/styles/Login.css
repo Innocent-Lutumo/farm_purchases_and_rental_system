@@ -1,89 +1,87 @@
 body {
-    margin: 0;
-    padding: 0;
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url(../images/Num2.jpg);
-    background-size: cover;
-    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
 }
 
+/* Container */
 .login-container {
-    background-color: #fff;
-    padding: 40px;
-    border-top-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    width: 100%;
-}
-
-.login-form {
-    display: flex;
-    flex-direction: column;
-}
-
-h2 {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 40px 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     text-align: center;
-    font-size: 24px;
+    animation: fadeIn 1s ease-in-out;
+}
+
+/* Title */
+.title {
+    color: #1565C0;
     margin-bottom: 20px;
-    color: #333;
-}
-
-.input-group {
-    margin-bottom: 15px;
-}
-
-label {
-    display: block;
-    color: black;
-    font-size: 18px;
-    margin-bottom: 5px;
     font-weight: bold;
-    padding-left: 10px;
 }
 
-input {
-    width: 90%;
+/* Error Message */
+.error-message {
+    color: #d32f2f;
+    background-color: #ffebee;
+    border-radius: 8px;
     padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
-    outline: none;
-    transition: border 0.3s ease;
+    margin-bottom: 15px;
+    animation: fadeIn 0.5s ease-in-out;
 }
 
-input:focus {
-    border-color: #4CAF50;
+/* Form Inputs */
+.form-container .MuiTextField-root {
+    margin-bottom: 15px;
+    border-radius: 8px;
 }
 
-button {
-    background-color: #4CAF50;
-    color: black;
-    border: none;
-    padding: 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
-.signup-link {
-    text-align: center;
+/* Login Button */
+.login-button {
+    background-color: #1565C0;
+    color: #ffffff;
+    padding: 12px;
+    border-radius: 25px;
+    text-transform: uppercase;
+    font-weight: bold;
     margin-top: 10px;
-    font-size: 14px;
-    color: black;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.login-button:hover {
+    background-color: #0D47A1;
+}
+
+/* Signup Link */
+.signup-link {
+    margin-top: 15px;
+    color: #1565C0;
+    font-weight: bold;
 }
 
 .signup-link a {
-    color: blue;
-    text-transform: lowercase;
     text-decoration: none;
+    color: #0D47A1;
+    transition: color 0.3s ease-in-out;
 }
 
 .signup-link a:hover {
-    text-decoration: underline;
+    color: #004ba0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

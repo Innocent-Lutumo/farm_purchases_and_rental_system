@@ -1,31 +1,97 @@
-.farm-slider {
-    display: flex;
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f9fafc;
+    margin: 0;
+    padding: 0;
+}
+
+/* Description Section Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(50px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Featured Farms Styling */
+.farm-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto auto;
+    gap: 20px;
+    justify-content: center;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.farm-item:nth-child(3) {
+    grid-column: span 2;
+    text-align: center;
+}
+
+.farm-card {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
     overflow: hidden;
+    background: #fff;
+    transition: transform 0.3s ease-in-out;
+}
+
+.farm-card:hover {
+    transform: scale(1.08);
+}
+
+.farm-card img {
     width: 100%;
-    position: relative;
+    height: 200px;
+    object-fit: cover;
 }
 
-.farm-slider .farm-card {
-    display: flex;
-    flex-shrink: 0;
-    margin-right: 30px; /* Reduced the gap */
-    animation: slideAnimation 30s linear infinite; /* Continuous animation */
+.farm-card-content {
+    background-color: #f0f4f8;
+    padding: 15px;
+    text-align: center;
 }
 
-@keyframes slideAnimation {
-    0% {
-        transform: translateX(0);
-    }
-    25% {
-        transform: translateX(-100%);
-    }
-    50% {
-        transform: translateX(-200%);
-    }
-    75% {
-        transform: translateX(-300%);
-    }
-    100% {
-        transform: translateX(0);
-    }
+/* Button Enhancements */
+button {
+    border-radius: 20px !important;
+    padding: 10px 25px !important;
+    font-weight: bold !important;
+}
+
+button:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Footer Styling */
+.footer {
+    background-color: #e0e7ff;
+    padding: 20px 0;
+    text-align: center;
+    color: #333;
+    border-top: 5px solid #3f51b5;
+}
+
+.footer span {
+    font-weight: bold;
+    color: #3f51b5;
+}
+
+.footer .icon-button:hover {
+    transform: scale(1.2);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Global Animations */
+.container {
+    animation: fadeIn 1s ease-out;
+}
+
+.about-section {
+    animation: slideUp 1s ease-out;
+    color: #d8f9d8;
 }
