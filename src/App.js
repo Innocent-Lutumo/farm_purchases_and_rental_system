@@ -4,7 +4,7 @@ import Home from './component/HomePage';
 import Purchase from './component/PurchasesPage';
 import LoginPage from './component/LoginPage';
 import RegistrationForm from './component/RegisterPage';
-
+import Detailed from './component/Trial';
 
 function App() {
   return (
@@ -13,6 +13,7 @@ function App() {
         <Route path="/ExamplePage" element={< Purchase />} />
         <Route path="/LoginPage" element={< LoginPage />} />
         <Route path="/RegisterPage" element={< RegistrationForm />} />
+        <Route path="/Detailed" element={< Detailed />} />
       </Routes>
   );
 }

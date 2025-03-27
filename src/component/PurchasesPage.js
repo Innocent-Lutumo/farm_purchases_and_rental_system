@@ -12,12 +12,14 @@ import {
   IconButton,
   TextField,
   CircularProgress,
+  InputAdornment
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
+import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import img5 from "../images/img5.jpg";
 import img6 from "../images/img6.jpg";
@@ -104,11 +106,18 @@ const Purchases = () => {
       <Container sx={{ my: 3 }}>
         <TextField
           fullWidth
-          variant="outlined"
-          label="Search Farms by Location"
+          variant="standard"
+          placeholder="Search Farms by Location"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ mb: 4 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
         />
       </Container>
 
@@ -240,10 +249,10 @@ const Purchases = () => {
           </IconButton>
         </Box>
         {/* Footer contact information */}
-        <Typography>
+        <Typography fontSize={10}>
           Created by <strong>S/N 19</strong>
         </Typography>
-        <Typography>
+        <Typography fontSize={10}>
           Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
         </Typography>
       </Box>

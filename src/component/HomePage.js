@@ -49,7 +49,7 @@ const Home = () => {
           <Button color="inherit" component={Link} to="/RegisterPage">
             Register
           </Button>
-          <Button color="inherit" component={Link} to="/LoginPage">
+          <Button color="inherit" component={Link} to="/trial">
             Login
           </Button>
         </Toolbar>
@@ -239,10 +239,10 @@ const Home = () => {
           </IconButton>
         </Box>
         {/*footer contact information*/}
-        <Typography>
+        <Typography fontSize={10}>
           Created by <strong>S/N 19</strong>
         </Typography>
-        <Typography>
+        <Typography fontSize={10}>
           Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
         </Typography>
       </Box>

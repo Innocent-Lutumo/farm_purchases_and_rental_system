@@ -20,7 +20,7 @@ const RegistrationDialog = ({ open, onClose }) => {
         <Button
           component={Link}
           to="/RegisterPage"
-          color="primary"
+          color="success"
           variant="contained"
           onClick={onClose} // Close dialog on button click
         >
@@ -29,7 +29,7 @@ const RegistrationDialog = ({ open, onClose }) => {
         <Button
           component={Link}
           to="/LoginPage"
-          color="secondary"
+          color="primary"
           variant="outlined"
           onClick={onClose} // Close dialog on button click
         >

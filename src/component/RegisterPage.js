@@ -6,8 +6,12 @@ import {
   Button,
   Typography,
   Container,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
-import { Link } from "react-router-dom"; // Import Link from react-router-dom
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 const RegisterPage = () => {
@@ -18,16 +22,10 @@ const RegisterPage = () => {
     phone_number: "",
     password: "",
     confirmPassword: "",
+    role: "", // Added role for Renter or Buyer
   });
 
-  const [errors, setErrors] = useState({
-    names: "",
-    username: "",
-    email: "",
-    phone_number: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,60 +33,15 @@ const RegisterPage = () => {
     setErrors({ ...errors, [name]: "" });
   };
 
-  const validateForm = () => {
-    let valid = true;
-    const newErrors = {};
-
-    if (!formData.names.trim()) {
-      newErrors.names = "Full Names are required";
-      valid = false;
-    }
-
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
-      valid = false;
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-      valid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
-      valid = false;
-    }
-
-    if (!formData.phone_number.trim()) {
-      newErrors.phone_number = "Phone Number is required";
-      valid = false;
-    } else if (!/^\d{10}$/.test(formData.phone_number)) {
-      newErrors.phone_number = "Phone Number must be 10 digits";
-      valid = false;
-    }
-
-    if (!formData.password.trim()) {
-      newErrors.password = "Password is required";
-      valid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-      valid = false;
-    }
-
-    if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = "Confirm Password is required";
-      valid = false;
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-      valid = false;
-    }
-
-    setErrors(newErrors);
-    return valid;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    // Validate input fields
+    if (!formData.role) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        role: "Please select a role (Renter or Buyer)",
+      }));
       return;
     }
 
@@ -233,6 +186,26 @@ const RegisterPage = () => {
               }}
             />
           </Grid>
+          <Grid item xs={12}>
+            <FormControl variant="standard" fullWidth sx={{ backgroundColor: "#f9f9f9", borderRadius: "5px" }}>
+              <InputLabel id="role-label">Register As</InputLabel>
+              <Select
+                labelId="role-label"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                error={!!errors.role}
+              >
+                <MenuItem value="Renter">Renter</MenuItem>
+                <MenuItem value="Buyer">Buyer</MenuItem>
+              </Select>
+              {errors.role && (
+                <Typography color="error" sx={{ fontSize: "0.8rem", mt: 1 }}>
+                  {errors.role}
+                </Typography>
+              )}
+            </FormControl>
+          </Grid>
         </Grid>
         {errors.server && (
           <Typography
@@ -258,7 +231,7 @@ const RegisterPage = () => {
             padding: "10px 20px",
             borderRadius: "5px",
             "&:hover": {
-              backgroundColor: "#0f920f",
+              backgroundColor: "#116d11",
             },
           }}
         >
@@ -266,7 +239,6 @@ const RegisterPage = () => {
         </Button>
       </Box>
 
-      {/* Link to Login Page */}
       <Typography
         variant="body2"
         align="center"
