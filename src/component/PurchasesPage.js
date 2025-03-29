@@ -165,11 +165,11 @@ const Purchases = () => {
 
       {/* Featured Farmlands */}
       <Container sx={{ my: 4 }}>
-        <Typography variant="h5" color="green" textAlign="center" gutterBottom>
+        <Typography variant="h5" color="green" fontWeight={600} textAlign="center" gutterBottom>
           Featured Farmlands
         </Typography>
         <Typography textAlign="center" sx={{ mb: 2 }}>
-          Explore some of the best farmlands available for sale or rent.
+        Below are the available farmlands for purchase. Explore and find your ideal property
         </Typography>
 
         {loading ? (
