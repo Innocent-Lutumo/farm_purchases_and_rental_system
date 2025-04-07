@@ -3,7 +3,6 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Container,
   Card,
   CardMedia,
@@ -12,6 +11,12 @@ import {
   InputAdornment,
   IconButton,
   TextField,
+  Popover,
+  List,
+  ListItem,
+  Button,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -20,10 +25,10 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle"; // Profile Icon
 import img7 from "../images/img7.jpg";
 import img8 from "../images/img8.jpg";
 import img9 from "../images/img9.jpg";
-import profileImage from "../images/img8.jpg";
 
 const farms = [
   {
@@ -62,119 +67,132 @@ const farms = [
 ];
 
 const Trial = () => {
-  const [search, setSearch] = useState(""); // Move useState inside the component
+  const [search, setSearch] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null); // For managing the popover visibility
 
   // Filter farms based on the search input
   const filteredFarms = farms.filter((farm) =>
     farm.location.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleProfileIconClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? "simple-popover" : undefined;
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       {/* Header Section */}
-      <AppBar position="static" sx={{ background: "green" }}>
+      <AppBar position="static" sx={{ background: "green", height: "80px" }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Farm Finder
-          </Typography>
-          <Button color="inherit" component={Link} to="/">
-            Logout
-          </Button>
+          {/* App Name and Description */}
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6">Farm Finder</Typography>
+            <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
+              Find your ideal farmland for purchase or rent.
+            </Typography>
+          </Box>
+
+          {/* Profile Icon on the right */}
+          <IconButton
+            color="inherit"
+            edge="end"
+            onClick={handleProfileIconClick}
+            sx={{
+              marginLeft: 2,
+              fontSize: "2rem", // Enlarged size for the profile icon
+            }}
+          >
+            <AccountCircleIcon sx={{ fontSize: "2.5rem" }} />{" "}
+            {/* Enlarge the icon itself */}
+          </IconButton>
         </Toolbar>
       </AppBar>
 
-      {/* Search Bar */}
-      <Container sx={{ my: 3, marginBottom: 1 }}>
-        <TextField
-          fullWidth
-          variant="standard"
-          placeholder="Search Farms by Location"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ mb: 4 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
+      {/* Profile Popover */}
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handlePopoverClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <Box
+          sx={{
+            width: 150,
+            padding: 2,
+            backgroundColor: "#f0f0f0",
+            borderRadius: 2,
+            boxShadow: 3,
           }}
-        />
-      </Container>
-
-      <Container sx={{ my: 4, flex: 1, marginLeft: 0 }}>
-        <Box sx={{ display: "flex", gap: 3 }}>
-          {/* Profile and Navigation */}
-          <Box
-            sx={{
-              width: "250px",
-              backgroundColor: "#f4f4f4",
-              boxShadow: "2px 0 5px rgba(0, 0, 0, 0.1)",
-              padding: 3,
-              borderRadius: 2,
-              marginRight: 0,
-            }}
-          >
-            <Box
-              sx={{
-                width: "100px",
-                height: "100px",
-                borderRadius: "50%",
-                overflow: "hidden",
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-                marginBottom: 2,
-              }}
-            >
-              <img
-                src={profileImage}
-                alt="Profile"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  filter: "grayscale(50%)",
+        >
+          {/* Navigation List */}
+          <List sx={{ padding: 0 }}>
+          <ListItem button component={Link} to="/Page">
+              <ListItemText
+                primary="My profile"
+                sx={{
+                  color: "black",
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
                 }}
               />
-            </Box>
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: "bold", color: "#333", marginBottom: 3 }}
-            >
-              John Doe
-            </Typography>
-            <Button
-              variant="contained"
-              color="success"
-              fullWidth
-              component={Link}
-              to="/"
-              sx={{
-                marginBottom: 2,
-                textTransform: "none",
-                fontWeight: "bold",
-                borderRadius: "20px",
-              }}
-            >
-              Home
-            </Button>
-            <Button
-              variant="outlined"
-              color="success"
-              fullWidth
-              component={Link}
-              to="/history"
-              sx={{
-                textTransform: "none",
-                fontWeight: "bold",
-                borderRadius: "20px",
-              }}
-            >
-              History
-            </Button>
-          </Box>
+            </ListItem>
 
+            <ListItem button component={Link} to="/PurchasesPage">
+              <ListItemText
+                primary="Home"
+                sx={{
+                  color: "black",
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem button component={Link} to="/PurchasesPage">
+              <ListItemText
+                primary="History"
+                sx={{
+                  color: "black",
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem button component={Link} to="/">
+              <ListItemText
+                primary="Logout"
+                sx={{
+                  color: "red",
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              />
+            </ListItem>
+          </List>
+        </Box>
+      </Popover>
+
+      {/* Main Content */}
+      <Container sx={{ my: 4, flex: 1, marginLeft: 0 }}>
+        <Box sx={{ display: "flex", gap: 3 }}>
           {/* Farms Display */}
-          <Box sx={{ flex: 1, marginLeft: "10px", marginRight: "10px" }}>
+          <Box sx={{ flex: 1 }}>
             <Typography
               variant="h5"
               color="green"
@@ -185,9 +203,35 @@ const Trial = () => {
               Featured Farmlands
             </Typography>
             <Typography textAlign="center" sx={{ mb: 2 }}>
-              Explore some of the best farmlands available for sale or rent.
+              Below are the available farmlands for purchase. Explore and find
+              your ideal property.
             </Typography>
 
+            {/* Search Bar */}
+            <Container sx={{ my: 3, marginBottom: 1 }}>
+              <TextField
+                fullWidth
+                variant="standard"
+                placeholder="Search Farms by Location"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{
+                  mb: 4,
+                  "& .MuiInput-underline:after": {
+                    borderBottomColor: "green",
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Container>
+
+            {/* Farms Grid */}
             <Box
               sx={{
                 display: "grid",
@@ -207,7 +251,7 @@ const Trial = () => {
                     "&:hover": { transform: "scale(1.05)" },
                   }}
                   component={Link}
-                  to={`/purchase/${farm.id}`}
+                  to={`/farm/${farm.id}`}
                 >
                   <Box sx={{ display: "flex" }}>
                     <CardMedia
@@ -219,6 +263,8 @@ const Trial = () => {
                         height: "200px",
                         objectFit: "cover",
                         borderRadius: 2,
+                        marginLeft: 1,
+                        marginTop: 1,
                       }}
                     />
                     <CardContent
@@ -254,9 +300,9 @@ const Trial = () => {
                   </Box>
                   <Typography
                     sx={{
-                      padding: 2,
+                      padding: 1,
                       backgroundColor: "#d8f9d8",
-                      borderRadius: 2,
+                      borderRadius: 1,
                     }}
                   >
                     {farm.description}
@@ -280,7 +326,7 @@ const Trial = () => {
         </Box>
       </Container>
 
-      {/* footer section */}
+      {/* Footer Section */}
       <Box
         sx={{
           backgroundColor: "#d8f9d8",
@@ -323,7 +369,7 @@ const Trial = () => {
           Created by <strong>S/N 19</strong>
         </Typography>
         <Typography fontSize={12}>
-          Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
+          Contacts: 2557 4757 0004 <br /> Email: serialnumber19@gmail.com
         </Typography>
       </Box>
     </Box>

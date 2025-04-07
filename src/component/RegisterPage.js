@@ -16,10 +16,7 @@ import axios from "axios";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
-    names: "",
     username: "",
-    email: "",
-    phone_number: "",
     password: "",
     confirmPassword: "",
     role: "", // Added role for Renter or Buyer
@@ -73,10 +70,7 @@ const RegisterPage = () => {
         variant="h4"
         align="center"
         gutterBottom
-        sx={{
-          fontWeight: "bold",
-          color: "green",
-        }}
+        sx={{ fontWeight: "bold", color: "green" }}
       >
         Register
       </Typography>
@@ -85,30 +79,13 @@ const RegisterPage = () => {
         align="center"
         color="textSecondary"
         gutterBottom
-        sx={{
-          marginBottom: "20px",
-        }}
+        sx={{ marginBottom: "20px" }}
       >
         Create an account to access our services.
       </Typography>
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
         <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <TextField
-              label="Full Names"
-              name="names"
-              value={formData.names}
-              onChange={handleChange}
-              error={!!errors.names}
-              helperText={errors.names}
-              fullWidth
-              sx={{
-                backgroundColor: "#f9f9f9",
-                borderRadius: "5px",
-              }}
-            />
-          </Grid>
           <Grid item xs={6}>
             <TextField
               label="Username"
@@ -121,36 +98,14 @@ const RegisterPage = () => {
               sx={{
                 backgroundColor: "#f9f9f9",
                 borderRadius: "5px",
-              }}
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label="Email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={!!errors.email}
-              helperText={errors.email}
-              fullWidth
-              sx={{
-                backgroundColor: "#f9f9f9",
-                borderRadius: "5px",
-              }}
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label="Phone Number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              error={!!errors.phone_number}
-              helperText={errors.phone_number}
-              fullWidth
-              sx={{
-                backgroundColor: "#f9f9f9",
-                borderRadius: "5px",
+                "& label.Mui-focused": {
+                  color: "green",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "green",
+                  },
+                },
               }}
             />
           </Grid>
@@ -167,6 +122,14 @@ const RegisterPage = () => {
               sx={{
                 backgroundColor: "#f9f9f9",
                 borderRadius: "5px",
+                "& label.Mui-focused": {
+                  color: "green",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "green",
+                  },
+                },
               }}
             />
           </Grid>
@@ -183,11 +146,32 @@ const RegisterPage = () => {
               sx={{
                 backgroundColor: "#f9f9f9",
                 borderRadius: "5px",
+                "& label.Mui-focused": {
+                  color: "green",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "green",
+                  },
+                },
               }}
             />
           </Grid>
           <Grid item xs={12}>
-            <FormControl variant="standard" fullWidth sx={{ backgroundColor: "#f9f9f9", borderRadius: "5px" }}>
+            <FormControl
+              variant="standard"
+              fullWidth
+              sx={{
+                backgroundColor: "#f9f9f9",
+                borderRadius: "5px",
+                "& label.Mui-focused": {
+                  color: "green",
+                },
+                "& .MuiInput-underline:after": {
+                  borderBottomColor: "green",
+                },
+              }}
+            >
               <InputLabel id="role-label">Register As</InputLabel>
               <Select
                 labelId="role-label"
@@ -196,6 +180,7 @@ const RegisterPage = () => {
                 onChange={handleChange}
                 error={!!errors.role}
               >
+                <MenuItem value="Buyer">Seller</MenuItem>
                 <MenuItem value="Renter">Renter</MenuItem>
                 <MenuItem value="Buyer">Buyer</MenuItem>
               </Select>
@@ -210,10 +195,7 @@ const RegisterPage = () => {
         {errors.server && (
           <Typography
             color="error"
-            sx={{
-              marginTop: "20px",
-              fontSize: "0.9rem",
-            }}
+            sx={{ marginTop: "20px", fontSize: "0.9rem" }}
           >
             {errors.server}
           </Typography>
@@ -242,19 +224,12 @@ const RegisterPage = () => {
       <Typography
         variant="body2"
         align="center"
-        sx={{
-          marginTop: "20px",
-          color: "#555555",
-        }}
+        sx={{ marginTop: "20px", color: "#555555" }}
       >
         Already have an account?{" "}
         <Link
           to="/LoginPage"
-          style={{
-            color: "green",
-            fontWeight: "bold",
-            textDecoration: "none",
-          }}
+          style={{ color: "green", fontWeight: "bold", textDecoration: "none" }}
         >
           Login here
         </Link>

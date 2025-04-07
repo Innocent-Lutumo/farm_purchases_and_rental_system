@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AppBar,
@@ -19,9 +19,12 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
-import "../styles/hey.css";
+import RegistrationDialog from "./Dialog";
+
 
 const Home = () => {
+  const [dialogOpen, setDialogOpen] = useState(false); // State to manage dialog visibility
+
   const farmDetails = [
     {
       image: img1,
@@ -38,6 +41,14 @@ const Home = () => {
     },
   ];
 
+  const handleDialogOpen = () => {
+    setDialogOpen(true); // Open the dialog
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false); // Close the dialog
+  };
+
   return (
     <Box>
       {/* Navbar */}
@@ -46,11 +57,9 @@ const Home = () => {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             S/N 19
           </Typography>
-          <Button color="inherit" component={Link} to="/RegisterPage">
-            Register
-          </Button>
+
           <Button color="inherit" component={Link} to="/trial">
-            Login
+            Sign up
           </Button>
         </Toolbar>
       </AppBar>
@@ -78,19 +87,7 @@ const Home = () => {
         </Typography>
       </Container>
 
-      {/* About Section */}
-      <Container sx={{ my: 4, animation: "slideUp 1s ease-out" }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold" }}>
-          About Our Platform
-        </Typography>
-        <Typography sx={{ maxWidth: "1000px", margin: "auto", color: "#666" }}>
-          Our platform is dedicated to connecting farmers and buyers
-          efficiently. We aim to enhance agricultural transactions by providing
-          a user-friendly system that helps users make informed decisions.
-        </Typography>
-      </Container>
-
-      {/* Featured Farms segment */}
+      {/* Featured Farms Section */}
       <Container sx={{ my: 4 }}>
         <Typography
           variant="h4"
@@ -116,7 +113,7 @@ const Home = () => {
                 boxShadow: 5,
                 overflow: "hidden",
                 transition: "transform 0.3s ease-in-out",
-                "&:hover": { transform: "scale(1.05)" },
+                "&:hover": { transform: "scale(1.05)", cursor: "pointer" },
               }}
             >
               <CardMedia
@@ -130,7 +127,7 @@ const Home = () => {
               >
                 <Typography
                   variant="body1"
-                  sx={{ fontWeight: "bold", color: "#3f51b5" }}
+                  sx={{ fontWeight: "bold", color: "green" }}
                 >
                   {farm.description}
                 </Typography>
@@ -138,18 +135,6 @@ const Home = () => {
             </Card>
           ))}
         </Box>
-      </Container>
-
-      {/* Blog Section */}
-      <Container sx={{ my: 4, animation: "fadeIn 1s ease-out" }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold" }}>
-          Latest Agricultural Insights
-        </Typography>
-        <Typography sx={{ maxWidth: "1000px", margin: "auto", color: "#666" }}>
-          Stay updated with the latest trends in farming, soil management, and
-          agricultural business. Our blog provides expert tips and strategies
-          for enhancing farm productivity and profitability.
-        </Typography>
       </Container>
 
       {/* Actions Section */}
@@ -163,33 +148,31 @@ const Home = () => {
           Press any of the buttons below to jump into the category you want:
         </Typography>
         <Box sx={{ mt: 2 }}>
-          <Link to="/ExamplePage">
-            <Button
-              variant="contained"
-              color="success"
-              sx={{
-                m: 1,
-                "&:hover": { backgroundColor: "#388e3c" },
-                borderRadius: 20,
-              }}
-            >
-              Buy Farm
-            </Button>
-          </Link>
-          <Link to="/ExamplePage">
-            <Button
-              variant="contained"
-              color="warning"
-              sx={{
-                m: 1,
-                "&:hover": { backgroundColor: "#f57c00" },
-                borderRadius: 20,
-              }}
-            >
-              Rent Farm
-            </Button>
-          </Link>
-          <Link to="/registerPage">
+          <Button
+            variant="contained"
+            color="success"
+            sx={{
+              m: 1,
+              "&:hover": { backgroundColor: "#388e3c" },
+              borderRadius: 20,
+            }}
+            onClick={handleDialogOpen} // Open dialog when clicked
+          >
+            Buy Farm
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            sx={{
+              m: 1,
+              "&:hover": { backgroundColor: "#f57c00" },
+              borderRadius: 20,
+            }}
+            onClick={handleDialogOpen} // Open dialog when clicked
+          >
+            Rent Farm
+          </Button>
+          <Link to="/SellerPage">
             <Button
               variant="contained"
               color="error"
@@ -205,9 +188,11 @@ const Home = () => {
         </Box>
       </Container>
 
-      {/* Footer with Social Media Icons */}
+      {/* Dialog Component */}
+      <RegistrationDialog open={dialogOpen} onClose={handleDialogClose} />
+
+      {/* Footer */}
       <Box sx={{ textAlign: "center", p: 2, bgcolor: "#d8f9d8", mt: 4 }}>
-        {/* Social Media Icons */}
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
           <IconButton
             href="https://www.instagram.com"
@@ -238,11 +223,10 @@ const Home = () => {
             <LinkedInIcon />
           </IconButton>
         </Box>
-        {/*footer contact information*/}
-        <Typography fontSize={10}>
+        <Typography fontSize={12}>
           Created by <strong>S/N 19</strong>
         </Typography>
-        <Typography fontSize={10}>
+        <Typography fontSize={12}>
           Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
         </Typography>
       </Box>

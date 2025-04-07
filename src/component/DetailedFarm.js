@@ -53,7 +53,6 @@ const DetailedFarm = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-
       {/* Header Section */}
       <AppBar position="static" sx={{ background: "green" }}>
         <Toolbar>
@@ -66,28 +65,8 @@ const DetailedFarm = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Search Bar */}
-      <Container sx={{ my: 3, marginBottom: 1 }}>
-        <TextField
-          fullWidth
-          variant="standard"
-          placeholder="Search Farms by Location"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ mb: 4 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Container>
-
       <Container sx={{ my: 4, flex: 1, marginLeft: 0 }}>
         <Box sx={{ display: "flex", gap: 3 }}>
-
           {/* Profile and Navigation */}
           <Box
             sx={{
@@ -124,7 +103,8 @@ const DetailedFarm = () => {
               variant="h6"
               sx={{ fontWeight: "bold", color: "#333", marginBottom: 3 }}
             >
-              {user.fullName || "Loading..."} {/* Display full name dynamically */}
+              {user.fullName || "Loading..."}{" "}
+              {/* Display full name dynamically */}
             </Typography>
             <Button
               variant="contained"
@@ -169,8 +149,28 @@ const DetailedFarm = () => {
               Featured Farmlands
             </Typography>
             <Typography textAlign="center" sx={{ mb: 2 }}>
-            Below are the available farmlands for purchase. Explore and find your ideal property
+              Below are the available farmlands for purchase. Explore and find
+              your ideal property
             </Typography>
+
+                 {/* Search Bar */}
+      <Container sx={{ my: 3, marginBottom: 1 }}>
+        <TextField
+          fullWidth
+          variant="standard"
+          placeholder="Search Farms by Location"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ mb: 4 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Container>
 
             <Box
               sx={{
@@ -191,7 +191,7 @@ const DetailedFarm = () => {
                     "&:hover": { transform: "scale(1.05)" },
                   }}
                   component={Link}
-                  to={`/purchase/${farm.id}`}
+                  to={`/farm/${farm.id}`}
                 >
                   <Box sx={{ display: "flex" }}>
                     <CardMedia
