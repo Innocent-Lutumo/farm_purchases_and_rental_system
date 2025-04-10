@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TextField, Button, Box, Typography, Container } from "@mui/material";
+import { TextField, Button, Box, Typography, Container, InputAdornment, IconButton } from "@mui/material";
 import axios from "axios";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 const LoginPage = () => {
   const [username, setUsername] = useState(""); // Changed from email to username
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // To toggle password visibility
   const navigate = useNavigate(); // For redirecting after successful login
 
   const handleSubmit = async (e) => {
@@ -91,7 +93,7 @@ const LoginPage = () => {
         <TextField
           id="password"
           label="Password"
-          type="password"
+          type={showPassword ? "text" : "password"} // Toggle password visibility
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           fullWidth
@@ -107,6 +109,18 @@ const LoginPage = () => {
                 borderColor: "green",
               },
             },
+          }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
           }}
         />
         {error && (

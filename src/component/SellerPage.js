@@ -28,9 +28,9 @@ import {
   CheckCircle2,
   XCircle,
   PlusCircle,
-  TrendingUp, // New Icon for growth/trend
+  TrendingUp,
 } from "lucide-react";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle"; // Import Profile Icon
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 const navItems = [
   {
@@ -45,7 +45,7 @@ const navItems = [
   },
   {
     label: "Uploaded farms",
-    path: "/uploaded",
+    path: "/UploadedFarms",
     icon: <UploadCloud size={48} color={green[700]} />,
   },
   {
@@ -65,7 +65,9 @@ const navItems = [
   },
 ];
 
-const profileMenu = [{ label: "Logout", path: "/logout" }];
+const profileMenu = [{ label: "Logout", path: "/" }];
+
+const profileeMenu = [{ label: "My profile", path: "/" }];
 
 const SellerPage = () => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -83,12 +85,6 @@ const SellerPage = () => {
       <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Box
-              component="img"
-              src="https://img.icons8.com/ios-filled/50/ffffff/farm.png"
-              alt="Farm Logo"
-              sx={{ height: 40, mr: 2 }}
-            />
             <Box>
               <Typography variant="h5" fontWeight="bold">
                 Farm Seller Dashboard
@@ -100,21 +96,34 @@ const SellerPage = () => {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            {/* Profile Icon Instead of Text */}
+            {/* Profile Icon */}
             <IconButton onClick={handleMenuOpen} color="inherit">
-              <AccountCircleIcon sx={{ fontSize: 40 }} /> {/* Profile Icon */}
+              <AccountCircleIcon sx={{ fontSize: 40 }} />
             </IconButton>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
             >
+              {profileeMenu.map((item) => (
+                <MenuItem
+                  key={item.label}
+                  component={Link}
+                  to={item.path}
+                  onClick={handleMenuClose}
+                  sx={{ color: "black", }}
+                >
+                  {item.label}
+                </MenuItem>
+              ))}
+
               {profileMenu.map((item) => (
                 <MenuItem
                   key={item.label}
                   component={Link}
                   to={item.path}
                   onClick={handleMenuClose}
+                  sx={{ color: "red", }}
                 >
                   {item.label}
                 </MenuItem>
@@ -124,7 +133,7 @@ const SellerPage = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Stats Section */}
+      {/* stat Section */}
       <Container sx={{ mt: 4 }}>
         <Paper
           elevation={3}
@@ -136,7 +145,13 @@ const SellerPage = () => {
             mb: 4,
           }}
         >
-          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <TrendingUp size={32} color={green[700]} />
             <Typography
               variant="h6"
@@ -193,7 +208,7 @@ const SellerPage = () => {
           ))}
         </Grid>
 
-        {/* Animated CTA */}
+        {/* emphasis container */}
         <Box sx={{ mt: 6, mb: 4 }}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -231,7 +246,7 @@ const SellerPage = () => {
             </Paper>
           </motion.div>
 
-          {/* Seller Tips with Icons */}
+          {/* Seller Tips */}
           <Box sx={{ mt: 4 }}>
             <Typography
               variant="h6"

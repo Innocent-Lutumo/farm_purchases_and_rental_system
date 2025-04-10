@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import {
   AppBar,
@@ -19,12 +19,8 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
-import RegistrationDialog from "./Dialog";
-
 
 const Home = () => {
-  const [dialogOpen, setDialogOpen] = useState(false); // State to manage dialog visibility
-
   const farmDetails = [
     {
       image: img1,
@@ -41,14 +37,6 @@ const Home = () => {
     },
   ];
 
-  const handleDialogOpen = () => {
-    setDialogOpen(true); // Open the dialog
-  };
-
-  const handleDialogClose = () => {
-    setDialogOpen(false); // Close the dialog
-  };
-
   return (
     <Box>
       {/* Navbar */}
@@ -58,7 +46,7 @@ const Home = () => {
             S/N 19
           </Typography>
 
-          <Button color="inherit" component={Link} to="/trial">
+          <Button color="inherit" component={Link} to="/RegisterPage">
             Sign up
           </Button>
         </Toolbar>
@@ -156,7 +144,8 @@ const Home = () => {
               "&:hover": { backgroundColor: "#388e3c" },
               borderRadius: 20,
             }}
-            onClick={handleDialogOpen} // Open dialog when clicked
+            component={Link}
+            to="/trial"
           >
             Buy Farm
           </Button>
@@ -168,7 +157,8 @@ const Home = () => {
               "&:hover": { backgroundColor: "#f57c00" },
               borderRadius: 20,
             }}
-            onClick={handleDialogOpen} // Open dialog when clicked
+            component={Link}
+            to="/RentPage"
           >
             Rent Farm
           </Button>
@@ -187,9 +177,6 @@ const Home = () => {
           </Link>
         </Box>
       </Container>
-
-      {/* Dialog Component */}
-      <RegistrationDialog open={dialogOpen} onClose={handleDialogClose} />
 
       {/* Footer */}
       <Box sx={{ textAlign: "center", p: 2, bgcolor: "#d8f9d8", mt: 4 }}>
@@ -223,10 +210,10 @@ const Home = () => {
             <LinkedInIcon />
           </IconButton>
         </Box>
-        <Typography fontSize={12}>
+        <Typography fontSize={14}>
           Created by <strong>S/N 19</strong>
         </Typography>
-        <Typography fontSize={12}>
+        <Typography fontSize={14}>
           Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
         </Typography>
       </Box>

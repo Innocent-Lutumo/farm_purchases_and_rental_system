@@ -8,309 +8,200 @@ import {
   Paper,
   Grid,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { green, } from "@mui/material/colors";
+import { green } from "@mui/material/colors";
+
+const initialFormData = {
+  size: "",
+  price: "",
+  quality: "",
+  location: "",
+  email: "",
+  description: "",
+  phone: "",
+  image: null,
+  farmType: "",
+};
 
 const UploadFarmForm = () => {
-  const [formData, setFormData] = useState({
-    size: "",
-    price: "",
-    quality: "",
-    location: "",
-    email: "",
-    description: "",
-    phone: "",
-    image: null,
-    farmType: "",
-  });
-
-  const [openDialog, setOpenDialog] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleImageChange = (e) => {
-    setFormData({ ...formData, image: e.target.files[0] });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setOpenDialog(true);
-  };
-
-  const handleDialogClose = () => {
-    setOpenDialog(false);
-  };
+  const [formData, setFormData] = useState(initialFormData);
+  const [openDialog, setOpenDialog] = useState(true);
+  const [formVisible, setFormVisible] = useState(false);
 
   const handleFarmTypeSelect = (type) => {
-    setFormData((prevState) => ({
-      ...prevState,
+    setFormData((prev) => ({
+      ...prev,
       farmType: type,
     }));
     setOpenDialog(false);
-    alert(`Farm uploaded successfully as ${type}!`);
+    setFormVisible(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData((prev) => ({ ...prev, image: e.target.files[0] }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const formPayload = new FormData();
+
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null && value !== "") {
+        formPayload.append(key, value);
+      }
+    });
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/uploadFarm/", {
+        method: "POST",
+        body: formPayload,
+      });
+
+      if (response.ok) {
+        alert(`Farm uploaded successfully as ${formData.farmType}!`);
+        setFormData({
+          ...initialFormData,
+          farmType: formData.farmType,
+        });
+      } else {
+        alert("Failed to upload farm. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error uploading farm:", error);
+      alert("An error occurred while uploading. Please try again.");
+    }
   };
 
   return (
-    <Container
-      maxWidth="md"
-      sx={{ mt: 4, p: 3, borderRadius: 2 }}
-    >
-      <Paper elevation={5} sx={{ p: 4, borderRadius: 2, bgcolor: "#ffffff" }}>
-        <Typography
-          variant="h4"
-          sx={{ fontWeight: "bold", color: green[800], mb: 3, textAlign: "center", }}
-        >
-          Upload a New Farm
-        </Typography>
+    <Container maxWidth="md" sx={{ mt: 4, p: 3, borderRadius: 2 }}>
+      {/* Dialog for selecting farm type */}
+      <Dialog
+        open={openDialog}
+        onClose={() => {}}
+        sx={{ "& .MuiDialog-paper": { minWidth: 420 } }}
+      >
+        <DialogTitle sx={{ textAlign: "center" }}>Select Farm Type</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2, textAlign: "center" }}>
+            Is your farm for Sale or Rent?
+          </Typography>
+          <Box display="flex" justifyContent="center" gap={2}>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => handleFarmTypeSelect("Sale")}
+            >
+              For Sale
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={() => handleFarmTypeSelect("Rent")}
+            >
+              For Rent
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Farm Size (acres)"
-                name="size"
-                value={formData.size}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
+      {/* Main Form */}
+      {formVisible && (
+        <Paper elevation={5} sx={{ p: 4, borderRadius: 2, bgcolor: "#ffffff" }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: "bold",
+              color: green[800],
+              mb: 3,
+              textAlign: "center",
+            }}
+          >
+            Upload a New Farm ({formData.farmType})
+          </Typography>
+
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={3}>
+              {[
+                { label: "Farm Size (acres)", name: "size" },
+                { label: "Farm Price (Tshs)", name: "price" },
+                { label: "Farm Quality", name: "quality" },
+                { label: "Farm Location", name: "location" },
+                { label: "Email Address", name: "email", type: "email" },
+                { label: "Phone Number", name: "phone", type: "tel" },
+              ].map(({ label, name, type = "text" }, index) => (
+                <Grid item xs={12} sm={6} key={index}>
+                  <TextField
+                    fullWidth
+                    label={label}
+                    name={name}
+                    type={type}
+                    value={formData[name]}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Grid>
+              ))}
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Farm Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={4}
+                  required
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Button variant="contained" component="label">
+                  Upload Farm Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleImageChange}
+                    required={!formData.image}
+                  />
+                </Button>
+                {formData.image && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {formData.image.name} selected
+                  </Typography>
+                )}
+              </Grid>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Farm Price ($)"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Farm Quality (e.g., Excellent, Good)"
-                name="quality"
-                value={formData.quality}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Farm Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email Address"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            {/* Move Phone Number here before Description */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleInputChange}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            {/* Farm Description input */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Farm Description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                multiline
-                rows={4}
-                required
-                variant="outlined"
-                sx={{
-                  "& label.Mui-focused": {
-                    color: "green",
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    "&.Mui-focused fieldset": {
-                      borderColor: "green",
-                    },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
+            <Box sx={{ mt: 4, textAlign: "center" }}>
               <Button
                 variant="contained"
-                component="label"
+                type="submit"
                 sx={{
                   backgroundColor: green[700],
                   color: "#fff",
                   textTransform: "none",
+                  px: 4,
                   "&:hover": { backgroundColor: green[800] },
                 }}
               >
-                Upload Farm Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleImageChange}
-                  required
-                />
+                Submit Farm
               </Button>
-
-              {formData.image && (
-                <Typography variant="body2" sx={{ mt: 2, color: green[800] }}>
-                  {formData.image.name} selected
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-
-          <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Button
-              variant="contained"
-              type="submit"
-              sx={{
-                backgroundColor: green[700],
-                color: "#fff",
-                textTransform: "none",
-                "&:hover": { backgroundColor: green[800] },
-              }}
-            >
-              Submit Farm
-            </Button>
-          </Box>
-        </form>
-      </Paper>
-
-      {/* Dialog for farm type selection */}
-      <Dialog
-        open={openDialog}
-        onClose={handleDialogClose}
-        sx={{ "& .MuiDialog-paper": { minWidth: 420 } }} 
-      >
-        <DialogTitle sx={{ textAlign: "center", }} >Select Farm Type</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2, textAlign: "center", }}>
-            Is your farm for Sale or Rent?
-          </Typography>
-          <Button
-            variant="contained"
-            color="success"
-            sx={{ mr: 2, marginLeft: 13, borderRadius: 3, }}
-            onClick={() => handleFarmTypeSelect("Sale")}
-          >
-            For Sale
-          </Button>
-          <Button
-            variant="contained"
-            color="warning"
-            sx={{ borderRadius: 3, }}
-            onClick={() => handleFarmTypeSelect("Rent")}
-          >
-            For Rent
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose} color="error">
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </Box>
+          </form>
+        </Paper>
+      )}
     </Container>
   );
 };
