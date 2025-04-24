@@ -1,35 +1,61 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TextField, Button, Box, Typography, Container, InputAdornment, IconButton } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Box,
+  Typography,
+  Container,
+  InputAdornment,
+  IconButton,
+} from "@mui/material";
 import axios from "axios";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { GoogleLogin } from "@react-oauth/google";
 
 const LoginPage = () => {
-  const [username, setUsername] = useState(""); // Changed from email to username
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // To toggle password visibility
-  const navigate = useNavigate(); // For redirecting after successful login
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate input fields
     if (!username || !password) {
       setError("Please fill in both fields");
       return;
     }
 
     try {
-      // Simulate API call for login
-      const response = await axios.post("/api/login", { username, password });
-      console.log("Login successful:", response.data);
+      const response = await axios.post("http://127.0.0.1:8000/api/login/", {
+        username,
+        password,
+      });
 
-      // Redirect to dashboard or another page
-      navigate("/dashboard");
+      console.log("Login successful:", response.data);
+      navigate("/SellerPage");
     } catch (err) {
       console.error("Login failed:", err);
       setError("Invalid username or password");
+    }
+  };
+
+  const handleGoogleLoginSuccess = async (credentialResponse) => {
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/google-login/",
+        {
+          token: credentialResponse.credential,
+        }
+      );
+
+      console.log("Google login successful:", response.data);
+      navigate("/SellerPage");
+    } catch (err) {
+      console.error("Google login failed:", err);
+      setError("Google login failed");
     }
   };
 
@@ -49,23 +75,19 @@ const LoginPage = () => {
         variant="h4"
         align="center"
         gutterBottom
-        sx={{
-          fontWeight: "bold",
-          color: "green",
-        }}
+        sx={{ fontWeight: "bold", color: "green" }}
       >
         Login
       </Typography>
+
       <Typography
         variant="body1"
         align="center"
         color="textSecondary"
         gutterBottom
-        sx={{
-          marginBottom: "20px",
-        }}
+        sx={{ marginBottom: "20px" }}
       >
-        Welcome, Please login to your account.
+        Welcome, please login to your account.
       </Typography>
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
@@ -80,9 +102,7 @@ const LoginPage = () => {
             backgroundColor: "#f9f9f9",
             borderRadius: "5px",
             marginBottom: "20px",
-            "& label.Mui-focused": {
-              color: "green",
-            },
+            "& label.Mui-focused": { color: "green" },
             "& .MuiOutlinedInput-root": {
               "&.Mui-focused fieldset": {
                 borderColor: "green",
@@ -93,7 +113,7 @@ const LoginPage = () => {
         <TextField
           id="password"
           label="Password"
-          type={showPassword ? "text" : "password"} // Toggle password visibility
+          type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           fullWidth
@@ -101,9 +121,7 @@ const LoginPage = () => {
             backgroundColor: "#f9f9f9",
             borderRadius: "5px",
             marginBottom: "20px",
-            "& label.Mui-focused": {
-              color: "green",
-            },
+            "& label.Mui-focused": { color: "green" },
             "& .MuiOutlinedInput-root": {
               "&.Mui-focused fieldset": {
                 borderColor: "green",
@@ -114,7 +132,7 @@ const LoginPage = () => {
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
-                  onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
+                  onClick={() => setShowPassword(!showPassword)}
                   edge="end"
                 >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -126,10 +144,7 @@ const LoginPage = () => {
         {error && (
           <Typography
             color="error"
-            sx={{
-              marginBottom: "20px",
-              fontSize: "0.9rem",
-            }}
+            sx={{ marginBottom: "20px", fontSize: "0.9rem" }}
           >
             {error}
           </Typography>
@@ -152,6 +167,23 @@ const LoginPage = () => {
         >
           Login
         </Button>
+      </Box>
+
+      <Typography
+        variant="body2"
+        align="center"
+        sx={{ marginTop: "20px", color: "#555555" }}
+      >
+        OR
+      </Typography>
+
+      <Box
+        sx={{ display: "flex", justifyContent: "center", marginTop: "20px" }}
+      >
+        <GoogleLogin
+          onSuccess={handleGoogleLoginSuccess}
+          onError={() => setError("Google login failed")}
+        />
       </Box>
 
       <Typography

@@ -23,6 +23,7 @@ const initialFormData = {
   phone: "",
   image: null,
   farmType: "",
+  rentTime: "",
 };
 
 const UploadFarmForm = () => {
@@ -57,9 +58,15 @@ const UploadFarmForm = () => {
 
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== null && value !== "") {
-        formPayload.append(key, value);
+        if (key !== "rentTime") {
+          formPayload.append(key, value);
+        }
       }
     });
+
+    if (formData.farmType === "Rent") {
+      formPayload.append("rent_duration", formData.rentTime);
+    }
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api/uploadFarm/", {
@@ -74,7 +81,9 @@ const UploadFarmForm = () => {
           farmType: formData.farmType,
         });
       } else {
-        alert("Failed to upload farm. Please try again.");
+        const errorText = await response.text();
+        console.error("Upload failed:", errorText);
+        alert("Failed to upload farm. Check console for error.");
       }
     } catch (error) {
       console.error("Error uploading farm:", error);
@@ -83,7 +92,10 @@ const UploadFarmForm = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, p: 3, borderRadius: 2 }}>
+    <Container
+      maxWidth="md"
+      sx={{ mt: 4, p: 3, borderRadius: 2, bgcolor: "transparent" }}
+    >
       {/* Dialog for selecting farm type */}
       <Dialog
         open={openDialog}
@@ -147,10 +159,40 @@ const UploadFarmForm = () => {
                     type={type}
                     value={formData[name]}
                     onChange={handleInputChange}
+                    sx={{
+                      "& label.Mui-focused": { color: "green" },
+                      "& .MuiOutlinedInput-root": {
+                        "&.Mui-focused fieldset": {
+                          borderColor: "green",
+                        },
+                      },
+                    }}
                     required
                   />
                 </Grid>
               ))}
+
+              {/* Rent-specific field */}
+              {formData.farmType === "Rent" && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Rent Duration (e.g., 6 months)"
+                    name="rentTime"
+                    value={formData.rent_duration}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& label.Mui-focused": { color: "green" },
+                      "& .MuiOutlinedInput-root": {
+                        "&.Mui-focused fieldset": {
+                          borderColor: "green",
+                        },
+                      },
+                    }}
+                    required
+                  />
+                </Grid>
+              )}
 
               <Grid item xs={12}>
                 <TextField
@@ -161,12 +203,24 @@ const UploadFarmForm = () => {
                   onChange={handleInputChange}
                   multiline
                   rows={4}
+                  sx={{
+                    "& label.Mui-focused": { color: "green" },
+                    "& .MuiOutlinedInput-root": {
+                      "&.Mui-focused fieldset": {
+                        borderColor: "green",
+                      },
+                    },
+                  }}
                   required
                 />
               </Grid>
 
               <Grid item xs={12}>
-                <Button variant="contained" component="label">
+                <Button
+                  variant="contained"
+                  component="label"
+                  sx={{ bgcolor: "green", borderRadius: "20" }}
+                >
                   Upload Farm Image
                   <input
                     type="file"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -18,6 +18,7 @@ import {
   ListItemText,
   Divider,
   Modal,
+  CircularProgress,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -28,65 +29,22 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CloseIcon from "@mui/icons-material/Close";
-import img7 from "../images/img7.jpg";
-import img8 from "../images/img8.jpg";
-import img9 from "../images/img9.jpg";
-
-const farms = [
-  {
-    id: 1,
-    name: "Green Acres",
-    price: "$10,000",
-    size: "5 acres",
-    location: "Nairobi, Kenya",
-    quality: "High",
-    description: "Lush farmlands for eco-friendly farming.",
-    image: img9,
-    clickCount: 25,
-  },
-  {
-    id: 2,
-    name: "Golden Harvest",
-    price: "$15,000",
-    size: "10 acres",
-    location: "Kampala, Uganda",
-    quality: "Medium",
-    description: "Experience farming like never before!",
-    image: img7,
-    clickCount: 40,
-  },
-  {
-    id: 3,
-    name: "Valley Farms",
-    price: "$8,000",
-    size: "3 acres",
-    location: "DSM, Tanzania",
-    quality: "Low",
-    description: "Ideal for organic and sustainable produce.",
-    image: img8,
-    clickCount: 18,
-  },
-];
 
 const RentPage = () => {
   const [search, setSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [imageToView, setImageToView] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [farms, setFarms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleProfileIconClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
-  };
+  const handleProfileIconClick = (event) => setAnchorEl(event.currentTarget);
+  const handlePopoverClose = () => setAnchorEl(null);
 
   const handleImageClick = (imgSrc) => {
     setImageToView(imgSrc);
     setImageModalOpen(true);
   };
-
   const handleImageClose = () => {
     setImageModalOpen(false);
     setImageToView(null);
@@ -103,6 +61,25 @@ const RentPage = () => {
       window.location.href = `/farm/${farm.id}`;
     }
   };
+
+  // Fetch farms from the backend
+  useEffect(() => {
+    const fetchFarms = async () => {
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/farmsrent/?type=Rent"
+        ); // Adjust endpoint as needed
+        const data = await response.json();
+        setFarms(data);
+      } catch (error) {
+        console.error("Error fetching farms:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFarms();
+  }, []);
 
   const filteredFarms = farms.filter((farm) =>
     farm.location.toLowerCase().includes(search.toLowerCase())
@@ -133,12 +110,19 @@ const RentPage = () => {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Box sx={{ width: 150, padding: 2, backgroundColor: "#f0f0f0", borderRadius: 2 }}>
+        <Box
+          sx={{
+            width: 150,
+            padding: 2,
+            backgroundColor: "#f0f0f0",
+            borderRadius: 2,
+          }}
+        >
           <List sx={{ padding: 0 }}>
-            <ListItem button component={Link} to="/Page">
+            <ListItem button component={Link} to="#">
               <ListItemText primary="My profile" />
             </ListItem>
-            <ListItem button component={Link} to="/PurchasesPage">
+            <ListItem button component={Link} to="/RentPage">
               <ListItemText primary="Home" />
             </ListItem>
             <Divider />
@@ -146,7 +130,7 @@ const RentPage = () => {
               <ListItemText primary="History" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/" sx={{ color: "red" }}>
+            <ListItem button component={Link} to="/HomePage" sx={{ color: "red" }}>
               <ListItemText primary="Logout" />
             </ListItem>
           </List>
@@ -155,81 +139,135 @@ const RentPage = () => {
 
       {/* Main Content */}
       <Container sx={{ my: 4, flex: 1 }}>
-        <Box>
-          <Typography variant="h5" color="green" textAlign="center" fontWeight={600} gutterBottom>
-            Featured Farmlands
-          </Typography>
-          <Typography textAlign="center" sx={{ mb: 2 }}>
-            Below are the available farmlands for rent. Explore and find your ideal property.
-          </Typography>
+        <Typography
+          variant="h5"
+          color="green"
+          textAlign="center"
+          fontWeight={600}
+          gutterBottom
+        >
+          Featured Farmlands
+        </Typography>
+        <Typography textAlign="center" sx={{ mb: 2 }}>
+          Below are the available farmlands for rent. Explore and find your
+          ideal property.
+        </Typography>
 
-          {/* Search Bar */}
-          <Container sx={{ my: 3 }}>
-            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-              <TextField
-                variant="standard"
-                placeholder="Search Farms by Location"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                sx={{ width: "80%" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="outlined"
-                color="success"
-                onClick={() => console.log("Search triggered:", search)}
-                sx={{ height: 36, minWidth: 120 }}
-              >
-                Search
-              </Button>
-            </Box>
-          </Container>
+        {/* Search Bar */}
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
+        >
+          <TextField
+            variant="standard"
+            placeholder="Search Farms by Location"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: "80%" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button variant="outlined" color="success">
+            Search
+          </Button>
+        </Box>
 
-          {/* Farm Cards */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 6 }}>
+        {loading ? (
+          <Box textAlign="center" mt={5}>
+            <CircularProgress color="success" />
+            <Typography>Loading farms...</Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+              gap: 6,
+            }}
+          >
             {filteredFarms.map((farm) => (
               <Card
                 key={farm.id}
-                sx={{ boxShadow: 5, borderRadius: 3, overflow: "hidden", transition: "0.3s", "&:hover": { transform: "scale(1.05)" } }}
+                sx={{
+                  boxShadow: 5,
+                  borderRadius: 3,
+                  overflow: "hidden",
+                  transition: "0.3s",
+                  "&:hover": { transform: "scale(1.05)" },
+                }}
               >
                 <Box sx={{ display: "flex" }}>
                   <CardMedia
                     component="img"
-                    image={farm.image}
+                    image={`http://localhost:8000${farm.image}`}
                     alt={farm.name}
-                    sx={{ width: "40%", height: "200px", objectFit: "cover", borderRadius: 2, margin: 1, cursor: "pointer" }}
-                    onClick={() => handleImageClick(farm.image)}
+                    sx={{
+                      width: "40%",
+                      height: "200px",
+                      objectFit: "cover",
+                      borderRadius: 2,
+                      margin: 1,
+                      cursor: "pointer",
+                    }}
+                    onClick={() =>
+                      handleImageClick(`http://localhost:8000${farm.image}`)
+                    }
                   />
                   <CardContent sx={{ width: "60%", padding: 1 }}>
-                    <Typography variant="h6" fontWeight="bold">{farm.name}</Typography>
-                    <Typography><strong>Price:</strong> {farm.price}</Typography>
-                    <Typography><strong>Size:</strong> {farm.size}</Typography>
-                    <Typography><strong>Quality:</strong> {farm.quality}</Typography>
-                    <Typography fontSize="12px">
-                      <strong>Location:</strong> {farm.location} <LocationOnIcon />
+                    <Typography variant="h6" fontWeight="bold">
+                      {farm.name}
                     </Typography>
-                    <Button variant="contained" color="success" fullWidth onClick={() => handleDialogOpen(farm)} sx={{ mt: 2, fontSize: 10 }}>
+                    <Typography>
+                      <strong>Price:</strong> {farm.price}/= Tshs
+                    </Typography>
+                    <Typography>
+                      <strong>Size:</strong> {farm.size}
+                    </Typography>
+                    <Typography>
+                      <strong>Quality:</strong> {farm.quality}
+                    </Typography>
+                    <Typography fontSize="12px">
+                      <strong>Location:</strong> {farm.location}{" "}
+                      <LocationOnIcon />
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      fullWidth
+                      onClick={() => handleDialogOpen(farm)}
+                      sx={{ mt: 2, fontSize: 10 }}
+                    >
                       Click to Rent
                     </Button>
                   </CardContent>
                 </Box>
-                <Typography sx={{ p: 1, backgroundColor: "#d8f9d8" }}>{farm.description}</Typography>
-                <Typography sx={{ fontSize: "0.8rem", fontWeight: "bold", color: "#333", ml: 2, mt: 1 }}>
-                  {farm.clickCount} Rentals
+                <Typography sx={{ p: 1, backgroundColor: "#d8f9d8" }}>
+                  {farm.description}
                 </Typography>
+                {farm.rent_duration && (
+                  <Typography
+                    sx={{
+                      fontSize: "0.8rem",
+                      fontWeight: "bold",
+                      color: "#333",
+                      ml: 2,
+                      mt: 1,
+                    }}
+                  >
+                    {farm.rent_duration} Months
+                  </Typography>
+                )}
               </Card>
             ))}
           </Box>
-        </Box>
+        )}
       </Container>
 
-      {/* Image Modal with Close Button */}
+      {/* Image Modal */}
       <Modal open={imageModalOpen} onClose={handleImageClose}>
         <Box
           sx={{
@@ -266,22 +304,47 @@ const RentPage = () => {
       </Modal>
 
       {/* Footer */}
-      <Box sx={{ backgroundColor: "#d8f9d8", textAlign: "center", padding: 2, mt: "auto" }}>
+      <Box
+        sx={{
+          backgroundColor: "#d8f9d8",
+          textAlign: "center",
+          padding: 2,
+          mt: "auto",
+        }}
+      >
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <IconButton href="https://www.instagram.com" target="_blank" sx={{ color: "#E4405F", mx: 1 }}>
+          <IconButton
+            href="https://www.instagram.com"
+            target="_blank"
+            sx={{ color: "#E4405F", mx: 1 }}
+          >
             <InstagramIcon />
           </IconButton>
-          <IconButton href="https://www.twitter.com" target="_blank" sx={{ color: "#1DA1F2", mx: 1 }}>
+          <IconButton
+            href="https://www.twitter.com"
+            target="_blank"
+            sx={{ color: "#1DA1F2", mx: 1 }}
+          >
             <TwitterIcon />
           </IconButton>
-          <IconButton href="https://www.facebook.com" target="_blank" sx={{ color: "#1877F2", mx: 1 }}>
+          <IconButton
+            href="https://www.facebook.com"
+            target="_blank"
+            sx={{ color: "#1877F2", mx: 1 }}
+          >
             <FacebookIcon />
           </IconButton>
-          <IconButton href="https://www.linkedin.com" target="_blank" sx={{ color: "#0077B5", mx: 1 }}>
+          <IconButton
+            href="https://www.linkedin.com"
+            target="_blank"
+            sx={{ color: "#0077B5", mx: 1 }}
+          >
             <LinkedInIcon />
           </IconButton>
         </Box>
-        <Typography fontSize={14}>Created by <strong>S/N 19</strong></Typography>
+        <Typography fontSize={14}>
+          Created by <strong>S/N 19</strong>
+        </Typography>
         <Typography fontSize={14}>
           Contacts: 2557 4757 0004 <br /> Email: serialnumber19@gmail.com
         </Typography>

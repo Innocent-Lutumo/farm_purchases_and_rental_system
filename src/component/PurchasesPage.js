@@ -3,7 +3,6 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Container,
   Card,
   CardMedia,
@@ -12,14 +11,21 @@ import {
   IconButton,
   TextField,
   CircularProgress,
-  InputAdornment
+  InputAdornment,
+  Popover,
+  List,
+  Button,
+  ListItem,
+  ListItemText,
+  Divider,
 } from "@mui/material";
-import { Link } from "react-router-dom";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import img5 from "../images/img5.jpg";
 import img6 from "../images/img6.jpg";
@@ -61,6 +67,18 @@ const Purchases = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const open = Boolean(anchorEl);
+  const id = open ? "profile-popover" : undefined;
+
+  const handleProfileIconClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+  };
 
   useEffect(() => {
     const fetchFarms = async () => {
@@ -77,11 +95,11 @@ const Purchases = () => {
   }, []);
 
   const handleCardClick = () => {
-    setDialogOpen(true); // Open the dialog when a card is clicked
+    setDialogOpen(true);
   };
 
   const handleDialogClose = () => {
-    setDialogOpen(false); // Close the dialog
+    setDialogOpen(false);
   };
 
   const filteredFarms = farms.filter((farm) =>
@@ -90,36 +108,56 @@ const Purchases = () => {
 
   return (
     <Box>
-      {/* Navbar */}
-      <AppBar position="static" sx={{ background: "green" }}>
+      {/* Appbar */}
+      <AppBar position="static" sx={{ background: "green", height: "80px" }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Farm Finder
-          </Typography>
-          <Button color="inherit" component={Link} to="/LoginPage">
-            Login
-          </Button>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6">Farm Finder</Typography>
+            <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
+              Find your ideal farmland for purchase.
+            </Typography>
+          </Box>
+          <IconButton color="inherit" onClick={handleProfileIconClick}>
+            <AccountCircleIcon sx={{ fontSize: "2.5rem" }} />
+          </IconButton>
         </Toolbar>
       </AppBar>
 
-      {/* Search Bar */}
-      <Container sx={{ my: 3 }}>
-        <TextField
-          fullWidth
-          variant="standard"
-          placeholder="Search Farms by Location"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ mb: 4 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
+      {/* Popover for profile menu */}
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handlePopoverClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Box
+          sx={{
+            width: 150,
+            padding: 2,
+            backgroundColor: "#f0f0f0",
+            borderRadius: 2,
           }}
-        />
-      </Container>
+        >
+          <List sx={{ padding: 0 }}>
+            <ListItem button component={Link} to="/Page">
+              <ListItemText primary="My profile" />
+            </ListItem>
+            <ListItem button component={Link} to="/trial">
+              <ListItemText primary="Home" />
+            </ListItem>
+            <Divider />
+            <ListItem button component={Link} to="/PurchasesPage">
+              <ListItemText primary="History" />
+            </ListItem>
+            <Divider />
+            <ListItem button component={Link} to="/" sx={{ color: "red" }}>
+              <ListItemText primary="Logout" />
+            </ListItem>
+          </List>
+        </Box>
+      </Popover>
 
       {/* Advertisement Carousel */}
       <Container sx={{ overflow: "hidden", my: 3 }}>
@@ -165,12 +203,42 @@ const Purchases = () => {
 
       {/* Featured Farmlands */}
       <Container sx={{ my: 4 }}>
-        <Typography variant="h5" color="green" fontWeight={600} textAlign="center" gutterBottom>
+        <Typography
+          variant="h5"
+          color="green"
+          fontWeight={600}
+          textAlign="center"
+          gutterBottom
+        >
           Featured Farmlands
         </Typography>
         <Typography textAlign="center" sx={{ mb: 2 }}>
-        Below are the available farmlands for purchase. Explore and find your ideal property
+          Below are the available farmlands for purchase. Explore and find your
+          ideal property
         </Typography>
+
+        {/* Search Bar */}
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
+        >
+          <TextField
+            variant="standard"
+            placeholder="Search Farms by Location"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: "80%" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button variant="outlined" color="success">
+            Search
+          </Button>
+        </Box>
 
         {loading ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
@@ -189,12 +257,12 @@ const Purchases = () => {
                     transition: "0.3s",
                     "&:hover": { transform: "scale(1.05)" },
                   }}
-                  onClick={handleCardClick} // Trigger dialog on card click
+                  onClick={handleCardClick}
                 >
                   <CardMedia
                     component="img"
                     height="200"
-                    image={farm.image || "/fallback.jpg"} // Use fallback image if farm.image is undefined
+                    image={farm.image || "/fallback.jpg"}
                     alt={`farm${index + 1}`}
                   />
                   <CardContent>
@@ -217,7 +285,6 @@ const Purchases = () => {
 
       {/* Footer */}
       <Box sx={{ textAlign: "center", p: 2, bgcolor: "#d8f9d8", mt: 4 }}>
-        {/* Social Media Icons */}
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
           <IconButton
             href="https://www.instagram.com"
@@ -248,7 +315,6 @@ const Purchases = () => {
             <LinkedInIcon />
           </IconButton>
         </Box>
-        {/* Footer contact information */}
         <Typography fontSize={10}>
           Created by <strong>S/N 19</strong>
         </Typography>

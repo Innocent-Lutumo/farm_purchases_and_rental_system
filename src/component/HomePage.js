@@ -45,12 +45,22 @@ const Home = () => {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             S/N 19
           </Typography>
-
-          <Button color="inherit" component={Link} to="/RegisterPage">
-            Sign up
-          </Button>
         </Toolbar>
       </AppBar>
+
+      <Button
+            variant="contained"
+            color="warning"
+            sx={{
+              m: 1,
+              "&:hover": { backgroundColor: "#f57c00" },
+              borderRadius: 20,
+            }}
+            component={Link}
+            to="/lee"
+          >
+           Farm
+          </Button>
 
       {/* Description Section */}
       <Container
@@ -162,7 +172,7 @@ const Home = () => {
           >
             Rent Farm
           </Button>
-          <Link to="/SellerPage">
+          <Link to="/RegisterPage">
             <Button
               variant="contained"
               color="error"

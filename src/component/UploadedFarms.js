@@ -19,109 +19,105 @@ import {
   InputAdornment,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import { useParams } from "react-router-dom";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import axios from "axios";
 
-// Header Component
+const BASE_URL = "http://127.0.0.1:8000";
+
 const Header = () => (
   <AppBar position="static" sx={{ backgroundColor: "green" }}>
     <Toolbar>
-      <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-        Farm Dashboard
+      <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        My Uploaded Farms
       </Typography>
-      <Box sx={{ ml: "auto" }}>
-        <Button variant="text" sx={{ color: "white" }} href="/">
-          Home
-        </Button>
-      </Box>
+      <Button color="inherit" href="/">Home</Button>
     </Toolbar>
   </AppBar>
 );
 
-// Footer Component
-const Footer = () => (
-  <Container component="footer" sx={{ textAlign: "center", py: 3, mt: 5 }}>
-    <Typography variant="body2" color="textSecondary">
-      &copy; {new Date().getFullYear()} Farm App. All rights reserved.
-    </Typography>
-  </Container>
-);
-
 const UploadedFarms = () => {
-  const { farmId } = useParams();
-  const [farm, setFarm] = useState(null);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editedFarm, setEditedFarm] = useState({});
+  const [farms, setFarms] = useState([]);
+  const [filteredFarms, setFilteredFarms] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedFarm, setSelectedFarm] = useState(null);
+  const [editedFarm, setEditedFarm] = useState({});
 
   useEffect(() => {
-    const fetchFarm = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get(`/api/farms/${farmId}`);
-        setFarm(res.data);
-        setEditedFarm(res.data);
-      } catch (error) {
-        console.error("Failed to fetch farm:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFarm();
-  }, [farmId]);
+    fetchFarms();
+  }, []);
 
-  const handleDelete = async () => {
+  const fetchFarms = async () => {
     try {
-      await axios.delete(`/api/farms/${farmId}`);
-      console.log("Farm deleted successfully");
+      setLoading(true);
+      const res = await axios.get(`${BASE_URL}/api/all-farms/`);
+      const data = res.data.map((item) => item.data);
+      setFarms(data);
+      setFilteredFarms(data);
     } catch (error) {
-      console.error("Failed to delete farm:", error);
+      console.error("Error fetching farms:", error);
+    } finally {
+      setLoading(false);
     }
-    setOpenDeleteDialog(false);
   };
 
-  const handleChange = (e) => {
+  const handleSearch = () => {
+    const result = farms.filter(farm =>
+      farm.location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredFarms(result);
+  };
+
+  const handleEditClick = (farm) => {
+    setEditedFarm(farm);
+    setSelectedFarm(farm);
+    setOpenEditDialog(true);
+  };
+
+  const handleDeleteClick = (farm) => {
+    setSelectedFarm(farm);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditedFarm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSaveEdit = async () => {
     try {
-      const response = await axios.put(`/api/farms/${farmId}`, editedFarm);
-      setFarm(response.data);
-      setIsEditMode(false);
+      await axios.put(`${BASE_URL}/api/all-farms/${editedFarm.id}/`, editedFarm);
+      fetchFarms();
+      setOpenEditDialog(false);
     } catch (error) {
-      console.error("Failed to save farm:", error);
+      console.error("Failed to update farm:", error);
     }
   };
 
-  const isMatch = () =>
-    !searchQuery ||
-    farm?.location?.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleConfirmDelete = async () => {
+    try {
+      await axios.delete(`${BASE_URL}/api/all-farms/${selectedFarm.id}/`);
+      fetchFarms();
+      setOpenDeleteDialog(false);
+    } catch (error) {
+      console.error("Failed to delete farm:", error);
+    }
+  };
 
   return (
     <>
       <Header />
-
-      <Container sx={{ marginTop: 5 }}>
-        {/* Search Input */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: 2,
-            my: 3,
-          }}
-        >
+      <Container sx={{ mt: 4 }}>
+        <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
           <TextField
+            fullWidth
             variant="standard"
-            placeholder="Search Farms by Location"
+            placeholder="Search by Location"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: "80%", }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -130,221 +126,115 @@ const UploadedFarms = () => {
               ),
             }}
           />
-          <Button
-            variant="outlined"
-            color="success"
-            onClick={() => console.log("Search triggered:", searchQuery)}
-            sx={{ height: 36 }}
-          >
+          <Button variant="contained" color="success" onClick={handleSearch}>
             Search
           </Button>
         </Box>
 
-        {/* Loading Spinner */}
         {loading ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "60vh",
-            }}
-          >
-            <CircularProgress size={60} />
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+            <CircularProgress />
           </Box>
         ) : (
-          <>
-            {farm && isMatch() ? (
-              <Card
-                sx={{
-                  display: "flex",
-                  flexDirection: "row",
-                  borderRadius: 4,
-                  boxShadow: 4,
-                }}
-              >
-                {farm.image && (
-                  <CardMedia
-                    component="img"
-                    image={farm.image}
-                    alt="Farm"
-                    sx={{
-                      width: "40%",
-                      height: "auto",
-                      objectFit: "cover",
-                      borderRadius: "8px 0 0 8px",
-                    }}
-                  />
-                )}
-
-                <CardContent sx={{ width: "60%", padding: 3 }}>
-                  {isEditMode ? (
-                    <>
-                      <TextField
-                        label="Location"
-                        name="location"
-                        value={editedFarm.location}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Size"
-                        name="size"
-                        value={editedFarm.size}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Price"
-                        name="price"
-                        value={editedFarm.price}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Quality"
-                        name="quality"
-                        value={editedFarm.quality}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Description"
-                        name="description"
-                        value={editedFarm.description}
-                        onChange={handleChange}
-                        multiline
-                        rows={3}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Email"
-                        name="email"
-                        value={editedFarm.email}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <TextField
-                        label="Phone"
-                        name="phone"
-                        value={editedFarm.phone}
-                        onChange={handleChange}
-                        fullWidth
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Typography variant="h6" fontWeight="bold" gutterBottom>
-                        {farm.location}
-                      </Typography>
-                      <Typography>
-                        <strong>Size:</strong> {farm.size}
-                      </Typography>
-                      <Typography>
-                        <strong>Price:</strong> {farm.price}
-                      </Typography>
-                      <Typography>
-                        <strong>Quality:</strong> {farm.quality}
-                      </Typography>
-                      <Typography sx={{ mt: 1, mb: 1 }}>
-                        <strong>Description:</strong> {farm.description}
-                      </Typography>
-                      <Typography>
-                        <strong>Email:</strong> {farm.email}
-                      </Typography>
-                      <Typography>
-                        <strong>Phone:</strong> {farm.phone}
-                      </Typography>
-                    </>
-                  )}
-
-                  <Grid container spacing={2} sx={{ mt: 3 }}>
-                    {isEditMode ? (
-                      <>
-                        <Grid item xs={6}>
-                          <Button
-                            variant="contained"
-                            onClick={handleSave}
-                            fullWidth
-                            sx={{ backgroundColor: "green", color: "#fff" }}
-                          >
-                            Save
-                          </Button>
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Button
-                            variant="outlined"
-                            onClick={() => setIsEditMode(false)}
-                            fullWidth
-                          >
-                            Cancel
-                          </Button>
-                        </Grid>
-                      </>
-                    ) : (
-                      <>
-                        <Grid item xs={6}>
-                          <Button
-                            variant="contained"
-                            onClick={() => setIsEditMode(true)}
-                            fullWidth
-                          >
-                            Edit
-                          </Button>
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            onClick={() => setOpenDeleteDialog(true)}
-                            fullWidth
-                          >
-                            Delete
-                          </Button>
-                        </Grid>
-                      </>
-                    )}
-                  </Grid>
-                </CardContent>
-              </Card>
+          <Grid container spacing={4}>
+            {filteredFarms.length === 0 ? (
+              <Typography>No farms found.</Typography>
             ) : (
-              <Typography align="center" mt={4}>
-                No farms match this location.
-              </Typography>
+              filteredFarms.map((farm) => (
+                <Grid item xs={12} sm={6} md={4} key={farm.id}>
+                  <Card
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      height: "100%",
+                      borderRadius: 3,
+                      boxShadow: 4,
+                      overflow: "hidden",
+                      transition: "0.3s",
+                      "&:hover": { boxShadow: 8 },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", flexDirection: "row", height: 200 }}>
+                      {farm.image && (
+                        <CardMedia
+                          component="img"
+                          sx={{ width: 120, objectFit: "cover", borderRadius: 1, mr: 1, margin: 1 }}
+                          image={`${BASE_URL}${farm.image}`}
+                          alt={farm.location}
+                        />
+                      )}
+                      <CardContent sx={{ flex: 1 }}>
+                        <Typography variant="h6">{farm.location}</Typography>
+                        <Typography variant="body2">Size: {farm.size}</Typography>
+                        <Typography variant="body2">Price: {farm.price}</Typography>
+                        <Typography variant="body2">Quality: {farm.quality}</Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>{farm.description}</Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>Email: {farm.email}</Typography>
+                        <Typography variant="body2">Phone: {farm.phone}</Typography>
+                      </CardContent>
+                    </Box>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", px: 2, py: 1 }}>
+                      <Button
+                        startIcon={<EditIcon />}
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEditClick(farm)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        startIcon={<DeleteIcon />}
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteClick(farm)}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  </Card>
+                </Grid>
+              ))
             )}
-
-            {/* Delete Confirmation Dialog */}
-            <Dialog
-              open={openDeleteDialog}
-              onClose={() => setOpenDeleteDialog(false)}
-            >
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogContent>
-                <Typography>
-                  Are you sure you want to delete this farm? This action cannot
-                  be undone.
-                </Typography>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setOpenDeleteDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleDelete} color="error">
-                  Delete
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </>
+          </Grid>
         )}
-      </Container>
 
-      <Footer />
+        {/* Edit Dialog */}
+        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Edit Farm</DialogTitle>
+          <DialogContent>
+            {["location", "size", "price", "quality", "description", "email", "phone"].map((field) => (
+              <TextField
+                key={field}
+                margin="dense"
+                label={field.charAt(0).toUpperCase() + field.slice(1)}
+                name={field}
+                value={editedFarm[field] || ""}
+                onChange={handleEditChange}
+                fullWidth
+                multiline={field === "description"}
+                rows={field === "description" ? 3 : 1}
+              />
+            ))}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} variant="contained" color="success">Save</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogContent>
+            Are you sure you want to delete <strong>{selectedFarm?.location}</strong>?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button onClick={handleConfirmDelete} variant="contained" color="error">Delete</Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
     </>
   );
 };

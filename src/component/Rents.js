@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -18,51 +18,62 @@ import {
   FormControl,
   InputLabel,
   IconButton,
-  Menu
+  Menu,
+  TextField,
+  Button,
+  InputAdornment,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import HomeIcon from "@mui/icons-material/Home";
-import LogoutIcon from "@mui/icons-material/Logout";
+import SearchIcon from "@mui/icons-material/Search";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { green } from "@mui/material/colors";
 
-const bookedFarms = [
-  {
-    id: 1,
-    name: "Sunnydale Farm",
-    location: "Texas, USA",
-    size: "150 acres",
-    price: "$10,000",
-    image: "https://via.placeholder.com/80",
-    status: "Pending",
-    rentTime: "3 months"
-  },
-  {
-    id: 2,
-    name: "Green Valley Estate",
-    location: "California, USA",
-    size: "200 acres",
-    price: "$15,000",
-    image: "https://via.placeholder.com/80",
-    status: "Confirmed",
-    rentTime: "6 months"
-  },
-  {
-    id: 3,
-    name: "Riverbend Farm",
-    location: "Oregon, USA",
-    size: "300 acres",
-    price: "$20,000",
-    image: "https://via.placeholder.com/80",
-    status: "Cancelled",
-    rentTime: "1 year"
-  }
-];
-
-export default function Rents() {
-  const [farms, setFarms] = useState(bookedFarms);
+export default function Rent() {
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false); // New state for loading during delete
+
   const open = Boolean(anchorEl);
+
+  const profileMenu = [
+    { label: "Home", path: "/" },
+    { label: "Logout", path: "/logout" },
+  ];
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/get-transactions/"
+        );
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data.results || [];
+        setOrders(data);
+        setFilteredOrders(data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -73,92 +84,214 @@ export default function Rents() {
   };
 
   const handleStatusChange = (id, newStatus) => {
-    const updatedFarms = farms.map(farm =>
-      farm.id === id ? { ...farm, status: newStatus } : farm
+    const updated = orders.map((order) =>
+      order.id === id ? { ...order, status: newStatus } : order
     );
-    setFarms(updatedFarms);
+    setOrders(updated);
+    setFilteredOrders(updated);
+
+    axios.patch(`http://127.0.0.1:8000/api/transactions/${id}/`, {
+      status: newStatus,
+    });
   };
+
+  const handleDelete = async () => {
+    setIsDeleting(true); // Start deleting state
+    setOpenDeleteDialog(false); // Close the dialog immediately
+    try {
+      // Perform the delete request
+      await axios.delete(`http://127.0.0.1:8000/api/transactions/${deleteId}/`);
+      const updated = orders.filter((order) => order.id !== deleteId);
+      setOrders(updated);
+      setFilteredOrders(updated); // Update filtered orders
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+    } finally {
+      setIsDeleting(false); // End deleting state
+    }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearch = () => {
+    const filtered = orders.filter((order) =>
+      order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredOrders(filtered);
+  };
+
+  const openConfirmationDialog = (id) => {
+    setDeleteId(id);
+    setOpenDeleteDialog(true);
+  };
+
+  const closeConfirmationDialog = () => {
+    setOpenDeleteDialog(false);
+    setDeleteId(null);
+  };
+
+  if (loading) {
+    return (
+      <Container sx={{ py: 4, textAlign: "center" }}>
+        <Typography>Loading purchased farms...</Typography>
+      </Container>
+    );
+  }
 
   return (
     <Box>
-      {/* Header */}
-      <AppBar position="static" sx={{ backgroundColor: 'green' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Admin Dashboard - Booked Farms
-          </Typography>
-          <IconButton color="inherit" onClick={handleMenu}>
-            <AccountCircleIcon />
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-            <MenuItem onClick={handleClose} component={Link} to="/">
-              <HomeIcon fontSize="small" sx={{ mr: 1 }} /> Home
-            </MenuItem>
-            <MenuItem onClick={handleClose} component={Link} to="/logout">
-              <LogoutIcon fontSize="small" sx={{ mr: 1 }} /> Logout
-            </MenuItem>
-          </Menu>
+      <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <Box>
+              <Typography variant="h5" fontWeight="bold">
+                Farm Seller Dashboard
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                Manage listings, track sales, and grow your network.
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <IconButton onClick={handleMenu} color="inherit">
+              <AccountCircleIcon sx={{ fontSize: 40 }} />
+            </IconButton>
+            <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+              {profileMenu.map((item) => (
+                <MenuItem
+                  key={item.label}
+                  component={Link}
+                  to={item.path}
+                  onClick={handleClose}
+                  sx={{ color: "black" }}
+                >
+                  {item.label}
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
 
       <Container sx={{ py: 4 }}>
         <Typography variant="h4" gutterBottom color="green">
-          Booked Farms
+          Rented Farms
         </Typography>
+
+        {/* Total Farms Count */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body1">
+            <strong>Total Farms Added: {filteredOrders.length}</strong>
+          </Typography>
+        </Box>
+
+        {/* Search Bar */}
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
+        >
+          <TextField
+            variant="standard"
+            placeholder="Search Farms by Location"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            sx={{ width: "80%" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button variant="outlined" color="success" onClick={handleSearch}>
+            Search
+          </Button>
+        </Box>
+
         <TableContainer component={Paper}>
           <Table>
-            <TableHead sx={{ backgroundColor: '#e8f5e9' }}>
+            <TableHead sx={{ backgroundColor: "#e8f5e9" }}>
               <TableRow>
                 <TableCell>Farm</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Size</TableCell>
                 <TableCell>Price</TableCell>
-                <TableCell>Rent Time</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Rental Time (Months)</TableCell> 
+                <TableCell>Transaction ID</TableCell>
+                <TableCell>Email</TableCell>
                 <TableCell>Action</TableCell>
+                <TableCell>Delete</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {farms.map((farm) => (
-                <TableRow key={farm.id}>
+              {filteredOrders.map((order) => (
+                <TableRow key={order.id}>
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={2}>
                       <Avatar
-                        src={farm.image}
+                        src={`http://127.0.0.1:8000${order.farm.image}`}
                         variant="rounded"
                         sx={{ width: 80, height: 80 }}
                       />
-                      <Typography>{farm.name}</Typography>
+                      <Typography>{order.farm.name}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Link to={`/location/${farm.id}`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'green' }}>
-                        <LocationOnIcon sx={{ color: 'green' }} />
-                        <Typography>{farm.location}</Typography>
-                      </Link>
-                    </Box>
+                    <Link to={`/farm-location/${order.farm.id}`} style={{ textDecoration: "none" }}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Tooltip title="View Location">
+                          <LocationOnIcon sx={{ color: "green" }} />
+                        </Tooltip>
+                        <Typography color="success">{order.farm.location}</Typography>
+                      </Box>
+                    </Link>
                   </TableCell>
-                  <TableCell>{farm.size}</TableCell>
-                  <TableCell>{farm.price}</TableCell>
-                  <TableCell>{farm.rentTime}</TableCell>
+                  <TableCell>{order.farm.size}</TableCell>
+                  <TableCell>{order.farm.price} Tshs</TableCell>
                   <TableCell>
-                    <Typography color={farm.status === 'Confirmed' ? 'green' : farm.status === 'Cancelled' ? 'red' : 'orange'}>
-                      {farm.status}
+                    <Typography
+                      color={
+                        order.status === "Confirmed"
+                          ? "green"
+                          : order.status === "Cancelled"
+                          ? "red"
+                          : "orange"
+                      }
+                    >
+                      {order.status || "Pending"}
                     </Typography>
                   </TableCell>
+
+                  <TableCell>{order.farm?.rent_duration || "-"}</TableCell>
+                  <TableCell>{order.transaction_id || "-"}</TableCell>
+                  <TableCell>{order.renter_email || "-"}</TableCell>
                   <TableCell>
                     <FormControl fullWidth size="small">
                       <InputLabel>Edit Status</InputLabel>
                       <Select
-                        value={farm.status}
+                        value={order.status || "Pending"}
                         label="Edit Status"
-                        onChange={(e) => handleStatusChange(farm.id, e.target.value)}
+                        onChange={(e) =>
+                          handleStatusChange(order.id, e.target.value)
+                        }
                       >
                         <MenuItem value="Confirmed">Confirmed</MenuItem>
                         <MenuItem value="Cancelled">Cancelled</MenuItem>
+                        <MenuItem value="Pending">Pending</MenuItem>
                       </Select>
                     </FormControl>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      color="error"
+                      onClick={() => openConfirmationDialog(order.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -167,15 +300,36 @@ export default function Rents() {
         </TableContainer>
       </Container>
 
-      {/* Footer */}
-      <Box
-        component="footer"
-        sx={{ py: 3, textAlign: "center", backgroundColor: "#e8f5e9" }}
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={closeConfirmationDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
       >
-        <Typography variant="body2" color="green">
-          &copy; 2025 Farm Rentals Admin Panel. All rights reserved.
-        </Typography>
-      </Box>
+        <DialogTitle id="alert-dialog-title">{"Confirm Deletion"}</DialogTitle>
+        <DialogContent>
+          {isDeleting ? (
+            <CircularProgress color="success" />
+          ) : (
+            <Typography>
+              Are you sure you want to delete this transaction?
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirmationDialog} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            disabled={isDeleting} 
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

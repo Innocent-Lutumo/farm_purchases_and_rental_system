@@ -15,7 +15,7 @@ import {
   Paper,
 } from "@mui/material";
 import { Link } from "react-router-dom";
-import { green } from "@mui/material/colors";
+import { green, red, yellow } from "@mui/material/colors";
 import { motion } from "framer-motion";
 import {
   Lightbulb,
@@ -56,17 +56,16 @@ const navItems = [
   {
     label: "Soldouts",
     path: "/soldouts",
-    icon: <XCircle size={48} color={green[700]} />,
+    icon: <XCircle size={48} color={red[700]} />,
   },
   {
     label: "Upload new farm",
     path: "/uploadFarmForm",
-    icon: <PlusCircle size={48} color={green[700]} />,
+    icon: <PlusCircle size={48} color={yellow[700]} />,
   },
 ];
 
 const profileMenu = [{ label: "Logout", path: "/" }];
-
 const profileeMenu = [{ label: "My profile", path: "/" }];
 
 const SellerPage = () => {
@@ -111,7 +110,7 @@ const SellerPage = () => {
                   component={Link}
                   to={item.path}
                   onClick={handleMenuClose}
-                  sx={{ color: "black", }}
+                  sx={{ color: "black" }}
                 >
                   {item.label}
                 </MenuItem>
@@ -123,7 +122,7 @@ const SellerPage = () => {
                   component={Link}
                   to={item.path}
                   onClick={handleMenuClose}
-                  sx={{ color: "red", }}
+                  sx={{ color: "red" }}
                 >
                   {item.label}
                 </MenuItem>
@@ -258,19 +257,19 @@ const SellerPage = () => {
               {[
                 {
                   tip: "Use high-quality images",
-                  icon: <ImageIcon size={18} />,
+                  icon: <ImageIcon size={18} color={green[700]} />,
                 },
                 {
                   tip: "Update availability often",
-                  icon: <RefreshCw size={18} />,
+                  icon: <RefreshCw size={18} color={yellow[700]} />,
                 },
                 {
                   tip: "Respond quickly to offers",
-                  icon: <ThumbsUp size={18} />,
+                  icon: <ThumbsUp size={18} color={green[700]} />,
                 },
                 {
                   tip: "Promote your best farms",
-                  icon: <Lightbulb size={18} />,
+                  icon: <Lightbulb size={18} color={yellow[700]} />,
                 },
               ].map(({ tip, icon }, idx) => (
                 <Grid item xs={12} sm={6} md={3} key={idx}>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// Trial.jsx
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -27,54 +28,34 @@ import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import CloseIcon from "@mui/icons-material/Close"; // Import Close Icon
-import img7 from "../images/img7.jpg";
-import img8 from "../images/img8.jpg";
-import img9 from "../images/img9.jpg";
-
-const farms = [
-  {
-    id: 1,
-    name: "Green Acres",
-    price: "$10,000",
-    size: "5 acres",
-    location: "Nairobi, Kenya",
-    quality: "High",
-    description: "Lush farmlands for eco-friendly farming.",
-    image: img9,
-    clickCount: 25,
-  },
-  {
-    id: 2,
-    name: "Golden Harvest",
-    price: "$15,000",
-    size: "10 acres",
-    location: "Kampala, Uganda",
-    quality: "Medium",
-    description: "Experience farming like never before!",
-    image: img7,
-    clickCount: 40,
-  },
-  {
-    id: 3,
-    name: "Valley Farms",
-    price: "$8,000",
-    size: "3 acres",
-    location: "DSM, Tanzania",
-    quality: "Low",
-    description: "Ideal for organic and sustainable produce.",
-    image: img8,
-    clickCount: 18,
-  },
-];
+import CloseIcon from "@mui/icons-material/Close";
+import axios from "axios";
 
 const Trial = () => {
   const [search, setSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageToView, setImageToView] = useState(null);
-
+  const [farms, setFarms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchFarms = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/api/farmsale/");
+        setFarms(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch farms:", err);
+        setError("Failed to load farms");
+        setLoading(false);
+      }
+    };
+
+    fetchFarms();
+  }, []);
 
   const handleProfileIconClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -84,15 +65,12 @@ const Trial = () => {
     setAnchorEl(null);
   };
 
-  const open = Boolean(anchorEl);
-  const id = open ? "simple-popover" : undefined;
-
   const handlePurchase = (farm) => {
     const confirmPurchase = window.confirm(
       `Do you really want to purchase ${farm.name} located in ${farm.location}?`
     );
     if (confirmPurchase) {
-      navigate(`/farm/${farm.id}`);
+      navigate(`/farm1/${farm.id}`);
     }
   };
 
@@ -112,7 +90,6 @@ const Trial = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      {/* AppBar */}
       <AppBar position="static" sx={{ background: "green", height: "80px" }}>
         <Toolbar>
           <Box sx={{ flexGrow: 1 }}>
@@ -127,10 +104,8 @@ const Trial = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Popover for profile menu */}
       <Popover
-        id={id}
-        open={open}
+        open={Boolean(anchorEl)}
         anchorEl={anchorEl}
         onClose={handlePopoverClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
@@ -148,7 +123,7 @@ const Trial = () => {
             <ListItem button component={Link} to="/Page">
               <ListItemText primary="My profile" />
             </ListItem>
-            <ListItem button component={Link} to="/PurchasesPage">
+            <ListItem button component={Link} to="/trial">
               <ListItemText primary="Home" />
             </ListItem>
             <Divider />
@@ -163,50 +138,58 @@ const Trial = () => {
         </Box>
       </Popover>
 
-      {/* Main Content */}
       <Container sx={{ my: 4, flex: 1 }}>
-        <Box>
-          <Typography
-            variant="h5"
-            color="green"
-            textAlign="center"
-            fontWeight={600}
-            gutterBottom
-          >
-            Featured Farmlands
-          </Typography>
-          <Typography textAlign="center" sx={{ mb: 2 }}>
-            Below are the available farmlands for purchase. Explore and find your ideal property.
-          </Typography>
+        <Typography
+          variant="h5"
+          color="green"
+          textAlign="center"
+          fontWeight={600}
+          gutterBottom
+        >
+          Featured Farmlands
+        </Typography>
+        <Typography textAlign="center" sx={{ mb: 2 }}>
+          Below are the available farmlands for purchase. Explore and find your
+          ideal property.
+        </Typography>
 
-          {/* Search Bar */}
-          <Container sx={{ my: 3 }}>
-            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-              <TextField
-                variant="standard"
-                placeholder="Search Farms by Location"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                sx={{ width: "80%" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="outlined"
-                color="success"
-                onClick={() => console.log("Search triggered:", search)}
-              >
-                Search
-              </Button>
-            </Box>
-          </Container>
+        <Container sx={{ my: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            <TextField
+              variant="standard"
+              placeholder="Search Farms by Location"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ width: "80%" }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={() => console.log("Search triggered:", search)}
+            >
+              Search
+            </Button>
+          </Box>
+        </Container>
 
-          {/* Farm Cards */}
+        {loading ? (
+          <Typography textAlign="center">Loading farms...</Typography>
+        ) : error ? (
+          <Typography textAlign="center" color="error">
+            {error}
+          </Typography>
+        ) : filteredFarms.length === 0 ? (
+          <Typography textAlign="center">
+            No farms match your search.
+          </Typography>
+        ) : (
           <Box
             sx={{
               display: "grid",
@@ -228,9 +211,11 @@ const Trial = () => {
                 <Box sx={{ display: "flex" }}>
                   <CardMedia
                     component="img"
-                    image={farm.image}
+                    image={`http://localhost:8000${farm.image}`}
                     alt={farm.name}
-                    onClick={() => handleImageClick(farm.image)}
+                    onClick={() =>
+                      handleImageClick(`http://localhost:8000${farm.image}`)
+                    }
                     sx={{
                       width: "40%",
                       height: "200px",
@@ -240,12 +225,13 @@ const Trial = () => {
                       cursor: "pointer",
                     }}
                   />
+
                   <CardContent sx={{ width: "60%", padding: 1 }}>
                     <Typography variant="h6" fontWeight="bold">
                       {farm.name}
                     </Typography>
                     <Typography>
-                      <strong>Price:</strong> {farm.price}
+                      <strong>Price:</strong> {farm.price}/= Tshs
                     </Typography>
                     <Typography>
                       <strong>Size:</strong> {farm.size}
@@ -274,14 +260,13 @@ const Trial = () => {
               </Card>
             ))}
           </Box>
-        </Box>
+        )}
       </Container>
 
-      {/* Image Viewer Modal with Close Button */}
       <Modal open={imageModalOpen} onClose={handleModalClose}>
         <Box
           sx={{
-            position: "absolute", // Keep only this position
+            position: "absolute",
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
@@ -300,7 +285,7 @@ const Trial = () => {
               top: 10,
               right: 10,
               color: "white",
-              zIndex: 10, // Ensure it is on top
+              zIndex: 10,
             }}
           >
             <CloseIcon sx={{ fontSize: 30 }} />
@@ -313,7 +298,6 @@ const Trial = () => {
         </Box>
       </Modal>
 
-      {/* Footer */}
       <Box
         sx={{
           backgroundColor: "#d8f9d8",
@@ -323,16 +307,32 @@ const Trial = () => {
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <IconButton href="https://www.instagram.com" target="_blank" sx={{ color: "#E4405F", mx: 1 }}>
+          <IconButton
+            href="https://www.instagram.com"
+            target="_blank"
+            sx={{ color: "#E4405F", mx: 1 }}
+          >
             <InstagramIcon />
           </IconButton>
-          <IconButton href="https://www.twitter.com" target="_blank" sx={{ color: "#1DA1F2", mx: 1 }}>
+          <IconButton
+            href="https://www.twitter.com"
+            target="_blank"
+            sx={{ color: "#1DA1F2", mx: 1 }}
+          >
             <TwitterIcon />
           </IconButton>
-          <IconButton href="https://www.facebook.com" target="_blank" sx={{ color: "#1877F2", mx: 1 }}>
+          <IconButton
+            href="https://www.facebook.com"
+            target="_blank"
+            sx={{ color: "#1877F2", mx: 1 }}
+          >
             <FacebookIcon />
           </IconButton>
-          <IconButton href="https://www.linkedin.com" target="_blank" sx={{ color: "#0077B5", mx: 1 }}>
+          <IconButton
+            href="https://www.linkedin.com"
+            target="_blank"
+            sx={{ color: "#0077B5", mx: 1 }}
+          >
             <LinkedInIcon />
           </IconButton>
         </Box>
