@@ -77,16 +77,22 @@ export default function Purchases() {
     setAnchorEl(null);
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    const updated = orders.map((order) =>
-      order.id === id ? { ...order, status: newStatus } : order
-    );
-    setOrders(updated);
-    setFilteredOrders(updated);
+  // 🛠 Updated handleStatusChange
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/sale-transactions/${id}/`, {
+        status: newStatus,
+      });
 
-    axios.patch(`http://127.0.0.1:8000/api/sale-transactions/${id}/`, {
-      status: newStatus,
-    });
+      const updated = orders.map((order) =>
+        order.id === id ? { ...order, status: newStatus } : order
+      );
+      setOrders(updated);
+      setFilteredOrders(updated);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("Failed to update order status. Please try again.");
+    }
   };
 
   const openConfirmDialog = (order) => {
@@ -108,6 +114,7 @@ export default function Purchases() {
       setFilteredOrders(updated);
     } catch (error) {
       console.error("Failed to delete transaction:", error);
+      alert("Failed to delete transaction. Please try again.");
     } finally {
       closeConfirmDialog();
     }

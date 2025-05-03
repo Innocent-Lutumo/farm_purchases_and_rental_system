@@ -29,25 +29,45 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const RentPage = () => {
   const [search, setSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
-  const [imageToView, setImageToView] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [currentFarm, setCurrentFarm] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const handleProfileIconClick = (event) => setAnchorEl(event.currentTarget);
   const handlePopoverClose = () => setAnchorEl(null);
 
-  const handleImageClick = (imgSrc) => {
-    setImageToView(imgSrc);
+  const handleImageClick = (farm, index) => {
+    setCurrentFarm(farm);
+    setCurrentImageIndex(index);
     setImageModalOpen(true);
   };
+
   const handleImageClose = () => {
     setImageModalOpen(false);
-    setImageToView(null);
+  };
+
+  const handleNextImage = () => {
+    if (currentFarm && currentFarm.images) {
+      const nextIndex = (currentImageIndex + 1) % currentFarm.images.length;
+      setCurrentImageIndex(nextIndex);
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (currentFarm && currentFarm.images) {
+      const prevIndex =
+        (currentImageIndex - 1 + currentFarm.images.length) %
+        currentFarm.images.length;
+      setCurrentImageIndex(prevIndex);
+    }
   };
 
   const open = Boolean(anchorEl);
@@ -62,13 +82,12 @@ const RentPage = () => {
     }
   };
 
-  // Fetch farms from the backend
   useEffect(() => {
     const fetchFarms = async () => {
       try {
         const response = await fetch(
           "http://127.0.0.1:8000/api/farmsrent/?type=Rent"
-        ); // Adjust endpoint as needed
+        );
         const data = await response.json();
         setFarms(data);
       } catch (error) {
@@ -101,7 +120,6 @@ const RentPage = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Profile Popover */}
       <Popover
         id={id}
         open={open}
@@ -130,14 +148,18 @@ const RentPage = () => {
               <ListItemText primary="History" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/HomePage" sx={{ color: "red" }}>
+            <ListItem
+              button
+              component={Link}
+              to="/HomePage"
+              sx={{ color: "red" }}
+            >
               <ListItemText primary="Logout" />
             </ListItem>
           </List>
         </Box>
       </Popover>
 
-      {/* Main Content */}
       <Container sx={{ my: 4, flex: 1 }}>
         <Typography
           variant="h5"
@@ -153,7 +175,6 @@ const RentPage = () => {
           ideal property.
         </Typography>
 
-        {/* Search Bar */}
         <Box
           sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
         >
@@ -185,7 +206,7 @@ const RentPage = () => {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
               gap: 6,
             }}
           >
@@ -193,31 +214,52 @@ const RentPage = () => {
               <Card
                 key={farm.id}
                 sx={{
-                  boxShadow: 5,
                   borderRadius: 3,
+                  boxShadow: 5,
                   overflow: "hidden",
                   transition: "0.3s",
-                  "&:hover": { transform: "scale(1.05)" },
+                  "&:hover": { transform: "scale(1.03)" },
                 }}
               >
-                <Box sx={{ display: "flex" }}>
-                  <CardMedia
-                    component="img"
-                    image={`http://localhost:8000${farm.image}`}
-                    alt={farm.name}
-                    sx={{
-                      width: "40%",
-                      height: "200px",
-                      objectFit: "cover",
-                      borderRadius: 2,
-                      margin: 1,
-                      cursor: "pointer",
-                    }}
-                    onClick={() =>
-                      handleImageClick(`http://localhost:8000${farm.image}`)
-                    }
-                  />
-                  <CardContent sx={{ width: "60%", padding: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
+                    width: "100%",
+                  }}
+                >
+                  {farm.images && farm.images.length > 0 ? (
+                    <CardMedia
+                      component="img"
+                      image={`http://localhost:8000${farm.images[0].image}`}
+                      alt="Farm View"
+                      sx={{
+                        width: { xs: "100%", sm: "40%" },
+                        height: 200,
+                        margin: 1,
+                        borderRadius: 2,
+                        objectFit: "cover",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleImageClick(farm, 0)}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: { xs: "100%", sm: "40%" },
+                        height: 200,
+                        margin: 1,
+                        borderRadius: 2,
+                        backgroundColor: "#e0e0e0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Typography>No Image</Typography>
+                    </Box>
+                  )}
+                  <CardContent sx={{ width: { xs: "100%", sm: "60%" } }}>
                     <Typography variant="h6" fontWeight="bold">
                       {farm.name}
                     </Typography>
@@ -234,40 +276,48 @@ const RentPage = () => {
                       <strong>Location:</strong> {farm.location}{" "}
                       <LocationOnIcon />
                     </Typography>
+                    {farm.rent_duration && (
+                      <Typography
+                        sx={{
+                          fontSize: "0.8rem",
+                          fontWeight: "bold",
+                          color: "#333",
+                          mt: 1,
+                        }}
+                      >
+                        Duration: {farm.rent_duration} Months
+                      </Typography>
+                    )}
                     <Button
                       variant="contained"
                       color="success"
                       fullWidth
                       onClick={() => handleDialogOpen(farm)}
-                      sx={{ mt: 2, fontSize: 10 }}
+                      sx={{ mt: 2, fontSize: 12 }}
                     >
                       Click to Rent
                     </Button>
                   </CardContent>
                 </Box>
-                <Typography sx={{ p: 1, backgroundColor: "#d8f9d8" }}>
-                  {farm.description}
-                </Typography>
-                {farm.rent_duration && (
-                  <Typography
-                    sx={{
-                      fontSize: "0.8rem",
-                      fontWeight: "bold",
-                      color: "#333",
-                      ml: 2,
-                      mt: 1,
-                    }}
-                  >
-                    {farm.rent_duration} Months
+                <Box
+                  sx={{
+                    px: 2,
+                    pb: 2,
+                    pt: 1,
+                    backgroundColor: "#d8f9d8",
+                    borderTop: "1px solid #eee",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 14 }}>
+                    {farm.description}
                   </Typography>
-                )}
+                </Box>
               </Card>
             ))}
           </Box>
         )}
       </Container>
 
-      {/* Image Modal */}
       <Modal open={imageModalOpen} onClose={handleImageClose}>
         <Box
           sx={{
@@ -289,21 +339,36 @@ const RentPage = () => {
               position: "absolute",
               top: 10,
               right: 10,
-              color: "white",
+              color: "black",
               zIndex: 10,
             }}
           >
             <CloseIcon sx={{ fontSize: 25 }} />
           </IconButton>
-          <img
-            src={imageToView}
-            alt="Farm Full"
-            style={{ maxWidth: "100%", maxHeight: "80vh" }}
-          />
+          {currentFarm && currentFarm.images && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <IconButton onClick={handlePrevImage} sx={{ color: "black" }}>
+                <ArrowBackIcon />
+              </IconButton>
+              <img
+                src={`http://localhost:8000${currentFarm.images[currentImageIndex].image}`}
+                alt="Farm View"
+                style={{ maxWidth: "80%", maxHeight: "80vh" }}
+              />
+              <IconButton onClick={handleNextImage} sx={{ color: "black" }}>
+                <ArrowForwardIcon />
+              </IconButton>
+            </Box>
+          )}
         </Box>
       </Modal>
 
-      {/* Footer */}
       <Box
         sx={{
           backgroundColor: "#d8f9d8",

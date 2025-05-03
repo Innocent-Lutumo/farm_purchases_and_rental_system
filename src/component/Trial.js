@@ -1,4 +1,3 @@
-// Trial.jsx
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -19,6 +18,7 @@ import {
   ListItemText,
   Divider,
   Modal,
+  CircularProgress,
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -29,13 +29,16 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import axios from "axios";
 
 const Trial = () => {
   const [search, setSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [imageToView, setImageToView] = useState(null);
+  const [currentFarm, setCurrentFarm] = useState(null); // Track current farm
+  const [currentImageIndex, setCurrentImageIndex] = useState(0); // Track current image index
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,10 +49,10 @@ const Trial = () => {
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/farmsale/");
         setFarms(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to fetch farms:", err);
+      } catch (error) {
+        console.error("Error fetching farms:", error);
         setError("Failed to load farms");
+      } finally {
         setLoading(false);
       }
     };
@@ -65,6 +68,32 @@ const Trial = () => {
     setAnchorEl(null);
   };
 
+  const handleImageClick = (farm, index) => {
+    setCurrentFarm(farm); // Set the current farm
+    setCurrentImageIndex(index); // Set the current image index
+    setImageModalOpen(true); // Open modal
+  };
+
+  const handleImageClose = () => {
+    setImageModalOpen(false);
+  };
+
+  const handleNextImage = () => {
+    if (currentFarm && currentFarm.images) {
+      const nextIndex = (currentImageIndex + 1) % currentFarm.images.length; // Cycle to next image
+      setCurrentImageIndex(nextIndex);
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (currentFarm && currentFarm.images) {
+      const prevIndex =
+        (currentImageIndex - 1 + currentFarm.images.length) %
+        currentFarm.images.length; // Cycle to previous image
+      setCurrentImageIndex(prevIndex);
+    }
+  };
+
   const handlePurchase = (farm) => {
     const confirmPurchase = window.confirm(
       `Do you really want to purchase ${farm.name} located in ${farm.location}?`
@@ -72,16 +101,6 @@ const Trial = () => {
     if (confirmPurchase) {
       navigate(`/farm1/${farm.id}`);
     }
-  };
-
-  const handleImageClick = (image) => {
-    setImageToView(image);
-    setImageModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setImageModalOpen(false);
-    setImageToView(null);
   };
 
   const filteredFarms = farms.filter((farm) =>
@@ -127,7 +146,7 @@ const Trial = () => {
               <ListItemText primary="Home" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/PurchasesPage">
+            <ListItem button component={Link} to="/PurchasesPage2">
               <ListItemText primary="History" />
             </ListItem>
             <Divider />
@@ -153,34 +172,37 @@ const Trial = () => {
           ideal property.
         </Typography>
 
-        <Container sx={{ my: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-            <TextField
-              variant="standard"
-              placeholder="Search Farms by Location"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              sx={{ width: "80%" }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Button
-              variant="outlined"
-              color="success"
-              onClick={() => console.log("Search triggered:", search)}
-            >
-              Search
-            </Button>
-          </Box>
-        </Container>
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
+        >
+          <TextField
+            variant="standard"
+            placeholder="Search Farms by Location"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: "80%" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="outlined"
+            color="success"
+            onClick={() => console.log("Search triggered:", search)}
+          >
+            Search
+          </Button>
+        </Box>
 
         {loading ? (
-          <Typography textAlign="center">Loading farms...</Typography>
+          <Box textAlign="center" mt={5}>
+            <CircularProgress color="success" />
+            <Typography>Loading farms...</Typography>
+          </Box>
         ) : error ? (
           <Typography textAlign="center" color="error">
             {error}
@@ -209,22 +231,36 @@ const Trial = () => {
                 }}
               >
                 <Box sx={{ display: "flex" }}>
-                  <CardMedia
-                    component="img"
-                    image={`http://localhost:8000${farm.image}`}
-                    alt={farm.name}
-                    onClick={() =>
-                      handleImageClick(`http://localhost:8000${farm.image}`)
-                    }
-                    sx={{
-                      width: "40%",
-                      height: "200px",
-                      objectFit: "cover",
-                      borderRadius: 2,
-                      margin: 1,
-                      cursor: "pointer",
-                    }}
-                  />
+                  {farm.images && farm.images.length > 0 ? (
+                    <CardMedia
+                      component="img"
+                      image={`http://localhost:8000${farm.images[0].image}`}
+                      alt={farm.name}
+                      onClick={() => handleImageClick(farm, 0)}
+                      sx={{
+                        width: "40%",
+                        height: "200px",
+                        objectFit: "cover",
+                        borderRadius: 2,
+                        margin: 1,
+                        cursor: "pointer",
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: "40%",
+                        height: "200px",
+                        margin: 1,
+                        backgroundColor: "#e0e0e0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Typography>No Image</Typography>
+                    </Box>
+                  )}
 
                   <CardContent sx={{ width: "60%", padding: 1 }}>
                     <Typography variant="h6" fontWeight="bold">
@@ -263,41 +299,72 @@ const Trial = () => {
         )}
       </Container>
 
-      <Modal open={imageModalOpen} onClose={handleModalClose}>
+      <Modal open={imageModalOpen} onClose={handleImageClose}>
         <Box
           sx={{
             position: "absolute",
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            bgcolor: "white",
-            boxShadow: 24,
+            bgcolor: "background.paper",
             p: 2,
-            maxHeight: "90vh",
-            overflow: "auto",
             borderRadius: 2,
+            boxShadow: 24,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
           <IconButton
-            onClick={handleModalClose}
+            onClick={handlePrevImage}
             sx={{
               position: "absolute",
-              top: 10,
-              right: 10,
-              color: "white",
-              zIndex: 10,
+              left: 10,
+              top: "50%",
+              zIndex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderRadius: "50%",
             }}
           >
-            <CloseIcon sx={{ fontSize: 30 }} />
+            <ArrowBackIcon sx={{ color: "white" }} />
           </IconButton>
-          <img
-            src={imageToView}
-            alt="Farm Full"
-            style={{ maxWidth: "100%", maxHeight: "80vh" }}
-          />
+          {currentFarm && currentFarm.images && (
+            <img
+              src={`http://localhost:8000${currentFarm.images[currentImageIndex].image}`}
+              alt={currentFarm.name}
+              style={{ width: "500px", height: "auto", borderRadius: 10 }}
+            />
+          )}
+          <IconButton
+            onClick={handleNextImage}
+            sx={{
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              zIndex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderRadius: "50%",
+            }}
+          >
+            <ArrowForwardIcon sx={{ color: "white" }} />
+          </IconButton>
+          <IconButton
+            onClick={handleImageClose}
+            sx={{
+              position: "absolute",
+              right: 10,
+              top: 10,
+              zIndex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderRadius: "50%",
+            }}
+          >
+            <CloseIcon sx={{ color: "white" }} />
+          </IconButton>
         </Box>
       </Modal>
 
+      {/* Footer */}
       <Box
         sx={{
           backgroundColor: "#d8f9d8",

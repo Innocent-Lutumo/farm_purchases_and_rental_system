@@ -21,7 +21,7 @@ const initialFormData = {
   email: "",
   description: "",
   phone: "",
-  image: null,
+  images: [],
   farmType: "",
   rentTime: "",
 };
@@ -30,6 +30,8 @@ const UploadFarmForm = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [openDialog, setOpenDialog] = useState(true);
   const [formVisible, setFormVisible] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [loading, setLoading] = useState(false); // Loading state
 
   const handleFarmTypeSelect = (type) => {
     setFormData((prev) => ({
@@ -46,32 +48,105 @@ const UploadFarmForm = () => {
   };
 
   const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData((prev) => ({ ...prev, image: e.target.files[0] }));
+    const files = e.target.files;
+    const filesArray = Array.from(files);
+    if (filesArray.length < 3 || filesArray.length > 10) {
+      setImageError("You must upload between 3 and 10 images.");
+    } else {
+      setImageError("");
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...filesArray],
+      }));
     }
   };
 
+  const handleImageRemove = (index) => {
+    const updatedImages = formData.images.filter((_, i) => i !== index);
+    setFormData((prev) => ({
+      ...prev,
+      images: updatedImages,
+    }));
+  };
+
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start loading
 
     const formPayload = new FormData();
 
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== null && value !== "") {
-        if (key !== "rentTime") {
+        if (key !== "rentTime" && key !== "images") {
           formPayload.append(key, value);
         }
       }
+    });
+
+    formData.images.forEach((image) => {
+      formPayload.append("images", image);
     });
 
     if (formData.farmType === "Rent") {
       formPayload.append("rent_duration", formData.rentTime);
     }
 
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
+    // Function to refresh token if needed
+    const getAccessToken = async () => {
+      let access= localStorage.getItem("access");
+    
+      if (!access) {
+        console.error("No access token found, attempting refresh...");
+        const refresh = localStorage.getItem("refresh");
+    
+        if (!refresh) {
+          alert("Session expired. Please log in again.");
+          setLoading(false);
+          return null;
+        }
+    
+        try {
+          const refreshResponse = await fetch("http://127.0.0.1:8000/api/token/refresh/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh: refresh }),
+          });
+    
+          if (refreshResponse.ok) {
+            const data = await refreshResponse.json();
+            localStorage.setItem("access", data.access);
+            access = data.access;
+          } else {
+            alert("Failed to refresh token. Redirecting to login.");
+            setLoading(false);
+            return null;
+          }
+        } catch (error) {
+          console.error("Error refreshing token:", error);
+          alert("An error occurred while refreshing token.");
+          setLoading(false);
+          return null;
+        }
+      }
+    
+      return access;
+    };
+    
+
     try {
+      const access = await getAccessToken();
+      if (!access) return;
+
       const response = await fetch("http://127.0.0.1:8000/api/uploadFarm/", {
         method: "POST",
         body: formPayload,
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Authorization": `Bearer ${access}`,
+        },
       });
 
       if (response.ok) {
@@ -88,8 +163,10 @@ const UploadFarmForm = () => {
     } catch (error) {
       console.error("Error uploading farm:", error);
       alert("An error occurred while uploading. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  };
+};
 
   return (
     <Container
@@ -179,7 +256,7 @@ const UploadFarmForm = () => {
                     fullWidth
                     label="Rent Duration (e.g., 6 months)"
                     name="rentTime"
-                    value={formData.rent_duration}
+                    value={formData.rentTime}
                     onChange={handleInputChange}
                     sx={{
                       "& label.Mui-focused": { color: "green" },
@@ -215,26 +292,50 @@ const UploadFarmForm = () => {
                 />
               </Grid>
 
+              {/* Image upload with validation */}
               <Grid item xs={12}>
                 <Button
                   variant="contained"
                   component="label"
                   sx={{ bgcolor: "green", borderRadius: "20" }}
                 >
-                  Upload Farm Image
+                  Upload Farm Images
                   <input
                     type="file"
                     accept="image/*"
                     hidden
+                    multiple
                     onChange={handleImageChange}
-                    required={!formData.image}
+                    required={!formData.images.length}
                   />
                 </Button>
-                {formData.image && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {formData.image.name} selected
+                {imageError && (
+                  <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                    {imageError}
                   </Typography>
                 )}
+                <Box sx={{ mt: 2 }}>
+                  {formData.images.map((image, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
+                      <Typography variant="body2">{image.name}</Typography>
+                      <Button
+                        onClick={() => handleImageRemove(index)}
+                        color="error"
+                        size="small"
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
               </Grid>
             </Grid>
 
@@ -249,8 +350,9 @@ const UploadFarmForm = () => {
                   px: 4,
                   "&:hover": { backgroundColor: green[800] },
                 }}
+                disabled={loading}  // Disable button when loading
               >
-                Submit Farm
+                {loading ? "Uploading..." : "Submit Farm"}  {/* Show loading text */}
               </Button>
             </Box>
           </form>

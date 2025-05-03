@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -14,7 +14,7 @@ import {
   Container,
   Paper,
 } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { green, red, yellow } from "@mui/material/colors";
 import { motion } from "framer-motion";
 import {
@@ -65,22 +65,33 @@ const navItems = [
   },
 ];
 
-const profileMenu = [{ label: "Logout", path: "/" }];
-const profileeMenu = [{ label: "My profile", path: "/" }];
-
 const SellerPage = () => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const navigate = useNavigate();
+
+  // 🔐 Token-based authentication check
+  useEffect(() => {
+    const token = localStorage.getItem("access");
+    if (!token) {
+      navigate("/login"); 
+    }
+  }, [navigate]);
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("access");
+    navigate("/login");
+  };
+
   return (
     <Box sx={{ flexGrow: 1, bgcolor: "#f9f9f9", minHeight: "100vh" }}>
-      {/* Header AppBar */}
       <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -95,7 +106,6 @@ const SellerPage = () => {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            {/* Profile Icon */}
             <IconButton onClick={handleMenuOpen} color="inherit">
               <AccountCircleIcon sx={{ fontSize: 40 }} />
             </IconButton>
@@ -104,35 +114,28 @@ const SellerPage = () => {
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
             >
-              {profileeMenu.map((item) => (
-                <MenuItem
-                  key={item.label}
-                  component={Link}
-                  to={item.path}
-                  onClick={handleMenuClose}
-                  sx={{ color: "black" }}
-                >
-                  {item.label}
-                </MenuItem>
-              ))}
-
-              {profileMenu.map((item) => (
-                <MenuItem
-                  key={item.label}
-                  component={Link}
-                  to={item.path}
-                  onClick={handleMenuClose}
-                  sx={{ color: "red" }}
-                >
-                  {item.label}
-                </MenuItem>
-              ))}
+              <MenuItem
+                component={Link}
+                to="/profile"
+                onClick={handleMenuClose}
+                sx={{ color: "black" }}
+              >
+                My Profile
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  handleLogout();
+                  handleMenuClose();
+                }}
+                sx={{ color: "red" }}
+              >
+                Logout
+              </MenuItem>
             </Menu>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* stat Section */}
       <Container sx={{ mt: 4 }}>
         <Paper
           elevation={3}
@@ -144,13 +147,7 @@ const SellerPage = () => {
             mb: 4,
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
             <TrendingUp size={32} color={green[700]} />
             <Typography
               variant="h6"
@@ -161,7 +158,6 @@ const SellerPage = () => {
           </Box>
         </Paper>
 
-        {/* Navigation Cards */}
         <Grid container spacing={3}>
           {navItems.map(({ label, path, icon }, index) => (
             <Grid item xs={12} sm={6} md={4} key={label}>
@@ -207,7 +203,6 @@ const SellerPage = () => {
           ))}
         </Grid>
 
-        {/* emphasis container */}
         <Box sx={{ mt: 6, mb: 4 }}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -228,24 +223,23 @@ const SellerPage = () => {
                 sx={{ fontWeight: "bold", mb: 2, color: green[800] }}
               >
                 🌾 Grow With Us!
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  Selling your land has never been easier. List your farm with
-                  just a few clicks, and connect with potential buyers across
-                  the country. Our platform is designed to help you sell faster
-                  and at the best price.
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontStyle: "italic", color: "gray" }}
-                >
-                  "Selling land is not about transactions; it's about building
-                  connections." — S/N19
-                </Typography>
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                Selling your land has never been easier. List your farm with
+                just a few clicks, and connect with potential buyers across the
+                country. Our platform is designed to help you sell faster and at
+                the best price.
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ fontStyle: "italic", color: "gray" }}
+              >
+                "Selling land is not about transactions; it's about building
+                connections." — S/N19
               </Typography>
             </Paper>
           </motion.div>
 
-          {/* Seller Tips */}
           <Box sx={{ mt: 4 }}>
             <Typography
               variant="h6"
@@ -300,7 +294,6 @@ const SellerPage = () => {
         </Box>
       </Container>
 
-      {/* Footer */}
       <Box
         component="footer"
         sx={{

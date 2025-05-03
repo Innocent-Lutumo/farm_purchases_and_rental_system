@@ -172,7 +172,7 @@ const Home = () => {
           >
             Rent Farm
           </Button>
-          <Link to="/RegisterPage">
+          <Link to="/LoginPage">
             <Button
               variant="contained"
               color="error"

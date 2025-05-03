@@ -45,8 +45,7 @@ export default function Rent() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false); // New state for loading during delete
-
+  const [isDeleting, setIsDeleting] = useState(false);
   const open = Boolean(anchorEl);
 
   const profileMenu = [
@@ -57,16 +56,20 @@ export default function Rent() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        const token = localStorage.getItem("access");
+
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactions/"
+          "http://127.0.0.1:8000/api/get-transactions/",
+          { headers }
         );
-        const data = Array.isArray(response.data)
-          ? response.data
-          : response.data.results || [];
-        setOrders(data);
-        setFilteredOrders(data);
+
+        console.log("Fetched orders:", response.data); 
+        setOrders(response.data);
+        setFilteredOrders(response.data);
       } catch (error) {
-        console.error("Error fetching orders:", error);
+        console.error("Error fetching orders:", error.response || error);
       } finally {
         setLoading(false);
       }
@@ -83,31 +86,50 @@ export default function Rent() {
     setAnchorEl(null);
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    const updated = orders.map((order) =>
-      order.id === id ? { ...order, status: newStatus } : order
-    );
-    setOrders(updated);
-    setFilteredOrders(updated);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const token = localStorage.getItem("access");
+      await axios.patch(
+        `http://127.0.0.1:8000/api/transactions/${id}/`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    axios.patch(`http://127.0.0.1:8000/api/transactions/${id}/`, {
-      status: newStatus,
-    });
+      const updatedOrders = orders.map((order) =>
+        order.id === id ? { ...order, status: newStatus } : order
+      );
+      setOrders(updatedOrders);
+      setFilteredOrders(updatedOrders);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Failed to update order status. Please try again.");
+    }
   };
 
   const handleDelete = async () => {
-    setIsDeleting(true); // Start deleting state
-    setOpenDeleteDialog(false); // Close the dialog immediately
+    setIsDeleting(true);
+    setOpenDeleteDialog(false);
     try {
-      // Perform the delete request
-      await axios.delete(`http://127.0.0.1:8000/api/transactions/${deleteId}/`);
-      const updated = orders.filter((order) => order.id !== deleteId);
-      setOrders(updated);
-      setFilteredOrders(updated); // Update filtered orders
+      const token = localStorage.getItem("access");
+      await axios.delete(
+        `http://127.0.0.1:8000/api/transactions/${deleteId}/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const updatedOrders = orders.filter((order) => order.id !== deleteId);
+      setOrders(updatedOrders);
+      setFilteredOrders(updatedOrders);
     } catch (error) {
       console.error("Failed to delete transaction:", error);
     } finally {
-      setIsDeleting(false); // End deleting state
+      setIsDeleting(false);
     }
   };
 
@@ -145,16 +167,13 @@ export default function Rent() {
       <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Box>
-              <Typography variant="h5" fontWeight="bold">
-                Farm Seller Dashboard
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Manage listings, track sales, and grow your network.
-              </Typography>
-            </Box>
+            <Typography variant="h5" fontWeight="bold">
+              Farm Seller Dashboard
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Manage listings, track sales, and grow your network.
+            </Typography>
           </Box>
-
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <IconButton onClick={handleMenu} color="inherit">
               <AccountCircleIcon sx={{ fontSize: 40 }} />
@@ -181,14 +200,12 @@ export default function Rent() {
           Rented Farms
         </Typography>
 
-        {/* Total Farms Count */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="body1">
             <strong>Total Farms Added: {filteredOrders.length}</strong>
           </Typography>
         </Box>
 
-        {/* Search Bar */}
         <Box
           sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
         >
@@ -220,7 +237,9 @@ export default function Rent() {
                 <TableCell>Size</TableCell>
                 <TableCell>Price</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Rental Time (Months)</TableCell> 
+                <TableCell>Rental Time (Months)</TableCell>
+                <TableCell>Phone Number</TableCell>
+                <TableCell>Rental Date</TableCell>
                 <TableCell>Transaction ID</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Action</TableCell>
@@ -241,12 +260,17 @@ export default function Rent() {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Link to={`/farm-location/${order.farm.id}`} style={{ textDecoration: "none" }}>
+                    <Link
+                      to={`/farm-location/${order.farm.id}`}
+                      style={{ textDecoration: "none" }}
+                    >
                       <Box display="flex" alignItems="center" gap={1}>
                         <Tooltip title="View Location">
                           <LocationOnIcon sx={{ color: "green" }} />
                         </Tooltip>
-                        <Typography color="success">{order.farm.location}</Typography>
+                        <Typography color="success">
+                          {order.farm.location}
+                        </Typography>
                       </Box>
                     </Link>
                   </TableCell>
@@ -265,8 +289,13 @@ export default function Rent() {
                       {order.status || "Pending"}
                     </Typography>
                   </TableCell>
-
                   <TableCell>{order.farm?.rent_duration || "-"}</TableCell>
+                  <TableCell>{order.renter_phone || "-"}</TableCell>
+                  <TableCell>
+                    {order.rent_date
+                      ? new Date(order.rent_date).toLocaleDateString()
+                      : "-"}
+                  </TableCell>
                   <TableCell>{order.transaction_id || "-"}</TableCell>
                   <TableCell>{order.renter_email || "-"}</TableCell>
                   <TableCell>
@@ -300,7 +329,6 @@ export default function Rent() {
         </TableContainer>
       </Container>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={closeConfirmationDialog}
@@ -318,13 +346,14 @@ export default function Rent() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeConfirmationDialog} color="primary">
+          <Button onClick={closeConfirmationDialog} color="error">
             Cancel
           </Button>
           <Button
             onClick={handleDelete}
-            color="error"
-            disabled={isDeleting} 
+            color="success"
+            autoFocus
+            disabled={isDeleting}
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </Button>

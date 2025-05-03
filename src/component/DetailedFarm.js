@@ -20,22 +20,22 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
-import profileImage from "../images/img8.jpg"; // Profile image remains static for now
+import profileImage from "../images/img8.jpg"; 
 
 const DetailedFarm = () => {
-  const [search, setSearch] = useState(""); // For searching farms by location
-  const [farms, setFarms] = useState([]); // To store the fetched farm data
-  const [user, setUser] = useState({}); // To store user profile data
+  const [search, setSearch] = useState(""); 
+  const [farms, setFarms] = useState([]); 
+  const [user, setUser] = useState({}); 
 
   // Fetch farm data and user profile data from the API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const farmResponse = await fetch("https://your-api-endpoint/farms"); // Replace with your actual API URL
+        const farmResponse = await fetch("https://your-api-endpoint/farms"); 
         const farmData = await farmResponse.json();
         setFarms(farmData);
 
-        const userResponse = await fetch("https://your-api-endpoint/user"); // Replace with your actual API URL
+        const userResponse = await fetch("https://your-api-endpoint/user"); 
         const userData = await userResponse.json();
         setUser(userData);
       } catch (error) {

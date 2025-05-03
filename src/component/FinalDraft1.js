@@ -6,7 +6,6 @@ import {
   Button,
   Container,
   Card,
-  CardMedia,
   CardContent,
   Box,
   Tooltip,
@@ -16,9 +15,12 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
+  IconButton,
 } from "@mui/material";
 import { useParams, Link } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import axios from "axios";
 
 const FinalDraft1 = () => {
@@ -29,6 +31,14 @@ const FinalDraft1 = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [intendedUse, setIntendedUse] = useState("");
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchFarm = async () => {
@@ -48,37 +58,36 @@ const FinalDraft1 = () => {
     fetchFarm();
   }, [id]);
 
-  const generateRandomId = () => {
-    return Math.floor(1000000000 + Math.random() * 9000000000);
-  };
+  const generateRandomId = () =>
+    Math.floor(1000000000 + Math.random() * 9000000000);
 
-  const handlePurchaseClick = () => {
-    setEmailDialogOpen(true);
-  };
+  const handlePurchaseClick = () => setEmailDialogOpen(true);
 
   const handleEmailSubmit = async () => {
     const transactionId = generateRandomId();
 
-    // Basic email format validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail)) {
       alert("Please enter a valid email address.");
       return;
     }
 
     try {
-      // Save transaction to the backend
       const transactionResponse = await axios.post(
         "http://127.0.0.1:8000/api/sale-transactions/",
         {
           farm_id: farm.id,
           transaction_id: transactionId,
           buyer_email: userEmail,
+          full_name: fullName,
+          address,
+          contact_info: contactInfo,
+          national_id: nationalId,
+          intended_use: intendedUse,
         }
       );
 
       if (transactionResponse.status === 201) {
-        // If the transaction was saved successfully, send transaction email
         await axios.post("http://127.0.0.1:8000/api/send-transaction-email/", {
           buyer_email: userEmail,
           transaction_id: transactionId,
@@ -87,38 +96,51 @@ const FinalDraft1 = () => {
         setEmailDialogOpen(false);
         setOpenDialog(true);
       } else {
-        console.error("Transaction creation failed:", transactionResponse);
-        alert("Failed to save transaction. Please try again.");
+        alert("Failed to save transaction.");
       }
     } catch (error) {
-      console.error("Error processing transaction:", error.response?.data || error.message);
+      console.error(
+        "Error processing transaction:",
+        error.response?.data || error.message
+      );
       alert("Something went wrong. Please try again.");
     }
   };
 
-  if (loading) {
+  const getImageUrl = (path) => {
+    if (!path) return "";
+    return path.startsWith("http") ? path : `http://127.0.0.1:8000${path}`;
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % (farm.images?.length || 1));
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex(
+      (prev) =>
+        (prev - 1 + (farm.images?.length || 1)) % (farm.images?.length || 1)
+    );
+  };
+
+  if (loading)
     return (
       <Typography variant="h5" textAlign="center">
         Loading farm details...
       </Typography>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <Typography variant="h5" color="error" textAlign="center">
         {error}
       </Typography>
     );
-  }
-
-  if (!farm) {
+  if (!farm)
     return (
       <Typography variant="h5" textAlign="center">
         Farm not found.
       </Typography>
     );
-  }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -152,28 +174,68 @@ const FinalDraft1 = () => {
               minWidth: "800px",
               boxShadow: 5,
               borderRadius: 3,
-              textDecoration: "none",
               overflow: "hidden",
               transition: "0.3s",
-              "&:hover": { transform: "scale(1.05)" },
+              "&:hover": { transform: "scale(1.02)" },
             }}
           >
             <Box sx={{ display: "flex" }}>
-              <CardMedia
-                component="img"
-                image={`http://localhost:8000${farm.image}`}
-                alt={farm.name}
+              {/* Image Carousel */}
+              <Box
                 sx={{
+                  position: "relative",
                   width: "40%",
-                  height: "335px",
-                  objectFit: "cover",
-                  borderRadius: 2,
-                  marginTop: 2,
-                  marginBottom: 3,
-                  marginLeft: 2,
+                  padding: 2,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
-              />
-              <CardContent sx={{ width: "60%", padding: 2, fontSize: "14px" }}>
+              >
+                {farm.images && farm.images.length > 0 ? (
+                  <>
+                    <IconButton
+                      onClick={handlePrevImage}
+                      sx={{
+                        position: "absolute",
+                        left: 10,
+                        backgroundColor: "#ffffffcc",
+                        "&:hover": { backgroundColor: "#ffffff" },
+                      }}
+                    >
+                      <ArrowBackIosIcon />
+                    </IconButton>
+
+                    <Box
+                      component="img"
+                      src={getImageUrl(farm.images[currentImageIndex].image)}
+                      alt={`Farm Image ${currentImageIndex + 1}`}
+                      sx={{
+                        height: 330,
+                        width: 300,
+                        objectFit: "cover",
+                        borderRadius: 2,
+                      }}
+                    />
+
+                    <IconButton
+                      onClick={handleNextImage}
+                      sx={{
+                        position: "absolute",
+                        right: 10,
+                        backgroundColor: "#ffffffcc",
+                        "&:hover": { backgroundColor: "#ffffff" },
+                      }}
+                    >
+                      <ArrowForwardIosIcon />
+                    </IconButton>
+                  </>
+                ) : (
+                  <Typography>No images available</Typography>
+                )}
+              </Box>
+
+              {/* Farm Details */}
+              <CardContent sx={{ width: "60%", padding: 2 }}>
                 <Typography variant="h6" fontWeight="bold">
                   Featured Farm
                 </Typography>
@@ -198,28 +260,27 @@ const FinalDraft1 = () => {
                         sx={{
                           transition: "color 0.3s",
                           "&:hover": { color: "green" },
+                          ml: 1,
                         }}
                       />
                     </Tooltip>
                   </Link>
                 </Typography>
+
                 <Box sx={{ marginTop: 2 }}>
                   <Typography
                     sx={{ color: "green", textDecoration: "underline" }}
                   >
                     <strong>SELLER'S CONTACTS</strong>
                   </Typography>
-                  <Typography
-                    sx={{ marginBottom: 2, marginTop: 2, marginLeft: 1 }}
-                  >
+                  <Typography sx={{ my: 1, ml: 1 }}>
                     <strong>Email:</strong> {farm.email}
                   </Typography>
-                  <Typography
-                    sx={{ marginBottom: 3, marginTop: 2, marginLeft: 1 }}
-                  >
+                  <Typography sx={{ mb: 3, ml: 1 }}>
                     <strong>Phone Number:</strong> {farm.phone}
                   </Typography>
                 </Box>
+
                 <Button
                   variant="contained"
                   color="success"
@@ -231,13 +292,9 @@ const FinalDraft1 = () => {
                 </Button>
               </CardContent>
             </Box>
+
             <Typography
-              sx={{
-                padding: 2,
-                backgroundColor: "#d8f9d8",
-                borderRadius: 2,
-                marginTop: "5px",
-              }}
+              sx={{ padding: 2, backgroundColor: "#d8f9d8", borderRadius: 1 }}
             >
               {farm.description}
             </Typography>
@@ -245,23 +302,49 @@ const FinalDraft1 = () => {
         </Box>
       </Container>
 
-      {/* Email Input Dialog */}
-      <Dialog
-        open={emailDialogOpen}
-        onClose={() => setEmailDialogOpen(false)}
-        sx={{
-          "& .MuiDialog-paper": {
-            padding: 2,
-            borderRadius: 2,
-            backgroundColor: "#f5f5f5",
-            boxShadow: 5,
-          },
-        }}
-      >
+      {/* Buyer Form Dialog */}
+      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)}>
         <DialogTitle sx={{ textAlign: "center", color: "green" }}>
-          Enter Your Email
+          Buyer Information
         </DialogTitle>
         <DialogContent>
+          <TextField
+            label="Full Names"
+            fullWidth
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Address"
+            fullWidth
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Contact Info (Phone)"
+            fullWidth
+            value={contactInfo}
+            onChange={(e) => setContactInfo(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="National ID / Passport (Optional)"
+            fullWidth
+            value={nationalId}
+            onChange={(e) => setNationalId(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Intended Use of Farm"
+            multiline
+            rows={2}
+            fullWidth
+            value={intendedUse}
+            onChange={(e) => setIntendedUse(e.target.value)}
+            sx={{ mb: 2 }}
+          />
           <TextField
             label="Email"
             type="email"
@@ -269,25 +352,6 @@ const FinalDraft1 = () => {
             value={userEmail}
             onChange={(e) => setUserEmail(e.target.value)}
             required
-            sx={{
-              "& .MuiInputBase-root": {
-                backgroundColor: "#ffffff",
-                borderRadius: 2,
-                boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
-              },
-              "& .MuiInputLabel-root": {
-                color: "green",
-              },
-              "& .MuiInputBase-input": {
-                color: "green",
-              },
-              "& .MuiInput-underline:before": {
-                borderBottomColor: "green",
-              },
-              "& .MuiInput-underline:hover:before": {
-                borderBottomColor: "green", 
-              },
-            }}
           />
         </DialogContent>
         <DialogActions>
@@ -305,7 +369,7 @@ const FinalDraft1 = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Success Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Success!</DialogTitle>
         <DialogContent>

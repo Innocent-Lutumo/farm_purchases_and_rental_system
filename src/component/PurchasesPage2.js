@@ -105,13 +105,13 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
       fullWidth
       PaperProps={{
         sx: {
-          backgroundColor: "transparent", 
+          backgroundColor: "transparent",
           boxShadow: "none",
         },
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: "rgba(0, 0, 0, 0.5)", 
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
         },
       }}
     >
@@ -210,8 +210,8 @@ const Purchases = () => {
   };
 
   const handleCardClick = (farm) => {
-    setSelectedFarm(farm); 
-    setDialogOpen(true); 
+    setSelectedFarm(farm);
+    setDialogOpen(true);
   };
 
   const handleDialogClose = () => {
@@ -222,7 +222,7 @@ const Purchases = () => {
     const fetchPurchases = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactions/"
+          "http://127.0.0.1:8000/api/get-transactionsale/"
         );
         setPurchases(response.data);
       } catch (error) {
@@ -317,7 +317,7 @@ const Purchases = () => {
                 height="150"
                 image={ad.image}
                 alt={ad.title}
-                sx={{ width: "100%", }}
+                sx={{ width: "100%" }}
               />
               <Box sx={{ p: 2, backgroundColor: "#f1f8e9" }}>
                 <Typography variant="h6" color="green" fontWeight="bold">
@@ -397,13 +397,18 @@ const Purchases = () => {
                         "&:hover": { transform: "scale(1.03)", boxShadow: 6 },
                         cursor: "pointer",
                       }}
-                      onClick={() => handleCardClick(farm)} 
+                      onClick={() => handleCardClick(farm)}
                     >
                       <CardMedia
                         component="img"
                         image={mainImage}
                         alt={`farm-${farm.id}`}
-                        sx={{ width: "45%", objectFit: "cover", margin: 1, borderRadius: 2, }}
+                        sx={{
+                          width: "45%",
+                          objectFit: "cover",
+                          margin: 1,
+                          borderRadius: 2,
+                        }}
                       />
                       <CardContent
                         sx={{
