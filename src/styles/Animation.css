@@ -1,0 +1,84 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f7fafc;
+  color: #333;
+}
+
+.MuiAppBar-root {
+  box-shadow: 0 4px 12px rgba(0, 128, 0, 0.15);
+}
+
+h4 {
+  font-weight: bold;
+}
+
+.MuiTableContainer-root {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.MuiTableRow-root {
+  transition: background-color 0.3s ease;
+}
+
+.MuiTableRow-root:hover {
+  background-color: #f1f8e9;
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out both;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+button {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+input[type="text"] {
+  transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+  border-color: green;
+}
+
+.confirmed {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.cancelled {
+  color: #c62828;
+  font-weight: bold;
+}
+
+.pending {
+  color: #f9a825;
+  font-weight: bold;
+}
+
+.confirm-btn {
+  transition: background-color 0.3s ease;
+}
+
+.confirm-btn:hover {
+  background-color: #1b5e20;
+  color: #fff;
+}

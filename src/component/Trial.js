@@ -306,61 +306,52 @@ const Trial = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            bgcolor: "background.paper",
-            p: 2,
-            borderRadius: 2,
+            bgcolor: "white",
             boxShadow: 24,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+            p: 2,
+            maxHeight: "90vh",
+            overflow: "auto",
+            borderRadius: 2,
           }}
         >
-          <IconButton
-            onClick={handlePrevImage}
-            sx={{
-              position: "absolute",
-              left: 10,
-              top: "50%",
-              zIndex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              borderRadius: "50%",
-            }}
-          >
-            <ArrowBackIcon sx={{ color: "white" }} />
-          </IconButton>
-          {currentFarm && currentFarm.images && (
-            <img
-              src={`http://localhost:8000${currentFarm.images[currentImageIndex].image}`}
-              alt={currentFarm.name}
-              style={{ width: "500px", height: "auto", borderRadius: 10 }}
-            />
-          )}
-          <IconButton
-            onClick={handleNextImage}
-            sx={{
-              position: "absolute",
-              right: 10,
-              top: "50%",
-              zIndex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              borderRadius: "50%",
-            }}
-          >
-            <ArrowForwardIcon sx={{ color: "white" }} />
-          </IconButton>
           <IconButton
             onClick={handleImageClose}
             sx={{
               position: "absolute",
-              right: 10,
               top: 10,
-              zIndex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              borderRadius: "50%",
+              right: 10,
+              color: "black",
+              zIndex: 10,
             }}
           >
-            <CloseIcon sx={{ color: "white" }} />
+            <CloseIcon sx={{ fontSize: 25 }} />
           </IconButton>
+          {currentFarm && currentFarm.images && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <IconButton onClick={handlePrevImage} sx={{ color: "black" }}>
+                <ArrowBackIcon />
+              </IconButton>
+              <img
+                src={`http://localhost:8000${currentFarm.images[currentImageIndex].image}`}
+                alt="Farm View"
+                style={{
+                  width: "600px",
+                  height: "400px",
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                }}
+              />
+              <IconButton onClick={handleNextImage} sx={{ color: "black" }}>
+                <ArrowForwardIcon />
+              </IconButton>
+            </Box>
+          )}
         </Box>
       </Modal>
 

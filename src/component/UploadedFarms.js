@@ -53,11 +53,11 @@ const Header = () => (
       {/* Title Section with Reduced Font Size */}
       <Box>
         <Typography
-          variant="h5" // Reduced font size here
+          variant="h5" 
           sx={{
             color: "white",
             fontWeight: "bold",
-            fontSize: "1.6rem", // Smaller font size for the title
+            fontSize: "1.6rem", 
             letterSpacing: "1.2px",
             textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)",
           }}
@@ -67,10 +67,10 @@ const Header = () => (
 
         {/* Subtitle/Introduction Text */}
         <Typography
-          variant="body2" // Reduced font size for the subtitle
+          variant="body2" 
           sx={{
             color: "white",
-            fontSize: "0.9rem", // Smaller font size for subtitle
+            fontSize: "0.9rem", 
             marginTop: 1,
             fontStyle: "italic",
             letterSpacing: "0.5px",

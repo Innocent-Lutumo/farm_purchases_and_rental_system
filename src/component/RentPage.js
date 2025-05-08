@@ -154,7 +154,7 @@ const RentPage = () => {
               to="/HomePage"
               sx={{ color: "red" }}
             >
-              <ListItemText primary="Logout" />
+              <ListItemText primary="Back" />
             </ListItem>
           </List>
         </Box>
@@ -359,7 +359,12 @@ const RentPage = () => {
               <img
                 src={`http://localhost:8000${currentFarm.images[currentImageIndex].image}`}
                 alt="Farm View"
-                style={{ maxWidth: "80%", maxHeight: "80vh" }}
+                style={{
+                  width: "600px",
+                  height: "400px",
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                }}
               />
               <IconButton onClick={handleNextImage} sx={{ color: "black" }}>
                 <ArrowForwardIcon />

@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
 } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
@@ -32,6 +33,8 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import SearchIcon from "@mui/icons-material/Search";
+import EmailIcon from "@mui/icons-material/Email";
+import PhoneIcon from "@mui/icons-material/Phone";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import img5 from "../images/img5.jpg";
@@ -70,13 +73,25 @@ const advertisements = [
 
 const RegistrationDialog = ({ open, onClose, farm }) => {
   const [imageIndex, setImageIndex] = useState(0);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
 
+  // Ensure images reset on farm data change
   useEffect(() => {
     if (farm && farm.images && farm.images.length > 0) {
-      setImageIndex(0);
+      setImageIndex(0); // Reset to first image when farm changes
     }
   }, [farm]);
 
+  // Reset the contact info visibility when dialog closes
+  useEffect(() => {
+    if (open) {
+      setShowEmail(false);
+      setShowPhone(false);
+    }
+  }, [open]);
+
+  // If farm data is not available, return nothing
   if (!farm) return null;
 
   const images = farm.images || [];
@@ -121,6 +136,7 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
           borderRadius: 2,
           p: 2,
           overflow: "hidden",
+          position: "relative",
         }}
       >
         <DialogTitle>Farm Details</DialogTitle>
@@ -174,14 +190,67 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
               Location: {farm.location}
             </Typography>
             <Typography variant="body2">Size: {farm.size} acres</Typography>
-            <Typography variant="body2">Price: ${farm.price}</Typography>
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              {farm.description}
-            </Typography>
+            <Typography variant="body2">Price:{farm.price}/=Tshs</Typography>
           </Box>
         </DialogContent>
+
+        {/* Contact Info or Wait Message */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 16,
+            left: 16,
+            right: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
+          {["Confirmed", "Completed"].includes(farm.purchaseStatus) ? (
+            <>
+              <Typography variant="body2" sx={{ color: "green" }}>
+                Click an icon to contact the landowner and plan an appointment:
+              </Typography>
+
+              <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                <Tooltip title="Show Email">
+                  <IconButton
+                    onClick={() => setShowEmail((prev) => !prev)}
+                    sx={{ color: "green" }}
+                  >
+                    <EmailIcon />
+                  </IconButton>
+                </Tooltip>
+                {showEmail && (
+                  <Typography variant="body2" sx={{ color: "green" }}>
+                    {farm.email || "N/A"}
+                  </Typography>
+                )}
+
+                <Tooltip title="Show Phone">
+                  <IconButton
+                    onClick={() => setShowPhone((prev) => !prev)}
+                    sx={{ color: "green" }}
+                  >
+                    <PhoneIcon />
+                  </IconButton>
+                </Tooltip>
+                {showPhone && (
+                  <Typography variant="body2" sx={{ color: "green" }}>
+                    {farm.phone || "N/A"}
+                  </Typography>
+                )}
+              </Box>
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Wait for confirmation
+            </Typography>
+          )}
+        </Box>
+
         <DialogActions>
-          <Button onClick={onClose} color="primary">
+          <Button onClick={onClose} color="success">
             Close
           </Button>
         </DialogActions>
@@ -190,7 +259,7 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
   );
 };
 
-const Purchases = () => {
+const Purchases2 = () => {
   const [purchases, setPurchases] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -209,8 +278,8 @@ const Purchases = () => {
     setAnchorEl(null);
   };
 
-  const handleCardClick = (farm) => {
-    setSelectedFarm(farm);
+  const handleCardClick = (farm, status) => {
+    setSelectedFarm({ ...farm, purchaseStatus: status });
     setDialogOpen(true);
   };
 
@@ -278,7 +347,7 @@ const Purchases = () => {
               <ListItemText primary="Home" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/PurchasesPage">
+            <ListItem button component={Link} to="/PurchasesPage2">
               <ListItemText primary="History" />
             </ListItem>
             <Divider />
@@ -397,7 +466,7 @@ const Purchases = () => {
                         "&:hover": { transform: "scale(1.03)", boxShadow: 6 },
                         cursor: "pointer",
                       }}
-                      onClick={() => handleCardClick(farm)}
+                      onClick={() => handleCardClick(farm, purchase.status)}
                     >
                       <CardMedia
                         component="img"
@@ -509,4 +578,4 @@ const Purchases = () => {
   );
 };
 
-export default Purchases;
+export default Purchases2;

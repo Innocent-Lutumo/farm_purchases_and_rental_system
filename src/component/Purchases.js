@@ -23,28 +23,34 @@ import {
   Button,
   InputAdornment,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
+  Tooltip,
+  CircularProgress,
 } from "@mui/material";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import SearchIcon from "@mui/icons-material/Search";
-import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  LocationOn as LocationOnIcon,
+  AccountCircle as AccountCircleIcon,
+  Search as SearchIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { green } from "@mui/material/colors";
+import "../styles/Animation.css";
 
-export default function Purchases() {
+export default function Rent() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState(null);
-  const open = Boolean(anchorEl);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const open = Boolean(anchorEl);
   const profileMenu = [
     { label: "Home", path: "/" },
     { label: "Logout", path: "/logout" },
@@ -53,14 +59,16 @@ export default function Purchases() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/api/sale-transactions/");
-        const data = Array.isArray(response.data)
-          ? response.data
-          : response.data.results || [];
+        const token = localStorage.getItem("access");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const { data } = await axios.get(
+          "http://127.0.0.1:8000/api/sale-transactions/",
+          { headers }
+        );
         setOrders(data);
         setFilteredOrders(data);
       } catch (error) {
-        console.error("Error fetching orders:", error);
+        console.error("Error fetching orders:", error.response || error);
       } finally {
         setLoading(false);
       }
@@ -69,59 +77,44 @@ export default function Purchases() {
     fetchOrders();
   }, []);
 
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+  const handleMenu = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  // 🛠 Updated handleStatusChange
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await axios.patch(`http://127.0.0.1:8000/api/sale-transactions/${id}/`, {
-        status: newStatus,
-      });
-
+      const token = localStorage.getItem("access");
+      await axios.patch(
+        `http://127.0.0.1:8000/api/sale-transactions/${id}/`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       const updated = orders.map((order) =>
         order.id === id ? { ...order, status: newStatus } : order
       );
       setOrders(updated);
       setFilteredOrders(updated);
     } catch (error) {
-      console.error("Failed to update status:", error);
       alert("Failed to update order status. Please try again.");
     }
   };
 
-  const openConfirmDialog = (order) => {
-    setOrderToDelete(order);
-    setConfirmDialogOpen(true);
-  };
-
-  const closeConfirmDialog = () => {
-    setOrderToDelete(null);
-    setConfirmDialogOpen(false);
-  };
-
-  const confirmDelete = async () => {
-    if (!orderToDelete) return;
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setOpenDeleteDialog(false);
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/sale-transactions/${orderToDelete.id}/`);
-      const updated = orders.filter((order) => order.id !== orderToDelete.id);
+      const token = localStorage.getItem("access");
+      await axios.delete(
+        `http://127.0.0.1:8000/api/sale-transactions/${deleteId}/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updated = orders.filter((order) => order.id !== deleteId);
       setOrders(updated);
       setFilteredOrders(updated);
     } catch (error) {
       console.error("Failed to delete transaction:", error);
-      alert("Failed to delete transaction. Please try again.");
     } finally {
-      closeConfirmDialog();
+      setIsDeleting(false);
     }
-  };
-
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
   };
 
   const handleSearch = () => {
@@ -130,6 +123,13 @@ export default function Purchases() {
     );
     setFilteredOrders(filtered);
   };
+
+  const openConfirmationDialog = (id) => {
+    setDeleteId(id);
+    setOpenDeleteDialog(true);
+  };
+
+  const closeConfirmationDialog = () => setOpenDeleteDialog(false);
 
   if (loading) {
     return (
@@ -141,37 +141,39 @@ export default function Purchases() {
 
   return (
     <Box>
-      <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
+      {/* AppBar */}
+      <AppBar
+        position="static"
+        sx={{ bgcolor: green[700], py: 2, boxShadow: 4 }}
+      >
         <Toolbar sx={{ justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Box>
-              <Typography variant="h5" fontWeight="bold">
-                Farm Seller Dashboard
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Manage listings, track sales, and grow your network.
-              </Typography>
-            </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">
+              Farm Seller Dashboard
+            </Typography>
+            <Typography variant="body2">
+              Manage listings, track sales, and grow your network.
+            </Typography>
           </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <IconButton onClick={handleMenu} color="inherit">
-              <AccountCircleIcon sx={{ fontSize: 40 }} />
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-              {profileMenu.map((item) => (
-                <MenuItem
-                  key={item.label}
-                  component={Link}
-                  to={item.path}
-                  onClick={handleClose}
-                  sx={{ color: "black" }}
-                >
-                  {item.label}
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
+          <IconButton
+            onClick={handleMenu}
+            color="inherit"
+            aria-label="account menu"
+          >
+            <AccountCircleIcon sx={{ fontSize: 40 }} />
+          </IconButton>
+          <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+            {profileMenu.map((item) => (
+              <MenuItem
+                key={item.label}
+                component={Link}
+                to={item.path}
+                onClick={handleClose}
+              >
+                {item.label}
+              </MenuItem>
+            ))}
+          </Menu>
         </Toolbar>
       </AppBar>
 
@@ -180,19 +182,25 @@ export default function Purchases() {
           Purchased Farms
         </Typography>
 
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="body1">
-            <strong>Total Farms Added: {filteredOrders.length}</strong>
-          </Typography>
-        </Box>
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          <strong>Total Farms Added: {filteredOrders.length}</strong>
+        </Typography>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}>
+        {/* Search Bar */}
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
+        >
           <TextField
-            variant="standard"
+            variant="outlined"
             placeholder="Search Farms by Location"
             value={searchQuery}
-            onChange={handleSearchChange}
-            sx={{ width: "80%" }}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{
+              width: "70%",
+              backgroundColor: "#fff",
+              borderRadius: 2,
+              boxShadow: 1,
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -201,12 +209,20 @@ export default function Purchases() {
               ),
             }}
           />
-          <Button variant="outlined" color="success" onClick={handleSearch}>
+          <Button
+            variant="contained"
+            onClick={handleSearch}
+            sx={{ bgcolor: green[600], borderRadius: 2, px: 3, boxShadow: 2 }}
+          >
             Search
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
+        {/* Table */}
+        <TableContainer
+          component={Paper}
+          sx={{ borderRadius: 4, boxShadow: 3 }}
+        >
           <Table>
             <TableHead sx={{ backgroundColor: "#e8f5e9" }}>
               <TableRow>
@@ -215,15 +231,25 @@ export default function Purchases() {
                 <TableCell>Size</TableCell>
                 <TableCell>Price</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Phone</TableCell>
                 <TableCell>Transaction ID</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Action</TableCell>
+                <TableCell>Edit Status</TableCell>
                 <TableCell>Delete</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
+              {filteredOrders.map((order, index) => (
+                <TableRow
+                  key={order.id}
+                  className="fade-in"
+                  sx={{
+                    animationDelay: `${index * 0.1}s`,
+                    backgroundColor: "#f9f9f9",
+                    transition: "0.3s",
+                    "&:hover": { backgroundColor: "#f1f8e9" },
+                  }}
+                >
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={2}>
                       <Avatar
@@ -235,28 +261,38 @@ export default function Purchases() {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <LocationOnIcon sx={{ color: "green" }} />
-                      <Typography>{order.farm.location}</Typography>
-                    </Box>
+                    <Link
+                      to={`/farm-location/${order.farm.id}`}
+                      style={{ textDecoration: "none" }}
+                    >
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Tooltip title="View Location">
+                          <LocationOnIcon sx={{ color: "green" }} />
+                        </Tooltip>
+                        <Typography color="success.main">
+                          {order.farm.location}
+                        </Typography>
+                      </Box>
+                    </Link>
                   </TableCell>
                   <TableCell>{order.farm.size}</TableCell>
                   <TableCell>{order.farm.price} Tshs</TableCell>
                   <TableCell>
                     <Typography
-                      color={
+                      className={
                         order.status === "Confirmed"
-                          ? "green"
+                          ? "confirmed"
                           : order.status === "Cancelled"
-                          ? "red"
-                          : "orange"
+                          ? "cancelled"
+                          : "pending"
                       }
                     >
-                      {order.status || "Pending"}
+                      {order.status}
                     </Typography>
                   </TableCell>
-                  <TableCell>{order.transaction_id || "-"}</TableCell>
-                  <TableCell>{order.buyer_email || "-"}</TableCell>
+                  <TableCell>{order.renter_phone || "-"}</TableCell>
+                  <TableCell>{order.transaction_id}</TableCell>
+                  <TableCell>{order.renter_email || "-"}</TableCell>
                   <TableCell>
                     <FormControl fullWidth size="small">
                       <InputLabel>Edit Status</InputLabel>
@@ -274,7 +310,10 @@ export default function Purchases() {
                     </FormControl>
                   </TableCell>
                   <TableCell>
-                    <IconButton color="error" onClick={() => openConfirmDialog(order)}>
+                    <IconButton
+                      color="error"
+                      onClick={() => openConfirmationDialog(order.id)}
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -285,28 +324,31 @@ export default function Purchases() {
         </TableContainer>
       </Container>
 
-      <Box
-        component="footer"
-        sx={{ py: 3, textAlign: "center", backgroundColor: "#e8f5e9" }}
-      >
-        <Typography variant="body2" color="green">
-          &copy; 2025 Farm Purchases Admin Panel. All rights reserved.
-        </Typography>
-      </Box>
-
       {/* Delete Confirmation Dialog */}
-      <Dialog open={confirmDialogOpen} onClose={closeConfirmDialog}>
+      <Dialog open={openDeleteDialog} onClose={closeConfirmationDialog}>
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to delete the transaction for{" "}
-            <strong>{orderToDelete?.farm.name}</strong>?
-          </Typography>
+          {isDeleting ? (
+            <Box display="flex" justifyContent="center" p={2}>
+              <CircularProgress color="success" />
+            </Box>
+          ) : (
+            <Typography>
+              Are you sure you want to delete this transaction?
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeConfirmDialog}>Cancel</Button>
-          <Button color="error" onClick={confirmDelete}>
-            Delete
+          <Button onClick={closeConfirmationDialog} color="error">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="success"
+            autoFocus
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>

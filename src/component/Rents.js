@@ -36,6 +36,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { green } from "@mui/material/colors";
+import "../styles/Animation.css"; 
 
 export default function Rent() {
   const [orders, setOrders] = useState([]);
@@ -57,15 +58,11 @@ export default function Rent() {
     const fetchOrders = async () => {
       try {
         const token = localStorage.getItem("access");
-
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactions/",
+          "http://127.0.0.1:8000/api/rent-transactions/",
           { headers }
         );
-
-        console.log("Fetched orders:", response.data); 
         setOrders(response.data);
         setFilteredOrders(response.data);
       } catch (error) {
@@ -90,15 +87,10 @@ export default function Rent() {
     try {
       const token = localStorage.getItem("access");
       await axios.patch(
-        `http://127.0.0.1:8000/api/transactions/${id}/`,
+        `http://127.0.0.1:8000/api/rent-transactions/${id}/`,
         { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const updatedOrders = orders.map((order) =>
         order.id === id ? { ...order, status: newStatus } : order
       );
@@ -116,11 +108,9 @@ export default function Rent() {
     try {
       const token = localStorage.getItem("access");
       await axios.delete(
-        `http://127.0.0.1:8000/api/transactions/${deleteId}/`,
+        `http://127.0.0.1:8000/api/rent-transactions/${deleteId}/`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
       const updatedOrders = orders.filter((order) => order.id !== deleteId);
@@ -157,7 +147,7 @@ export default function Rent() {
   if (loading) {
     return (
       <Container sx={{ py: 4, textAlign: "center" }}>
-        <Typography>Loading purchased farms...</Typography>
+        <Typography>Loading rented farms...</Typography>
       </Container>
     );
   }
@@ -166,15 +156,15 @@ export default function Rent() {
     <Box>
       <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
         <Toolbar sx={{ justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Box sx={{ display: "flex", flexDirection: "column" }}>
             <Typography variant="h5" fontWeight="bold">
               Farm Seller Dashboard
             </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Manage listings, track sales, and grow your network.
+            <Typography variant="body2">
+              Manage listings, track rentals, and more.
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Box>
             <IconButton onClick={handleMenu} color="inherit">
               <AccountCircleIcon sx={{ fontSize: 40 }} />
             </IconButton>
@@ -185,7 +175,6 @@ export default function Rent() {
                   component={Link}
                   to={item.path}
                   onClick={handleClose}
-                  sx={{ color: "black" }}
                 >
                   {item.label}
                 </MenuItem>
@@ -196,13 +185,13 @@ export default function Rent() {
       </AppBar>
 
       <Container sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom color="green">
+        <Typography variant="h4" color="green" gutterBottom>
           Rented Farms
         </Typography>
 
         <Box sx={{ mb: 3 }}>
-          <Typography variant="body1">
-            <strong>Total Farms Added: {filteredOrders.length}</strong>
+          <Typography>
+            <strong>Total Farms Rented: {filteredOrders.length}</strong>
           </Typography>
         </Box>
 
@@ -228,21 +217,21 @@ export default function Rent() {
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} className="fade-in">
           <Table>
-            <TableHead sx={{ backgroundColor: "#e8f5e9" }}>
+            <TableHead>
               <TableRow>
                 <TableCell>Farm</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Size</TableCell>
                 <TableCell>Price</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Rental Time (Months)</TableCell>
-                <TableCell>Phone Number</TableCell>
-                <TableCell>Rental Date</TableCell>
+                <TableCell>Rental Time</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Rent Date</TableCell>
                 <TableCell>Transaction ID</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Action</TableCell>
+                <TableCell>Update Status</TableCell>
                 <TableCell>Delete</TableCell>
               </TableRow>
             </TableHead>
@@ -278,18 +267,18 @@ export default function Rent() {
                   <TableCell>{order.farm.price} Tshs</TableCell>
                   <TableCell>
                     <Typography
-                      color={
+                      className={
                         order.status === "Confirmed"
-                          ? "green"
+                          ? "confirmed"
                           : order.status === "Cancelled"
-                          ? "red"
-                          : "orange"
+                          ? "cancelled"
+                          : "pending"
                       }
                     >
                       {order.status || "Pending"}
                     </Typography>
                   </TableCell>
-                  <TableCell>{order.farm?.rent_duration || "-"}</TableCell>
+                  <TableCell>{order.farm.rent_duration || "-"}</TableCell>
                   <TableCell>{order.renter_phone || "-"}</TableCell>
                   <TableCell>
                     {order.rent_date
@@ -332,10 +321,9 @@ export default function Rent() {
       <Dialog
         open={openDeleteDialog}
         onClose={closeConfirmationDialog}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
+        aria-labelledby="delete-confirm"
       >
-        <DialogTitle id="alert-dialog-title">{"Confirm Deletion"}</DialogTitle>
+        <DialogTitle id="delete-confirm">Confirm Deletion</DialogTitle>
         <DialogContent>
           {isDeleting ? (
             <CircularProgress color="success" />
