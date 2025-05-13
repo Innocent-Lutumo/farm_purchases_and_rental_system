@@ -31,6 +31,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FarmStatusIndicator from "./FarmStatusIndicator";
 
 const RentPage = () => {
   const [search, setSearch] = useState("");
@@ -40,6 +41,8 @@ const RentPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Store farm status in a state object with farm IDs as keys
+  const [farmStatus, setFarmStatus] = useState({});
 
   const handleProfileIconClick = (event) => setAnchorEl(event.currentTarget);
   const handlePopoverClose = () => setAnchorEl(null);
@@ -80,6 +83,14 @@ const RentPage = () => {
     if (confirmRent) {
       window.location.href = `/farm/${farm.id}`;
     }
+  };
+
+  // Update farm status function (used by FarmStatusIndicator)
+  const updateFarmStatus = (farmId, status) => {
+    setFarmStatus((prevStatus) => ({
+      ...prevStatus,
+      [farmId]: status,
+    }));
   };
 
   useEffect(() => {
@@ -137,25 +148,27 @@ const RentPage = () => {
           }}
         >
           <List sx={{ padding: 0 }}>
-            <ListItem button component={Link} to="#">
+            <ListItem button component={Link} to="#" sx={{ color: "black" }}>
               <ListItemText primary="My profile" />
             </ListItem>
-            <ListItem button component={Link} to="/RentPage">
+            <ListItem
+              button
+              component={Link}
+              to="/HomePage"
+              sx={{ color: "black" }}
+            >
               <ListItemText primary="Home" />
-            </ListItem>
-            <Divider />
-            <ListItem button component={Link} to="/PurchasesPage">
-              <ListItemText primary="History" />
             </ListItem>
             <Divider />
             <ListItem
               button
               component={Link}
-              to="/HomePage"
-              sx={{ color: "red" }}
+              to="/PurchasesPage"
+              sx={{ color: "black" }}
             >
-              <ListItemText primary="Back" />
+              <ListItemText primary="History" />
             </ListItem>
+            <Divider />
           </List>
         </Box>
       </Popover>
@@ -210,110 +223,173 @@ const RentPage = () => {
               gap: 6,
             }}
           >
-            {filteredFarms.map((farm) => (
-              <Card
-                key={farm.id}
-                sx={{
-                  borderRadius: 3,
-                  boxShadow: 5,
-                  overflow: "hidden",
-                  transition: "0.3s",
-                  "&:hover": { transform: "scale(1.03)" },
-                }}
-              >
-                <Box
+            {filteredFarms.map((farm) => {
+              const isTaken = farmStatus[farm.id] || false;
+
+              return (
+                <Card
+                  key={farm.id}
                   sx={{
-                    display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    width: "100%",
+                    borderRadius: 3,
+                    boxShadow: 5,
+                    overflow: "hidden",
+                    transition: "0.3s",
+                    "&:hover": { transform: isTaken ? "none" : "scale(1.03)" },
+                    position: "relative",
+                    opacity: isTaken ? 0.6 : 1,
+                    backgroundColor: isTaken ? "#f0f0f0" : "white",
+                    filter: isTaken ? "grayscale(50%)" : "none",
                   }}
                 >
-                  {farm.images && farm.images.length > 0 ? (
-                    <CardMedia
-                      component="img"
-                      image={`http://localhost:8000${farm.images[0].image}`}
-                      alt="Farm View"
-                      sx={{
-                        width: { xs: "100%", sm: "40%" },
-                        height: 200,
-                        margin: 1,
-                        borderRadius: 2,
-                        objectFit: "cover",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleImageClick(farm, 0)}
-                    />
-                  ) : (
+                  {/* Farm Status Indicator with callback to update parent component */}
+                  <FarmStatusIndicator
+                    farmId={farm.id}
+                    farmType="rent"
+                    size="medium"
+                    initialStatus={isTaken}
+                    // Using the centralized status update function
+                    statusCallback={(status) =>
+                      updateFarmStatus(farm.id, status)
+                    }
+                  />
+
+                  {/* "TAKEN" label overlay for rented farms */}
+                  {isTaken && (
                     <Box
                       sx={{
-                        width: { xs: "100%", sm: "40%" },
-                        height: 200,
-                        margin: 1,
-                        borderRadius: 2,
-                        backgroundColor: "#e0e0e0",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        position: "absolute",
+                        top: "40%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%) rotate(-30deg)",
+                        backgroundColor: "rgba(220, 0, 0, 0.7)",
+                        color: "white",
+                        padding: "5px 20px",
+                        borderRadius: "5px",
+                        fontWeight: "bold",
+                        fontSize: "24px",
+                        zIndex: 5,
+                        boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+                        border: "2px solid #fff",
                       }}
                     >
-                      <Typography>No Image</Typography>
+                      TAKEN
                     </Box>
                   )}
-                  <CardContent sx={{ width: { xs: "100%", sm: "60%" } }}>
-                    <Typography variant="h6" fontWeight="bold">
-                      {farm.name}
-                    </Typography>
-                    <Typography>
-                      <strong>Price:</strong> {farm.price}/= Tshs
-                    </Typography>
-                    <Typography>
-                      <strong>Size:</strong> {farm.size}
-                    </Typography>
-                    <Typography>
-                      <strong>Quality:</strong> {farm.quality}
-                    </Typography>
-                    <Typography fontSize="12px">
-                      <strong>Location:</strong> {farm.location}{" "}
-                      <LocationOnIcon />
-                    </Typography>
-                    {farm.rent_duration && (
-                      <Typography
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      width: "100%",
+                    }}
+                  >
+                    {farm.images && farm.images.length > 0 ? (
+                      <CardMedia
+                        component="img"
+                        image={`http://localhost:8000${farm.images[0].image}`}
+                        alt="Farm View"
                         sx={{
-                          fontSize: "0.8rem",
-                          fontWeight: "bold",
-                          color: "#333",
-                          mt: 1,
+                          width: { xs: "100%", sm: "40%" },
+                          height: 200,
+                          margin: 1,
+                          borderRadius: 2,
+                          objectFit: "cover",
+                          cursor: isTaken ? "default" : "pointer",
+                          filter: isTaken
+                            ? "grayscale(80%) brightness(0.9)"
+                            : "none", // More grayscale for images when taken
+                        }}
+                        onClick={
+                          isTaken ? undefined : () => handleImageClick(farm, 0)
+                        }
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: { xs: "100%", sm: "40%" },
+                          height: 200,
+                          margin: 1,
+                          borderRadius: 2,
+                          backgroundColor: "#e0e0e0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
-                        Duration: {farm.rent_duration} Months
-                      </Typography>
+                        <Typography>No Image</Typography>
+                      </Box>
                     )}
-                    <Button
-                      variant="contained"
-                      color="success"
-                      fullWidth
-                      onClick={() => handleDialogOpen(farm)}
-                      sx={{ mt: 2, fontSize: 12 }}
-                    >
-                      Click to Rent
-                    </Button>
-                  </CardContent>
-                </Box>
-                <Box
-                  sx={{
-                    px: 2,
-                    pb: 2,
-                    pt: 1,
-                    backgroundColor: "#d8f9d8",
-                    borderTop: "1px solid #eee",
-                  }}
-                >
-                  <Typography sx={{ fontSize: 14 }}>
-                    {farm.description}
-                  </Typography>
-                </Box>
-              </Card>
-            ))}
+                    <CardContent sx={{ width: { xs: "100%", sm: "60%" } }}>
+                      <Typography variant="h6" fontWeight="bold">
+                        {farm.name}
+                      </Typography>
+                      <Typography>
+                        <strong>Price:</strong> {farm.price}/= Tshs
+                      </Typography>
+                      <Typography>
+                        <strong>Size:</strong> {farm.size}
+                      </Typography>
+                      <Typography>
+                        <strong>Quality:</strong> {farm.quality}
+                      </Typography>
+                      <Typography fontSize="12px">
+                        <strong>Location:</strong> {farm.location}{" "}
+                        <LocationOnIcon />
+                      </Typography>
+                      {farm.rent_duration && (
+                        <Typography
+                          sx={{
+                            fontSize: "0.8rem",
+                            fontWeight: "bold",
+                            color: "#333",
+                            mt: 1,
+                          }}
+                        >
+                          Duration: {farm.rent_duration} Months
+                        </Typography>
+                      )}
+                      <Button
+                        variant="contained"
+                        color={isTaken ? "inherit" : "success"}
+                        fullWidth
+                        disabled={isTaken}
+                        onClick={
+                          isTaken ? undefined : () => handleDialogOpen(farm)
+                        }
+                        sx={{
+                          mt: 2,
+                          fontSize: 12,
+                          backgroundColor: isTaken ? "#dcdcdc" : undefined,
+                          color: isTaken ? "#999" : undefined,
+                          cursor: isTaken ? "not-allowed" : "pointer",
+                          pointerEvents: isTaken ? "none" : "auto",
+                          "&:hover": {
+                            backgroundColor: isTaken ? "#dcdcdc" : undefined,
+                          },
+                          textDecoration: isTaken ? "line-through" : "none",
+                        }}
+                      >
+                        {isTaken ? "Already Rented" : "Click to Rent"}
+                      </Button>
+                    </CardContent>
+                  </Box>
+                  <Box
+                    sx={{
+                      px: 2,
+                      pb: 2,
+                      pt: 1,
+                      backgroundColor: isTaken ? "#f0f0f0" : "#d8f9d8",
+                      borderTop: "1px solid #eee",
+                      color: isTaken ? "#999" : "inherit",
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 14 }}>
+                      {farm.description}
+                    </Typography>
+                  </Box>
+                </Card>
+              );
+            })}
           </Box>
         )}
       </Container>

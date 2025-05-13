@@ -12,9 +12,9 @@ import {
   Box,
   IconButton,
 } from "@mui/material";
-import img1 from "../images/img1.jpg";
-import img2 from "../images/img2.jpg";
-import img3 from "../images/img3.jpg";
+import img1 from "../../images/img1.jpg";
+import img2 from "../../images/img2.jpg";
+import img3 from "../../images/img3.jpg";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
@@ -57,7 +57,7 @@ const Home = () => {
               borderRadius: 20,
             }}
             component={Link}
-            to="/lee"
+            to="/RentalAgreement"
           >
            Farm
           </Button>

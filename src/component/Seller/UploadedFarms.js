@@ -20,8 +20,15 @@ import {
   Alert,
   Snackbar,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { MapPin } from "lucide-react";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { Link } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -34,81 +41,96 @@ import axios from "axios";
 
 const BASE_URL = "http://127.0.0.1:8000";
 
-const Header = () => (
-  <AppBar
-    position="static"
-    sx={{
-      backgroundColor: "#28a745",
-      padding: "16px 32px",
-      boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-    }}
-  >
-    <Toolbar
+const Header = () => {
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  return (
+    <AppBar
+      position="static"
       sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        backgroundColor: "#28a745",
+        padding: "16px 32px",
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
       }}
     >
-      {/* Title Section with Reduced Font Size */}
-      <Box>
-        <Typography
-          variant="h5" 
-          sx={{
-            color: "white",
-            fontWeight: "bold",
-            fontSize: "1.6rem", 
-            letterSpacing: "1.2px",
-            textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)",
-          }}
-        >
-          My Uploaded Farms
-        </Typography>
-
-        {/* Subtitle/Introduction Text */}
-        <Typography
-          variant="body2" 
-          sx={{
-            color: "white",
-            fontSize: "0.9rem", 
-            marginTop: 1,
-            fontStyle: "italic",
-            letterSpacing: "0.5px",
-          }}
-        >
-          Browse and manage the farms you've uploaded. Edit, delete, or view
-          details.
-        </Typography>
-      </Box>
-
-      {/* Navigation Button with Reduced Font Size and Aligned to the Right */}
-      <Button
-        color="inherit"
-        href="/"
+      <Toolbar
         sx={{
-          fontSize: "1rem",
-          fontWeight: "bold",
-          padding: "8px 16px",
-          color: "white",
-          borderRadius: "20px",
-          boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
-          transition: "all 0.3s ease",
-          marginLeft: "auto",
-          "&:hover": {
-            backgroundColor: "#218838",
-            boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.15)",
-          },
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        Home
-      </Button>
-    </Toolbar>
-  </AppBar>
-);
+        {/* Title Section */}
+        <Box>
+          <Typography
+            variant="h5"
+            sx={{
+              color: "white",
+              fontWeight: "bold",
+              fontSize: "1.6rem",
+              textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            Farm Seller Dashboard
+          </Typography>
+
+          <Typography
+            variant="body2"
+            sx={{
+              color: "white",
+              fontSize: "0.9rem",
+            }}
+          >
+            Manage listings, track sales, and grow your network.
+          </Typography>
+        </Box>
+
+        {/* Right Section: Home + Menu */}
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <IconButton onClick={handleMenuOpen} color="inherit">
+            <AccountCircleIcon sx={{ fontSize: 40 }} />
+          </IconButton>
+
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem
+              component={Link}
+              to="/profile"
+              onClick={handleMenuClose}
+              sx={{ color: "black" }}
+            >
+              My Profile
+            </MenuItem>
+            <MenuItem
+              component={Link}
+              to="/SellerPage" 
+              onClick={handleMenuClose}
+              sx={{ color: "red" }}
+            >
+              Back
+            </MenuItem>
+          </Menu>
+        </Box>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
 const UploadedFarms = () => {
   const [farms, setFarms] = useState([]);
   const [filteredFarms, setFilteredFarms] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFilter, setSearchFilter] = useState("location");
   const [loading, setLoading] = useState(true);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -120,6 +142,13 @@ const UploadedFarms = () => {
     open: false,
     message: "",
     severity: "info",
+  });
+  // Debug state to track operations
+  const [debug, setDebug] = useState({
+    lastAction: null,
+    actionId: null,
+    farmType: null,
+    success: null,
   });
 
   useEffect(() => {
@@ -144,7 +173,10 @@ const UploadedFarms = () => {
         },
       };
 
+      console.log("Fetching farms from API...");
       const res = await axios.get(`${BASE_URL}/api/all-farms/`, config);
+      console.log("API Response:", res.data);
+
       const data = Array.isArray(res.data)
         ? res.data.map((farm) => farm.data || farm)
         : [];
@@ -154,6 +186,12 @@ const UploadedFarms = () => {
         ? data.filter((farm) => farm.email === userEmail)
         : data;
 
+      // Create a truly unique identifier for each farm by combining ID and farm_type
+      userFarms.forEach((farm) => {
+        farm.uniqueId = `${farm.id}-${farm.farm_type}`;
+      });
+
+      console.log("Filtered farms by user email:", userFarms);
       setFarms(userFarms);
       setFilteredFarms(userFarms);
       setError(null);
@@ -176,63 +214,186 @@ const UploadedFarms = () => {
   };
 
   const handleSearch = () => {
-    const result = farms.filter((farm) =>
-      farm.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    if (!searchQuery) {
+      setFilteredFarms(farms);
+      return;
+    }
+
+    const result = farms.filter((farm) => {
+      const searchValue = farm[searchFilter]?.toLowerCase() || "";
+      return searchValue.includes(searchQuery.toLowerCase());
+    });
+
     setFilteredFarms(result);
   };
 
   const handleEditClick = (farm) => {
-    setEditedFarm(farm);
-    setSelectedFarm(farm);
+    console.log("Edit clicked for farm:", farm);
+
+    // Create a deep copy to ensure we don't mutate state directly
+    const farmCopy = JSON.parse(JSON.stringify(farm));
+
+    // Set debug info
+    setDebug({
+      lastAction: "edit_clicked",
+      actionId: farm.id,
+      farmType: farm.farm_type,
+      success: true,
+    });
+
+    setEditedFarm(farmCopy);
+    setSelectedFarm(farmCopy);
     setOpenEditDialog(true);
   };
 
   const handleDeleteClick = (farm) => {
+    console.log("Delete clicked for farm:", farm);
     setSelectedFarm(farm);
     setOpenDeleteDialog(true);
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditedFarm((prev) => ({ ...prev, [name]: value }));
+    console.log(`Editing field ${name} to value: ${value}`);
+    setEditedFarm((prev) => {
+      const updated = { ...prev, [name]: value };
+      console.log("Updated edited farm:", updated);
+      return updated;
+    });
+  };
+
+  // Convert farm_type to lowercase for API path
+  const getFarmTypeForApi = (farmType) => {
+    return farmType.toLowerCase();
   };
 
   const handleSaveEdit = async () => {
     try {
-      if (!editedFarm.id) throw new Error("Missing farm ID");
+      console.log("Attempting to save edited farm:", editedFarm);
+
+      if (!editedFarm.id || !editedFarm.farm_type) {
+        throw new Error("Missing required farm fields: id or farm_type");
+      }
+
+      const newUniqueId = `${editedFarm.id}-${editedFarm.farm_type}`;
+
+      // Prevent editing to a duplicate uniqueId
+      const duplicate = farms.find(
+        (farm) =>
+          farm.uniqueId === newUniqueId && farm.uniqueId !== editedFarm.uniqueId
+      );
+
+      if (duplicate) {
+        setSnackbar({
+          open: true,
+          message: "A farm with the same ID and type already exists.",
+          severity: "error",
+        });
+        return;
+      }
 
       const token = localStorage.getItem("access");
-      if (!token) throw new Error("Authentication token missing");
+      if (!token) {
+        throw new Error("Authentication token missing");
+      }
 
       const config = {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       };
 
-      await axios.put(
-        `${BASE_URL}/api/all-farms/${editedFarm.id}/`,
-        editedFarm,
+      // Ensure we're updating uniqueId before saving
+      const farmToUpdate = {
+        ...editedFarm,
+        uniqueId: newUniqueId,
+      };
+
+      // Find farm by previous uniqueId
+      const existingFarmIndex = farms.findIndex(
+        (farm) => farm.uniqueId === editedFarm.uniqueId
+      );
+
+      if (existingFarmIndex === -1) {
+        throw new Error("Farm not found in local data with matching uniqueId");
+      }
+
+      // Convert farm_type to lowercase for API path (backend expects lowercase)
+      const farmTypeForApi = getFarmTypeForApi(farmToUpdate.farm_type);
+
+      const response = await axios.put(
+        `${BASE_URL}/api/all-farms/${farmTypeForApi}/${farmToUpdate.id}/`,
+        farmToUpdate,
         config
       );
 
-      fetchFarms();
+      console.log("API response after update:", response.data);
+
+      // Update local farm data
+      const updatedFarms = [...farms];
+      updatedFarms[existingFarmIndex] = {
+        ...farms[existingFarmIndex],
+        ...farmToUpdate,
+      };
+      setFarms(updatedFarms);
+
+      // Update filtered farms
+      setFilteredFarms((prevFiltered) => {
+        const filteredIndex = prevFiltered.findIndex(
+          (farm) => farm.uniqueId === editedFarm.uniqueId
+        );
+
+        if (filteredIndex >= 0) {
+          const newFiltered = [...prevFiltered];
+          newFiltered[filteredIndex] = {
+            ...prevFiltered[filteredIndex],
+            ...farmToUpdate,
+          };
+          return newFiltered;
+        }
+
+        return prevFiltered;
+      });
+
+      // Success state
+      setDebug({
+        lastAction: "save_edit",
+        actionId: farmToUpdate.id,
+        farmType: farmToUpdate.farm_type,
+        success: true,
+      });
+
       setOpenEditDialog(false);
       setSnackbar({
         open: true,
         message: "Farm updated successfully!",
         severity: "success",
       });
+
+      // Optionally refetch to sync with backend
+      setTimeout(() => {
+        fetchFarms();
+      }, 1000);
     } catch (error) {
       console.error("Failed to update farm:", error);
+
+      setDebug({
+        lastAction: "save_edit_failed",
+        actionId: editedFarm.id,
+        farmType: editedFarm.farm_type,
+        success: false,
+      });
+
       if (error.response?.status === 401) {
         localStorage.removeItem("access");
         window.location.href = "/login";
       } else {
         setSnackbar({
           open: true,
-          message: "Failed to update farm. Please try again.",
+          message: `Failed to update farm: ${
+            error.message || "Please try again."
+          }`,
           severity: "error",
         });
       }
@@ -241,10 +402,18 @@ const UploadedFarms = () => {
 
   const handleConfirmDelete = async () => {
     try {
-      if (!selectedFarm.id) throw new Error("Missing farm ID");
+      console.log("Attempting to delete farm:", selectedFarm);
+
+      if (!selectedFarm.id) {
+        console.error("Missing farm ID for deletion");
+        throw new Error("Missing farm ID");
+      }
 
       const token = localStorage.getItem("access");
-      if (!token) throw new Error("Authentication token missing");
+      if (!token) {
+        console.error("Authentication token missing");
+        throw new Error("Authentication token missing");
+      }
 
       const config = {
         headers: {
@@ -252,53 +421,102 @@ const UploadedFarms = () => {
         },
       };
 
-      await axios.delete(
-        `${BASE_URL}/api/all-farms/${selectedFarm.id}/`,
-        config
+      // Convert farm_type to lowercase for API path (backend expects lowercase)
+      const farmTypeForApi = getFarmTypeForApi(selectedFarm.farm_type);
+
+      const deleteUrl = `${BASE_URL}/api/all-farms/${farmTypeForApi}/${selectedFarm.id}/`;
+      console.log("Delete endpoint:", deleteUrl);
+
+      // Find the farm with matching uniqueId in our local data
+      const existingFarmIndex = farms.findIndex(
+        (farm) => farm.uniqueId === selectedFarm.uniqueId
       );
 
-      fetchFarms();
+      if (existingFarmIndex === -1) {
+        console.error("Farm not found in local data with matching uniqueId");
+        throw new Error("Farm not found with matching uniqueId");
+      }
+
+      // Now proceed with deletion - fixed URL endpoint
+      const response = await axios.delete(deleteUrl, config);
+
+      console.log("Delete response:", response);
+
+      // Remove from local state immediately for better UX
+      const updatedFarms = farms.filter(
+        (farm) => farm.uniqueId !== selectedFarm.uniqueId
+      );
+      setFarms(updatedFarms);
+
+      setFilteredFarms((prevFiltered) =>
+        prevFiltered.filter((farm) => farm.uniqueId !== selectedFarm.uniqueId)
+      );
+
+      // Update debug info
+      setDebug({
+        lastAction: "delete",
+        actionId: selectedFarm.id,
+        farmType: selectedFarm.farm_type,
+        success: true,
+      });
+
       setOpenDeleteDialog(false);
       setSnackbar({
         open: true,
         message: "Farm deleted successfully!",
         severity: "success",
       });
+
+      // Refresh data from server to ensure consistency
+      setTimeout(() => {
+        fetchFarms();
+      }, 1000);
     } catch (error) {
       console.error("Failed to delete farm:", error);
+
+      // Update debug info
+      setDebug({
+        lastAction: "delete_failed",
+        actionId: selectedFarm.id,
+        farmType: selectedFarm.farm_type,
+        success: false,
+      });
+
       if (error.response?.status === 401) {
         localStorage.removeItem("access");
         window.location.href = "/login";
       } else {
         setSnackbar({
           open: true,
-          message: "Failed to delete farm. Please try again.",
+          message: `Failed to delete farm: ${
+            error.message || "Please try again."
+          }`,
           severity: "error",
         });
       }
     }
   };
 
-  const handlePrevImage = (farmId) => {
+  const handlePrevImage = (uniqueId) => {
     setImageIndexes((prev) => {
-      const currentIndex = prev[farmId] || 0;
-      const total =
-        filteredFarms.find((f) => f.id === farmId)?.images?.length || 0;
+      const currentIndex = prev[uniqueId] || 0;
+      const farm = filteredFarms.find((f) => f.uniqueId === uniqueId);
+      const total = farm?.images?.length || 0;
       return {
         ...prev,
-        [farmId]: (currentIndex - 1 + total) % total,
+        [uniqueId]: (currentIndex - 1 + total) % total,
       };
     });
   };
 
-  const handleNextImage = (farmId) => {
+  const handleNextImage = (uniqueId) => {
     setImageIndexes((prev) => {
-      const currentIndex = prev[farmId] || 0;
-      const total =
-        filteredFarms.find((f) => f.id === farmId)?.images?.length || 0;
+      const currentIndex = prev[uniqueId] || 0;
+      const farm = filteredFarms.find((f) => f.uniqueId === uniqueId);
+      const total = farm?.images?.length || 0;
       return {
         ...prev,
-        [farmId]: (currentIndex + 1) % total,
+        [uniqueId]: (currentIndex + 1) % total,
       };
     });
   };
@@ -311,11 +529,37 @@ const UploadedFarms = () => {
     <>
       <Header />
       <Container sx={{ mt: 4 }}>
-        <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+        {/* Debug Info */}
+        {debug.lastAction && (
+          <Alert severity={debug.success ? "info" : "warning"} sx={{ mb: 2 }}>
+            Last action: {debug.lastAction} | ID: {debug.actionId} | Type:{" "}
+            {debug.farmType} | Success: {debug.success ? "Yes" : "No"}
+          </Alert>
+        )}
+
+        <Box sx={{ display: "flex", gap: 2, mb: 4, flexWrap: "wrap" }}>
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="search-filter-label">Search By</InputLabel>
+            <Select
+              labelId="search-filter-label"
+              id="search-filter"
+              value={searchFilter}
+              label="Search By"
+              onChange={(e) => setSearchFilter(e.target.value)}
+              size="small"
+            >
+              <MenuItem value="location">Location</MenuItem>
+              <MenuItem value="farm_type">Farm Type</MenuItem>
+              <MenuItem value="quality">Quality</MenuItem>
+              <MenuItem value="price">Price</MenuItem>
+            </Select>
+          </FormControl>
+
           <TextField
             fullWidth
-            variant="standard"
-            placeholder="Search by Location"
+            variant="outlined"
+            size="small"
+            placeholder={`Search by ${searchFilter}`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -366,7 +610,7 @@ const UploadedFarms = () => {
               </Box>
             ) : (
               filteredFarms.map((farm) => (
-                <Grid item xs={12} sm={6} md={4} key={farm.id}>
+                <Grid item xs={12} sm={6} md={4} key={farm.uniqueId}>
                   <Card
                     sx={{
                       position: "relative",
@@ -380,6 +624,7 @@ const UploadedFarms = () => {
                       "&:hover": { boxShadow: 8 },
                     }}
                   >
+      
                     {/* Pinned Farm Type Label */}
                     <Box
                       sx={{
@@ -439,7 +684,7 @@ const UploadedFarms = () => {
                             borderRadius: 1,
                           }}
                           image={`${BASE_URL}${
-                            farm.images[imageIndexes[farm.id] || 0]?.image
+                            farm.images[imageIndexes[farm.uniqueId] || 0]?.image
                           }`}
                           alt="Farm Image"
                         />
@@ -457,14 +702,14 @@ const UploadedFarms = () => {
                       >
                         <Button
                           variant="outlined"
-                          onClick={() => handlePrevImage(farm.id)}
+                          onClick={() => handlePrevImage(farm.uniqueId)}
                           sx={{ mx: 1 }}
                         >
                           &lt;
                         </Button>
                         <Button
                           variant="outlined"
-                          onClick={() => handleNextImage(farm.id)}
+                          onClick={() => handleNextImage(farm.uniqueId)}
                           sx={{ mx: 1 }}
                         >
                           &gt;
@@ -562,7 +807,13 @@ const UploadedFarms = () => {
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>Edit Farm</DialogTitle>
+          <DialogTitle>
+            Edit {editedFarm.farm_type} Farm
+            <Typography variant="subtitle2" color="text.secondary">
+              ID: {editedFarm.id} | Type: {editedFarm.farm_type} | UniqueID:{" "}
+              {editedFarm.uniqueId}
+            </Typography>
+          </DialogTitle>
           <DialogContent>
             {[
               "location",
@@ -572,16 +823,11 @@ const UploadedFarms = () => {
               "description",
               "email",
               "phone",
-              "farm_type",
             ].map((field) => (
               <TextField
                 key={field}
                 margin="dense"
-                label={
-                  field === "farm_type"
-                    ? "Farm Type"
-                    : field.charAt(0).toUpperCase() + field.slice(1)
-                }
+                label={field.charAt(0).toUpperCase() + field.slice(1)}
                 name={field}
                 value={editedFarm[field] || ""}
                 onChange={handleEditChange}
@@ -590,6 +836,19 @@ const UploadedFarms = () => {
                 rows={field === "description" ? 3 : 1}
               />
             ))}
+
+            {/* Farm Type Field - Read Only */}
+            <TextField
+              margin="dense"
+              label="Farm Type"
+              name="farm_type"
+              value={editedFarm.farm_type || ""}
+              fullWidth
+              InputProps={{
+                readOnly: true,
+              }}
+              helperText="Farm type cannot be changed. Create a new farm listing instead."
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
@@ -610,9 +869,20 @@ const UploadedFarms = () => {
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>Delete Farm</DialogTitle>
+          <DialogTitle>
+            Delete {selectedFarm?.farm_type} Farm
+            <Typography variant="subtitle2" color="text.secondary">
+              ID: {selectedFarm?.id} | Type: {selectedFarm?.farm_type} |
+              UniqueID: {selectedFarm?.uniqueId}
+            </Typography>
+          </DialogTitle>
           <DialogContent>
             <Typography>Are you sure you want to delete this farm?</Typography>
+            {selectedFarm && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Location: {selectedFarm.location}, Price: {selectedFarm.price}
+              </Typography>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>

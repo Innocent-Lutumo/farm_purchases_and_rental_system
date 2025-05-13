@@ -1,20 +1,23 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import Home from "./component/HomePage";
-import Purchase from "./component/PurchasesPage";
-import Purchases2 from "./component/PurchasesPage2";
-import LoginPage from "./component/LoginPage";
-import RegistrationForm from "./component/RegisterPage";
-import Trial from "./component/trial";
-import FinalDraft from "./component/FinalDraft";
-import FinalDraft1 from "./component/FinalDraft1";
-import RentPage from "./component/RentPage";
-import SellerPage from "./component/SellerPage";
-import UploadFarmForm from "./component/UploadFarmForm";
-import UploadedFarms from "./component/UploadedFarms";
-import Rents from "./component/Rents";
-import Purchases from "./component/Purchases";
-import ProtectedRoute from "./component/ProtectedRoute";
+import Home from "./component/Common/HomePage";
+import Purchase from "./component/Renter/PurchasesPage";
+import Purchases2 from "./component/Buyer/PurchasesPage2";
+import LoginPage from "./component/Common/LoginPage";
+import RegistrationForm from "./component/Common/RegisterPage";
+import Trial from "./component/Buyer/trial";
+import FinalDraft from "./component/Renter/FinalDraft";
+import FinalDraft1 from "./component/Buyer/FinalDraft1";
+import RentPage from "./component/Renter/RentPage";
+import SellerPage from "./component/Seller/SellerPage";
+import UploadFarmForm from "./component/Seller/UploadFarmForm";
+import UploadedFarms from "./component/Seller/UploadedFarms";
+import Rents from "./component/Seller/Rents";
+import Purchases from "./component/Seller/Purchases";
+import ProtectedRoute from "./component/Common/ProtectedRoute";
+import RentalAgreement from "./component/Renter/RentalAgreement";
+import "leaflet/dist/leaflet.css";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 // import FarmNavigationMap from "./component/lee.js";
 
 function App() {
@@ -29,6 +32,7 @@ function App() {
       <Route path="/RentPage" element={<RentPage />} />
       <Route path="/farm/:id" element={<FinalDraft />} />
       <Route path="/farm1/:id" element={<FinalDraft1 />} />
+      <Route path="/RentalAgreement" element={<RentalAgreement />} />
       <Route
         path="/SellerPage"
         element={
@@ -37,11 +41,38 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/uploadFarmForm" element={<UploadFarmForm />} />
-      <Route path="/uploadedfarms" element={<UploadedFarms />} />
-      <Route path="/Rents" element={<Rents />} />
-      <Route path="/Purchases" element={<Purchases />} />
-      {/* <Route path="/lee" element={< FarmNavigationMap />} /> */}
+      <Route
+        path="/UploadFarmForm"
+        element={
+          <ProtectedRoute>
+            <UploadFarmForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/UploadedFarms"
+        element={
+          <ProtectedRoute>
+            <UploadedFarms />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/Rents"
+        element={
+          <ProtectedRoute>
+            <Rents />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/Purchases"
+        element={
+          <ProtectedRoute>
+            <Purchases />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import ProtectedRoute from './ProtectedRoute'; 
 import {
   AppBar,
   Toolbar,
@@ -36,12 +35,12 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 const navItems = [
   {
     label: "Purchases",
-    path: "/purchases",
+    path: "/Purchases",
     icon: <ShoppingBag size={48} color={green[700]} />,
   },
   {
     label: "Rents",
-    path: "/rents",
+    path: "/Rents",
     icon: <Home size={48} color={green[700]} />,
   },
   {
@@ -61,7 +60,7 @@ const navItems = [
   },
   {
     label: "Upload new farm",
-    path: "/uploadFarmForm",
+    path: "/UploadFarmForm",
     icon: <PlusCircle size={48} color={yellow[700]} />,
   },
 ];
@@ -80,11 +79,10 @@ const SellerPage = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("access");
-    navigate("/login");
+    navigate("/LoginPage");
   };
 
   return (
-    <ProtectedRoute>
       <Box sx={{ flexGrow: 1, bgcolor: "#f9f9f9", minHeight: "100vh" }}>
         <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
           <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -313,7 +311,6 @@ const SellerPage = () => {
           </Typography>
         </Box>
       </Box>
-    </ProtectedRoute>
   );
 };
 

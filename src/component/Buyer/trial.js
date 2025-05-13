@@ -139,20 +139,27 @@ const Trial = () => {
           }}
         >
           <List sx={{ padding: 0 }}>
-            <ListItem button component={Link} to="/Page">
+            <ListItem button component={Link} to="#" sx={{ color: "black" }}>
               <ListItemText primary="My profile" />
             </ListItem>
-            <ListItem button component={Link} to="/trial">
+            <ListItem
+              button
+              component={Link}
+              to="/HomePage"
+              sx={{ color: "black" }}
+            >
               <ListItemText primary="Home" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/PurchasesPage2">
+            <ListItem
+              button
+              component={Link}
+              to="/PurchasesPage2"
+              sx={{ color: "black" }}
+            >
               <ListItemText primary="History" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/" sx={{ color: "red" }}>
-              <ListItemText primary="Logout" />
-            </ListItem>
           </List>
         </Box>
       </Popover>

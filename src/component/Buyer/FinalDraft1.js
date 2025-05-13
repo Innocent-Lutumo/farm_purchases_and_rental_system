@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { MapTilerFarmMap } from "../Shared/UserMap";
 import {
   AppBar,
   Toolbar,
@@ -16,6 +17,7 @@ import {
   DialogActions,
   TextField,
   IconButton,
+  Modal,
 } from "@mui/material";
 import { useParams, Link } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -39,6 +41,8 @@ const FinalDraft1 = () => {
   const [intendedUse, setIntendedUse] = useState("");
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     const fetchFarm = async () => {
@@ -74,7 +78,7 @@ const FinalDraft1 = () => {
 
     try {
       const transactionResponse = await axios.post(
-        "http://127.0.0.1:8000/api/sale-transactions/",
+        "http://127.0.0.1:8000/api/transactionsale/",
         {
           farm_id: farm.id,
           transaction_id: transactionId,
@@ -248,37 +252,45 @@ const FinalDraft1 = () => {
                 <Typography>
                   <strong>Quality:</strong> {farm.quality}
                 </Typography>
-                <Typography fontSize="12px">
-                  <strong style={{ fontSize: "18px" }}>Location:</strong>{" "}
-                  {farm.location}
-                  <Link
-                    to="/location"
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <Tooltip title="Click to view location">
-                      <LocationOnIcon
-                        sx={{
-                          transition: "color 0.3s",
-                          "&:hover": { color: "green" },
-                          ml: 1,
-                        }}
-                      />
+                <Box sx={{ mt: 1, display: "flex", alignItems: "flex-start" }}>
+                  <Typography fontSize="14px">
+                    <strong style={{ fontSize: "16px" }}>Farm Location:</strong>{" "}
+                  </Typography>
+                  <Box sx={{ ml: 1, display: "flex", alignItems: "center" }}>
+                    <Typography fontSize="14px">{farm.location}</Typography>
+                    <Tooltip title="Show on Map">
+                      <IconButton size="small" onClick={() => setShowMap(true)}>
+                        <LocationOnIcon fontSize="small" color="success" />
+                      </IconButton>
                     </Tooltip>
-                  </Link>
-                </Typography>
+                  </Box>
 
-                <Box sx={{ marginTop: 2 }}>
-                  <Typography
-                    sx={{ color: "green", textDecoration: "underline" }}
+                  {/* Map modal or conditional box */}
+                  <Modal
+                    open={showMap}
+                    onClose={() => setShowMap(false)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
-                    <strong>SELLER'S CONTACTS</strong>
-                  </Typography>
-                  <Typography sx={{ my: 1, ml: 1 }}>
-                    <strong>Email:</strong> {farm.email}
-                  </Typography>
-                  <Typography sx={{ mb: 3, ml: 1 }}>
-                    <strong>Phone Number:</strong> {farm.phone}
-                  </Typography>
+                    <Box
+                      sx={{
+                        width: "95%",
+                        maxWidth: "1600px",
+                        height: "100vh",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <MapTilerFarmMap
+                        farm={farm}
+                        userLocation={userLocation}
+                        setUserLocation={setUserLocation}
+                        onClose={() => setShowMap(false)}
+                      />
+                    </Box>
+                  </Modal>
                 </Box>
 
                 <Button

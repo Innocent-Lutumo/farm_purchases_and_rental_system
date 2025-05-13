@@ -38,7 +38,7 @@ import {
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { green } from "@mui/material/colors";
-import "../styles/Animation.css";
+import "../../styles/Animation.css";
 
 export default function Rent() {
   const [orders, setOrders] = useState([]);
@@ -52,8 +52,8 @@ export default function Rent() {
 
   const open = Boolean(anchorEl);
   const profileMenu = [
-    { label: "Home", path: "/" },
-    { label: "Logout", path: "/logout" },
+    { label: "My Profile", path: "#" },
+    { label: "Back", path: "/SellerPage" },
   ];
 
   useEffect(() => {
@@ -169,6 +169,14 @@ export default function Rent() {
                 component={Link}
                 to={item.path}
                 onClick={handleClose}
+                sx={{
+                  textDecoration: "none",
+                  color: "black",
+                  "&:hover": {
+                    backgroundColor: green[100],
+                    color: green[700],
+                  },
+                }}
               >
                 {item.label}
               </MenuItem>
