@@ -97,10 +97,15 @@ const RentPage = () => {
     const fetchFarms = async () => {
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/api/farmsrent/?type=Rent"
+          "http://127.0.0.1:8000/api/farmsrent/validated/"
         );
         const data = await response.json();
-        setFarms(data);
+        
+        const validatedFarms = data.filter(
+          (farm) => farm.is_validated && !farm.is_rejected
+        );
+
+        setFarms(validatedFarms);
       } catch (error) {
         console.error("Error fetching farms:", error);
       } finally {

@@ -15,13 +15,20 @@ import UploadedFarms from "./component/Seller/UploadedFarms";
 import Rents from "./component/Seller/Rents";
 import Purchases from "./component/Seller/Purchases";
 import ProtectedRoute from "./component/Common/ProtectedRoute";
+import AdminProtectedRoute from "./component/Admin/AdminProtectedRoutes";
 import RentalAgreement from "./component/Renter/RentalAgreement";
+import AdminDashboard from "./component/Admin/Dashboard";
+import AdminLogin from "./component/Admin/AdminLogin";
+import FarmRentals from "./component/Admin/FarmRentals";
+import FarmSales from "./component/Admin/FarmSales";
+import SellerList from "./component/Admin/SellerList";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 // import FarmNavigationMap from "./component/lee.js";
 
 function App() {
   return (
+  <>
     <Routes>
       <Route path="/*" element={<Home />} />
       <Route path="/PurchasesPage" element={<Purchase />} />
@@ -33,6 +40,7 @@ function App() {
       <Route path="/farm/:id" element={<FinalDraft />} />
       <Route path="/farm1/:id" element={<FinalDraft1 />} />
       <Route path="/RentalAgreement" element={<RentalAgreement />} />
+      <Route path="AdminLogin" element={<AdminLogin />} />
       <Route
         path="/SellerPage"
         element={
@@ -73,8 +81,41 @@ function App() {
           </ProtectedRoute>
         }
       />
-    </Routes>
-  );
+      <Route
+        path="/Dashboard"
+        element={
+          <AdminProtectedRoute>
+            <AdminDashboard />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/FarmRentals"
+        element={
+          <AdminProtectedRoute>
+            <FarmRentals />
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/FarmSales"
+        element={
+          <AdminProtectedRoute>
+            <FarmSales />
+          </AdminProtectedRoute>
+        }
+      />  
+      <Route
+        path="/SellerList"
+        element={
+          <AdminProtectedRoute>
+            <SellerList />
+          </AdminProtectedRoute>
+        }
+      /> 
+    </Routes> 
+  </>
+);
 }
 
 export default App;

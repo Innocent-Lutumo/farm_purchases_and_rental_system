@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-// import { MapTilerFarmMap } from "./UserMap"; // Assuming this component exists
+import { MapTilerFarmMap } from "../Shared/UserMap";
 import { Link, useParams } from "react-router-dom";
-import FarmStatusIndicator from "./FarmStatusIndicator"; // Import the new component
-
-// Material UI imports
+import FarmStatusIndicator from "./FarmStatusIndicator";
 import {
   AppBar,
   Box,
+  Grid,
   Button,
   Card,
   CardContent,
@@ -18,22 +17,19 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
-  Modal,
   TextField,
   Toolbar,
   Typography,
   Paper,
   Stack,
+  Modal,
 } from "@mui/material";
-
-// Material UI Icons
 import {
   NavigateBefore as PrevIcon,
   NavigateNext as NextIcon,
   Home as HomeIcon,
   LocationOn as LocationIcon,
   CheckCircle as CheckCircleIcon,
-  Close as CloseIcon,
 } from "@mui/icons-material";
 
 const FinalDraft = () => {
@@ -44,6 +40,7 @@ const FinalDraft = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionComplete, setTransactionComplete] = useState(false);
+  const [transactionId, setTransactionId] = useState(null);
   const [isRented, setIsRented] = useState(false);
 
   const [fullName, setFullName] = useState("");
@@ -53,13 +50,13 @@ const FinalDraft = () => {
   const [nationalId, setNationalId] = useState("");
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
   const [showMap, setShowMap] = useState(false);
-  // const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
 
-  const checkFarmStatus = async () => {
+  const checkFarmStatus = React.useCallback(async () => {
     try {
       const storedStatus = localStorage.getItem(`farm-status-${id}`);
-      if (storedStatus === "taken") {
+      if (storedStatus === "Rented") {
         setIsRented(true);
         return true;
       }
@@ -76,7 +73,7 @@ const FinalDraft = () => {
 
       if (isTaken) {
         setIsRented(true);
-        localStorage.setItem(`farm-status-${id}`, "taken");
+        localStorage.setItem(`farm-status-${id}`, "Rented");
       }
 
       return isTaken;
@@ -85,22 +82,20 @@ const FinalDraft = () => {
       // On error, keep existing status
       return isRented;
     }
-  };
+  }, [id, isRented]);
 
   useEffect(() => {
     const fetchFarm = async () => {
       try {
         setLoading(true);
 
-        // First check localStorage for cached status
         const storedStatus = localStorage.getItem(`farm-status-${id}`);
-        if (storedStatus === "taken") {
+        if (storedStatus === "Rented") {
           setIsRented(true);
         }
 
-        // Fetch farm data
         const response = await fetch(
-          `http://127.0.0.1:8000/api/farmrent/${id}`
+          `http://127.0.0.1:8000/api/farmrent/validated/${id}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch farm data");
@@ -108,15 +103,12 @@ const FinalDraft = () => {
         const data = await response.json();
         setFarm(data);
 
-        // Only check API for status if we don't already know it's rented
-        if (storedStatus !== "taken") {
-          // Check if farm is rented via API
+        if (storedStatus !== "Rented") {
           const farmIsRented = await checkFarmStatus();
           setIsRented(farmIsRented);
 
-          // If rented, update localStorage
           if (farmIsRented) {
-            localStorage.setItem(`farm-status-${id}`, "taken");
+            localStorage.setItem(`farm-status-${id}`, "Rented");
           }
         }
 
@@ -129,7 +121,7 @@ const FinalDraft = () => {
     };
 
     fetchFarm();
-  }, [id]);
+  }, [id, checkFarmStatus]);
 
   const generateRandomId = () =>
     Math.floor(1000000000 + Math.random() * 9000000000);
@@ -154,12 +146,12 @@ const FinalDraft = () => {
       alert("Please fill in all fields.");
       return;
     }
-
+    const newTransactionId = generateRandomId();
+    setTransactionId(newTransactionId);
     const transactionId = generateRandomId();
     setIsSubmitting(true);
 
     try {
-      // Create the transaction
       const transactionResponse = await fetch(
         "http://127.0.0.1:8000/api/transactions/",
         {
@@ -175,7 +167,7 @@ const FinalDraft = () => {
             full_name: fullName,
             residence,
             national_id: nationalId,
-            is_rented: true, // Set is_rented to true in the transaction
+            is_rented: true,
           }),
         }
       );
@@ -223,10 +215,9 @@ const FinalDraft = () => {
         console.warn("Failed to send email, but transaction was created");
       }
 
-      // Update local state and save to localStorage for persistence
       setTransactionComplete(true);
       setIsRented(true);
-      localStorage.setItem(`farm-status-${id}`, "taken");
+      localStorage.setItem(`farm-status-${id}`, "Rented");
     } catch (error) {
       console.error("Failed to submit rental:", error);
       alert("Submission failed.");
@@ -239,7 +230,6 @@ const FinalDraft = () => {
   const handleDialogClose = () => {
     setOpenDialog(false);
     if (transactionComplete) {
-      // Re-check farm status when dialog is closed after successful transaction
       checkFarmStatus();
     }
   };
@@ -506,42 +496,75 @@ const FinalDraft = () => {
               <Typography variant="h5" sx={{ color: "green", mt: 2 }}>
                 Rental Successful!
               </Typography>
+              <Typography sx={{ mt: 2, fontWeight: 500 }}>
+                Transaction ID:
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#2e7d32",
+                  fontWeight: "bold",
+                  fontSize: "1.2rem",
+                  mt: 0.5,
+                }}
+              >
+                {transactionId}
+              </Typography>
+              <Typography sx={{ mt: 2 }}>
+                A confirmation email has been sent to:{" "}
+                <strong>{renterEmail}</strong>
+              </Typography>
+              <Typography sx={{ mt: 2, fontStyle: "italic", color: "#666" }}>
+                Please keep the transaction ID for future reference and payment
+                tracking.
+              </Typography>
             </Box>
           ) : (
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              <TextField
-                label="Full Name"
-                fullWidth
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-              <TextField
-                label="Email"
-                type="email"
-                fullWidth
-                value={renterEmail}
-                onChange={(e) => setRenterEmail(e.target.value)}
-              />
-              <TextField
-                label="Phone Number"
-                type="tel"
-                fullWidth
-                value={renterPhone}
-                onChange={(e) => setRenterPhone(e.target.value)}
-              />
-              <TextField
-                label="Residence"
-                fullWidth
-                value={residence}
-                onChange={(e) => setResidence(e.target.value)}
-              />
-              <TextField
-                label="National ID (Optional)"
-                fullWidth
-                value={nationalId}
-                onChange={(e) => setNationalId(e.target.value)}
-              />
-            </Stack>
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Full Name"
+                    fullWidth
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Email"
+                    type="email"
+                    fullWidth
+                    value={renterEmail}
+                    onChange={(e) => setRenterEmail(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Phone Number"
+                    type="tel"
+                    fullWidth
+                    value={renterPhone}
+                    onChange={(e) => setRenterPhone(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Residence"
+                    fullWidth
+                    value={residence}
+                    onChange={(e) => setResidence(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="National ID (Optional)"
+                    fullWidth
+                    value={nationalId}
+                    onChange={(e) => setNationalId(e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
           )}
         </DialogContent>
 
@@ -570,49 +593,26 @@ const FinalDraft = () => {
       <Modal
         open={showMap}
         onClose={() => setShowMap(false)}
-        aria-labelledby="map-modal-title"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         <Box
           sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
             width: "95%",
-            maxWidth: 1600,
-            height: "90vh",
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 2,
-            borderRadius: 2,
+            maxWidth: "1600px",
+            height: "100vh",
+            overflow: "hidden",
           }}
         >
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <IconButton onClick={() => setShowMap(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "calc(100% - 40px)",
-            }}
-          >
-            <Typography variant="subtitle1" sx={{ textAlign: "center" }}>
-              Map content would be rendered here
-              <Button
-                variant="contained"
-                color="success"
-                sx={{ display: "block", mx: "auto", mt: 2 }}
-                onClick={() => setShowMap(false)}
-              >
-                Close Map
-              </Button>
-            </Typography>
-          </Box>
+          <MapTilerFarmMap
+            farm={farm}
+            userLocation={userLocation}
+            setUserLocation={setUserLocation}
+            onClose={() => setShowMap(false)}
+          />
         </Box>
       </Modal>
     </Box>

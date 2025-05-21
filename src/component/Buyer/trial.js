@@ -37,8 +37,8 @@ const Trial = () => {
   const [search, setSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [currentFarm, setCurrentFarm] = useState(null); // Track current farm
-  const [currentImageIndex, setCurrentImageIndex] = useState(0); // Track current image index
+  const [currentFarm, setCurrentFarm] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,8 +47,14 @@ const Trial = () => {
   useEffect(() => {
     const fetchFarms = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/api/farmsale/");
-        setFarms(response.data);
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/farmsale/validated/"
+        );
+        // Filter farms that are validated only
+        const validatedFarms = response.data.filter(
+          (farm) => farm.is_validated && !farm.is_rejected
+        );
+        setFarms(validatedFarms);
       } catch (error) {
         console.error("Error fetching farms:", error);
         setError("Failed to load farms");
@@ -69,9 +75,9 @@ const Trial = () => {
   };
 
   const handleImageClick = (farm, index) => {
-    setCurrentFarm(farm); // Set the current farm
-    setCurrentImageIndex(index); // Set the current image index
-    setImageModalOpen(true); // Open modal
+    setCurrentFarm(farm);
+    setCurrentImageIndex(index);
+    setImageModalOpen(true);
   };
 
   const handleImageClose = () => {
@@ -80,7 +86,7 @@ const Trial = () => {
 
   const handleNextImage = () => {
     if (currentFarm && currentFarm.images) {
-      const nextIndex = (currentImageIndex + 1) % currentFarm.images.length; // Cycle to next image
+      const nextIndex = (currentImageIndex + 1) % currentFarm.images.length;
       setCurrentImageIndex(nextIndex);
     }
   };
@@ -89,7 +95,7 @@ const Trial = () => {
     if (currentFarm && currentFarm.images) {
       const prevIndex =
         (currentImageIndex - 1 + currentFarm.images.length) %
-        currentFarm.images.length; // Cycle to previous image
+        currentFarm.images.length;
       setCurrentImageIndex(prevIndex);
     }
   };

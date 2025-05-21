@@ -6,7 +6,6 @@ const FarmStatusIndicator = ({ farmId, farmType = 'rent', initialStatus = false,
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Start with the initial status value
     setIsRented(initialStatus);
     
     const checkFarmStatus = async () => {

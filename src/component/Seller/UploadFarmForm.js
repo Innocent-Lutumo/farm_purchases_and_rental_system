@@ -7,201 +7,148 @@ import {
   Typography,
   Paper,
   Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  IconButton,
+  createTheme,
+  ThemeProvider,
+  CssBaseline,
+  Switch,
   Dialog,
-  DialogContent,
   DialogTitle,
+  DialogContent,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { green } from "@mui/material/colors";
-import { motion } from "framer-motion";
 
-const initialFormData = {
-  size: "",
-  price: "",
-  quality: "",
-  location: "",
-  email: "",
-  description: "",
-  phone: "",
-  images: [],
-  farmType: "",
-  rentTime: "",
-};
+const steps = ["Farm Details", "Uploads", "Confirmation"];
 
 const UploadFarmForm = () => {
-  const [formData, setFormData] = useState(initialFormData);
-  const [openDialog, setOpenDialog] = useState(true);
-  const [formVisible, setFormVisible] = useState(false);
-  const [imageError, setImageError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [images, setImages] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [farmTypeDialogOpen, setFarmTypeDialogOpen] = useState(true);
+  const navigate = useNavigate();
 
-  const handleFarmTypeSelect = (type) => {
-    setFormData((prev) => ({
-      ...prev,
-      farmType: type,
-    }));
-    setOpenDialog(false);
-    setFormVisible(true);
-  };
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? "dark" : "light",
+      primary: { main: green[700] },
+    },
+  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length < 3 || files.length > 10) {
-      setImageError("You must upload between 3 and 10 images.");
-    } else {
-      setImageError("");
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...files],
-      }));
-    }
-  };
-
-  const handleImageRemove = (index) => {
-    const updatedImages = formData.images.filter((_, i) => i !== index);
-    setFormData((prev) => ({
-      ...prev,
-      images: updatedImages,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const formPayload = new FormData();
-
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null && value !== "") {
-        if (key !== "rentTime" && key !== "images") {
-          formPayload.append(key, value);
-        }
+  const formik = useFormik({
+    initialValues: {
+      size: "",
+      price: "",
+      quality: "",
+      location: "",
+      email: "",
+      phone: "",
+      description: "",
+      farmNumber: "",
+      rentTime: "",
+      farmType: "",
+      passport: null,
+      ownershipCertificate: null,
+    },
+    validationSchema: Yup.object({
+      size: Yup.string().required("Required"),
+      price: Yup.string().required("Required"),
+      quality: Yup.string().required("Required"),
+      location: Yup.string().required("Required"),
+      email: Yup.string().email("Invalid email").required("Required"),
+      phone: Yup.string().required("Required"),
+      description: Yup.string().required("Required"),
+      farmNumber: Yup.string().required("Required"),
+    }),
+    onSubmit: (values) => {
+      if (images.length < 4 || images.length > 10) {
+        alert("Please upload between 4 and 10 images.");
+        return;
       }
-    });
 
-    formData.images.forEach((image) => {
-      formPayload.append("images", image);
-    });
-
-    if (formData.farmType === "Rent") {
-      formPayload.append("rent_duration", formData.rentTime);
-    }
-
-    const getAccessToken = async () => {
-      let access = localStorage.getItem("access");
-      if (!access) {
-        const refresh = localStorage.getItem("refresh");
-        if (!refresh) {
-          alert("Session expired. Please log in again.");
-          setLoading(false);
-          return null;
-        }
-
-        try {
-          const refreshResponse = await fetch(
-            "http://127.0.0.1:8000/api/token/refresh/",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ refresh }),
-            }
-          );
-
-          if (refreshResponse.ok) {
-            const data = await refreshResponse.json();
-            localStorage.setItem("access", data.access);
-            access = data.access;
-          } else {
-            alert("Failed to refresh token. Redirecting to login.");
-            setLoading(false);
-            return null;
-          }
-        } catch (error) {
-          console.error("Error refreshing token:", error);
-          setLoading(false);
-          return null;
-        }
+      const token = localStorage.getItem("access");
+      if (!token) {
+        alert("You must be logged in to submit.");
+        return;
       }
-      return access;
-    };
 
-    try {
-      const access = await getAccessToken();
-      if (!access) return;
-
-      const response = await fetch("http://127.0.0.1:8000/api/uploadFarm/", {
-        method: "POST",
-        body: formPayload,
-        headers: {
-          Authorization: `Bearer ${access}`,
-        },
+      const formData = new FormData();
+      Object.entries(values).forEach(([key, value]) => {
+        if (value !== null) {
+          formData.append(key, value);
+        }
       });
 
-      if (response.ok) {
-        alert(`Farm uploaded successfully as ${formData.farmType}!`);
-        setFormData({ ...initialFormData, farmType: formData.farmType });
-      } else {
-        const errorText = await response.text();
-        console.error("Upload failed:", errorText);
-        alert("Failed to upload farm. Check console for error.");
-      }
-    } catch (error) {
-      console.error("Error uploading farm:", error);
-      alert("An error occurred while uploading. Please try again.");
-    } finally {
-      setLoading(false);
+      images.forEach((image) => {
+        formData.append("images", image);
+      });
+
+      fetch("http://127.0.0.1:8000/api/UploadFarm/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data?.detail || "Submission failed");
+          }
+          return res.json();
+        })
+        .then(() => {
+          alert("Farm submitted successfully!");
+          navigate("/SellerPage"); 
+        })
+        .catch((err) => {
+          alert(`Error: ${err.message}`);
+        });
+    },
+  });
+
+  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
+
+  const handleFileChange = (e, fieldName) => {
+    formik.setFieldValue(fieldName, e.target.files[0]);
+  };
+
+  const handleImageUpload = (e) => {
+    const selected = Array.from(e.target.files);
+    const total = selected.length;
+
+    if (total < 4 || total > 10) {
+      alert("Please upload between 4 and 10 images.");
+      return;
     }
+
+    setImages(selected);
+  };
+
+  const handleFarmTypeSelect = (type) => {
+    formik.setFieldValue("farmType", type);
+    setFarmTypeDialogOpen(false);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <Container
-        maxWidth="md"
-        sx={{
-          mt: 4,
-          p: 3,
-          borderRadius: 3,
-          background: "linear-gradient(to bottom right, #f1fff1, #ffffff)",
-          boxShadow: 4,
-        }}
-      >
-        <Dialog
-          open={openDialog}
-          PaperProps={{
-            component: motion.div,
-            initial: { scale: 0.7, opacity: 0 },
-            animate: { scale: 1, opacity: 1 },
-            transition: { duration: 0.4 },
-            sx: { borderRadius: 4, p: 2 },
-          }}
-        >
-          <DialogTitle sx={{ textAlign: "center" }}>
-            Select Farm Type
-          </DialogTitle>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Dialog open={farmTypeDialogOpen}>
+          <DialogTitle>Select Farm Type</DialogTitle>
           <DialogContent>
-            <Typography variant="body1" sx={{ mb: 2, textAlign: "center" }}>
-              Is your farm for Sale or Rent?
-            </Typography>
-            <Box display="flex" justifyContent="center" gap={2}>
+            <Box display="flex" justifyContent="center" gap={2} py={2}>
               <Button
                 variant="contained"
                 color="success"
                 onClick={() => handleFarmTypeSelect("Sale")}
-                sx={{
-                  px: 4,
-                  borderRadius: 2,
-                  boxShadow: 2,
-                  transition: "0.3s",
-                  "&:hover": { transform: "scale(1.05)", boxShadow: 4 },
-                }}
               >
                 For Sale
               </Button>
@@ -209,13 +156,6 @@ const UploadFarmForm = () => {
                 variant="contained"
                 color="warning"
                 onClick={() => handleFarmTypeSelect("Rent")}
-                sx={{
-                  px: 4,
-                  borderRadius: 2,
-                  boxShadow: 2,
-                  transition: "0.3s",
-                  "&:hover": { transform: "scale(1.05)", boxShadow: 4 },
-                }}
               >
                 For Rent
               </Button>
@@ -223,162 +163,173 @@ const UploadFarmForm = () => {
           </DialogContent>
         </Dialog>
 
-        {formVisible && (
-          <Paper
-            elevation={5}
-            sx={{ p: 4, borderRadius: 2, bgcolor: "#ffffff" }}
-          >
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: "bold",
-                color: green[800],
-                mb: 3,
-                textAlign: "center",
-              }}
-            >
-              Upload a New Farm ({formData.farmType})
-            </Typography>
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={3}>
-                {["size", "price", "quality", "location", "email", "phone"].map(
-                  (name, i) => (
-                    <Grid item xs={12} sm={6} key={i}>
-                      <TextField
-                        fullWidth
-                        label={
-                          name.charAt(0).toUpperCase() +
-                          name.slice(1).replace(/([A-Z])/g, " $1")
-                        }
-                        name={name}
-                        value={formData[name]}
-                        onChange={handleInputChange}
-                        sx={{
-                          "& label.Mui-focused": { color: "green" },
-                          "& .MuiOutlinedInput-root": {
-                            "&.Mui-focused fieldset": { borderColor: "green" },
-                          },
-                        }}
-                        required
-                      />
-                    </Grid>
-                  )
-                )}
-                {formData.farmType === "Rent" && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Rent Duration (e.g., 6 months)"
-                      name="rentTime"
-                      value={formData.rentTime}
-                      onChange={handleInputChange}
-                      sx={{
-                        "& label.Mui-focused": { color: "green" },
-                        "& .MuiOutlinedInput-root": {
-                          "&.Mui-focused fieldset": { borderColor: "green" },
-                        },
-                      }}
-                      required
-                    />
+        {!farmTypeDialogOpen && (
+          <>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h4" color="primary">
+                Upload Farm - {formik.values.farmType}
+              </Typography>
+              <Box>
+                <IconButton onClick={() => setDarkMode(!darkMode)} color="inherit">
+                  {darkMode ? <Brightness7 /> : <Brightness4 />}
+                </IconButton>
+                <Switch checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+              </Box>
+            </Box>
+
+            <Stepper activeStep={activeStep} alternativeLabel sx={{ mt: 4 }}>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+
+            <form onSubmit={formik.handleSubmit}>
+              <Paper elevation={3} sx={{ p: 4, mt: 3, borderRadius: 3 }}>
+                {activeStep === 0 && (
+                  <Grid container spacing={2}>
+                    {[
+                      "size",
+                      "price",
+                      "quality",
+                      "location",
+                      "email",
+                      "phone",
+                      "description",
+                    ].map((field) => (
+                      <Grid item xs={12} sm={6} key={field}>
+                        <TextField
+                          fullWidth
+                          label={field.charAt(0).toUpperCase() + field.slice(1)}
+                          name={field}
+                          value={formik.values[field]}
+                          onChange={formik.handleChange}
+                          error={formik.touched[field] && Boolean(formik.errors[field])}
+                          helperText={formik.touched[field] && formik.errors[field]}
+                        />
+                      </Grid>
+                    ))}
+
+                    {formik.values.farmType === "Rent" && (
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Rent Duration"
+                          name="rentTime"
+                          value={formik.values.rentTime}
+                          onChange={formik.handleChange}
+                        />
+                      </Grid>
+                    )}
                   </Grid>
                 )}
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    name="description"
-                    multiline
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    sx={{
-                      "& label.Mui-focused": { color: "green" },
-                      "& .MuiOutlinedInput-root": {
-                        "&.Mui-focused fieldset": { borderColor: "green" },
-                      },
-                    }}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    sx={{ bgcolor: "green", borderRadius: 2 }}
-                  >
-                    Upload Farm Images
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      multiple
-                      onChange={handleImageChange}
-                    />
-                  </Button>
-                  {imageError && (
-                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                      {imageError}
+
+                {activeStep === 1 && (
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Farm Number"
+                        name="farmNumber"
+                        value={formik.values.farmNumber}
+                        onChange={formik.handleChange}
+                        error={formik.touched.farmNumber && Boolean(formik.errors.farmNumber)}
+                        helperText={formik.touched.farmNumber && formik.errors.farmNumber}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Button variant="outlined" component="label" fullWidth>
+                        Upload Passport
+                        <input
+                          type="file"
+                          hidden
+                          onChange={(e) => handleFileChange(e, "passport")}
+                        />
+                      </Button>
+                      {formik.values.passport && (
+                        <Typography>{formik.values.passport.name}</Typography>
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Button variant="outlined" component="label" fullWidth>
+                        Upload Certificate
+                        <input
+                          type="file"
+                          hidden
+                          onChange={(e) => handleFileChange(e, "ownershipCertificate")}
+                        />
+                      </Button>
+                      {formik.values.ownershipCertificate && (
+                        <Typography>{formik.values.ownershipCertificate.name}</Typography>
+                      )}
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Button variant="contained" component="label">
+                        Upload Farm Images (4–10)
+                        <input
+                          type="file"
+                          multiple
+                          hidden
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                        />
+                      </Button>
+                      {images.length > 0 && (
+                        <Box mt={2}>
+                          {images.map((file, idx) => (
+                            <Typography key={idx}>{file.name}</Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Grid>
+                  </Grid>
+                )}
+
+                {activeStep === 2 && (
+                  <Box>
+                    <Typography variant="h5" gutterBottom>
+                      Please review your information
                     </Typography>
-                  )}
-                  <Box sx={{ mt: 2 }}>
-                    {formData.images.map((image, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 8,
-                          padding: "8px 12px",
-                          borderRadius: 8,
-                          backgroundColor: "#f9f9f9",
-                          boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.1)",
-                        }}
-                      >
-                        <Typography variant="body2">{image.name}</Typography>
-                        <Button
-                          onClick={() => handleImageRemove(index)}
-                          color="error"
-                          size="small"
-                        >
-                          Remove
-                        </Button>
-                      </motion.div>
-                    ))}
+                    <Grid container spacing={2}>
+                      {Object.entries(formik.values).map(([key, value]) => {
+                        if (key === "passport" || key === "ownershipCertificate") return null;
+                        const displayValue = value ? value.toString() : "(not provided)";
+                        return (
+                          <Grid item xs={12} sm={6} key={key}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              {key.charAt(0).toUpperCase() + key.slice(1)}
+                            </Typography>
+                            <Typography variant="body1">{displayValue}</Typography>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
                   </Box>
-                </Grid>
-              </Grid>
-              <Box sx={{ mt: 4, textAlign: "center" }}>
-                <Button
-                  variant="contained"
-                  type="submit"
-                  sx={{
-                    background: "linear-gradient(to right, #43a047, #388e3c)",
-                    color: "#fff",
-                    textTransform: "none",
-                    fontSize: 16,
-                    px: 5,
-                    py: 1.5,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    "&:hover": {
-                      background: "linear-gradient(to right, #388e3c, #2e7d32)",
-                      transform: "scale(1.03)",
-                    },
-                  }}
-                  disabled={loading}
-                >
-                  {loading ? "Uploading..." : "Submit Farm"}
-                </Button>
-              </Box>
+                )}
+
+                <Box mt={4} display="flex" justifyContent="space-between">
+                  {activeStep > 0 && (
+                    <Button variant="outlined" onClick={handleBack} color="primary">
+                      Back
+                    </Button>
+                  )}
+                  {activeStep < steps.length - 1 ? (
+                    <Button variant="contained" onClick={handleNext} color="primary">
+                      Next
+                    </Button>
+                  ) : (
+                    <Button variant="contained" type="submit" color="primary">
+                      Submit
+                    </Button>
+                  )}
+                </Box>
+              </Paper>
             </form>
-          </Paper>
+          </>
         )}
       </Container>
-    </motion.div>
+    </ThemeProvider>
   );
 };
 

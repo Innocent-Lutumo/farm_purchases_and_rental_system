@@ -32,11 +32,6 @@ import { Link } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import TwitterIcon from "@mui/icons-material/Twitter";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import axios from "axios";
 
 const BASE_URL = "http://127.0.0.1:8000";
@@ -303,34 +298,23 @@ const UploadedFarms = () => {
           "Content-Type": "application/json",
         },
       };
-
-      // Ensure we're updating uniqueId before saving
       const farmToUpdate = {
         ...editedFarm,
         uniqueId: newUniqueId,
       };
-
-      // Find farm by previous uniqueId
       const existingFarmIndex = farms.findIndex(
         (farm) => farm.uniqueId === editedFarm.uniqueId
       );
-
       if (existingFarmIndex === -1) {
         throw new Error("Farm not found in local data with matching uniqueId");
       }
-
-      // Convert farm_type to lowercase for API path (backend expects lowercase)
       const farmTypeForApi = getFarmTypeForApi(farmToUpdate.farm_type);
-
       const response = await axios.put(
         `${BASE_URL}/api/all-farms/${farmTypeForApi}/${farmToUpdate.id}/`,
         farmToUpdate,
         config
       );
-
       console.log("API response after update:", response.data);
-
-      // Update local farm data
       const updatedFarms = [...farms];
       updatedFarms[existingFarmIndex] = {
         ...farms[existingFarmIndex],
@@ -387,7 +371,7 @@ const UploadedFarms = () => {
 
       if (error.response?.status === 401) {
         localStorage.removeItem("access");
-        window.location.href = "/login";
+        window.location.href = "/LoginPage";
       } else {
         setSnackbar({
           open: true,
@@ -420,14 +404,9 @@ const UploadedFarms = () => {
           Authorization: `Bearer ${token}`,
         },
       };
-
-      // Convert farm_type to lowercase for API path (backend expects lowercase)
       const farmTypeForApi = getFarmTypeForApi(selectedFarm.farm_type);
-
       const deleteUrl = `${BASE_URL}/api/all-farms/${farmTypeForApi}/${selectedFarm.id}/`;
       console.log("Delete endpoint:", deleteUrl);
-
-      // Find the farm with matching uniqueId in our local data
       const existingFarmIndex = farms.findIndex(
         (farm) => farm.uniqueId === selectedFarm.uniqueId
       );
@@ -436,13 +415,8 @@ const UploadedFarms = () => {
         console.error("Farm not found in local data with matching uniqueId");
         throw new Error("Farm not found with matching uniqueId");
       }
-
-      // Now proceed with deletion - fixed URL endpoint
       const response = await axios.delete(deleteUrl, config);
-
       console.log("Delete response:", response);
-
-      // Remove from local state immediately for better UX
       const updatedFarms = farms.filter(
         (farm) => farm.uniqueId !== selectedFarm.uniqueId
       );
@@ -451,30 +425,23 @@ const UploadedFarms = () => {
       setFilteredFarms((prevFiltered) =>
         prevFiltered.filter((farm) => farm.uniqueId !== selectedFarm.uniqueId)
       );
-
-      // Update debug info
       setDebug({
         lastAction: "delete",
         actionId: selectedFarm.id,
         farmType: selectedFarm.farm_type,
         success: true,
       });
-
       setOpenDeleteDialog(false);
       setSnackbar({
         open: true,
         message: "Farm deleted successfully!",
         severity: "success",
       });
-
-      // Refresh data from server to ensure consistency
       setTimeout(() => {
         fetchFarms();
       }, 1000);
     } catch (error) {
       console.error("Failed to delete farm:", error);
-
-      // Update debug info
       setDebug({
         lastAction: "delete_failed",
         actionId: selectedFarm.id,
@@ -911,58 +878,6 @@ const UploadedFarms = () => {
           </Alert>
         </Snackbar>
       </Container>
-
-      {/* Footer */}
-      <Box
-        sx={{
-          backgroundColor: "#d8f9d8",
-          marginTop: 4,
-          textAlign: "left",
-          padding: 1.5,
-        }}
-      >
-        <Box sx={{ textAlign: "left", mt: 1 }}>
-          <IconButton
-            href="https://www.instagram.com"
-            target="_blank"
-            sx={{ color: "#E4405F" }}
-          >
-            <InstagramIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.twitter.com"
-            target="_blank"
-            sx={{ color: "#1DA1F2" }}
-          >
-            <TwitterIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.facebook.com"
-            target="_blank"
-            sx={{ color: "#1877F2" }}
-          >
-            <FacebookIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.linkedin.com"
-            target="_blank"
-            sx={{ color: "#0077B5" }}
-          >
-            <LinkedInIcon />
-          </IconButton>
-          <IconButton
-            href="https://wa.me/255747570004"
-            target="_blank"
-            sx={{ color: "#25D366" }}
-          >
-            <WhatsAppIcon />
-          </IconButton>
-        </Box>
-
-        <Typography fontSize={13} sx={{ mt: 1 }}>
-          &copy; 2025 GreenHarvest — Built with care by S/N 19
-        </Typography>
-      </Box>
     </>
   );
 };

@@ -1,3 +1,4 @@
+// Purchases2.jsx
 import React, { useEffect, useState } from "react";
 import RegistrationDialog from "../Shared/FeedbackDialog";
 import AdvertisementSection from "../Shared/Advertisement";
@@ -27,7 +28,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
-
 const Purchases2 = () => {
   const [purchases, setPurchases] = useState([]);
   const [search, setSearch] = useState("");
@@ -47,8 +47,14 @@ const Purchases2 = () => {
     setAnchorEl(null);
   };
 
-  const handleCardClick = (farm, status) => {
-    setSelectedFarm({ ...farm, purchaseStatus: status });
+  const handleCardClick = (farm, purchase) => {
+    setSelectedFarm({
+      ...farm,
+      transactionId: purchase.transaction_id,
+      purchaseStatus: purchase.status,
+      email: purchase.farm.email,  
+      phone: purchase.farm.phone 
+    });
     setDialogOpen(true);
   };
 
@@ -78,6 +84,7 @@ const Purchases2 = () => {
 
   return (
     <Box>
+      {/* AppBar */}
       <AppBar position="static" sx={{ background: "green", height: "80px" }}>
         <Toolbar>
           <Box sx={{ flexGrow: 1 }}>
@@ -92,6 +99,7 @@ const Purchases2 = () => {
         </Toolbar>
       </AppBar>
 
+      {/* Popover */}
       <Popover
         id={id}
         open={open}
@@ -100,23 +108,16 @@ const Purchases2 = () => {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Box
-          sx={{
-            width: 150,
-            padding: 2,
-            backgroundColor: "#f0f0f0",
-            borderRadius: 2,
-          }}
-        >
+        <Box sx={{ width: 150, padding: 2 }}>
           <List sx={{ padding: 0 }}>
-            <ListItem button component={Link} to="#" sx={{ color: "black" }}>
+            <ListItem button component={Link} to="#">
               <ListItemText primary="My profile" />
             </ListItem>
-            <ListItem button component={Link} to="/trial" sx={{ color: "black" }}>
+            <ListItem button component={Link} to="/trial">
               <ListItemText primary="Back" />
             </ListItem>
             <Divider />
-            <ListItem button component={Link} to="/HomePage" sx={{ color: "black" }}>
+            <ListItem button component={Link} to="/HomePage">
               <ListItemText primary="Home" />
             </ListItem>
           </List>
@@ -141,9 +142,7 @@ const Purchases2 = () => {
           Search for your purchases using your transaction ID.
         </Typography>
 
-        <Box
-          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}>
           <TextField
             variant="standard"
             placeholder="Search by Transaction ID"
@@ -194,7 +193,7 @@ const Purchases2 = () => {
                         "&:hover": { transform: "scale(1.03)", boxShadow: 6 },
                         cursor: "pointer",
                       }}
-                      onClick={() => handleCardClick(farm, purchase.status)}
+                      onClick={() => handleCardClick(farm, purchase)}
                     >
                       <CardMedia
                         component="img"

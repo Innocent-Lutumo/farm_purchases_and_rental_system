@@ -18,9 +18,9 @@ import { motion } from "framer-motion";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
-    sellerName: "",
+    seller_name: "",
     username: "",
-    sellerResidence: "",
+    seller_residence: "",
     password: "",
     confirmPassword: "",
   });
@@ -42,9 +42,9 @@ const RegisterPage = () => {
     setErrors({});
     setSuccessMessage("");
 
-    const {  sellerName, username, sellerResidence, password, confirmPassword } = formData;
+    const { seller_name, username, seller_residence, password, confirmPassword } = formData;
 
-    if (!sellerName || !username || !sellerResidence || !password || !confirmPassword ) {
+    if (!seller_name || !username || !seller_residence || !password || !confirmPassword) {
       setErrors({ form: "Please fill out all the fields." });
       return;
     }
@@ -61,9 +61,7 @@ const RegisterPage = () => {
 
     try {
       const response = await axios.post("http://127.0.0.1:8000/api/register/", formData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
 
       console.log("Registration successful:", response.data);
@@ -71,17 +69,16 @@ const RegisterPage = () => {
       setOpenSnackbar(true);
 
       setFormData({
-        sellerName: "",
+        seller_name: "",
         username: "",
-        sellerResidence: "",
+        seller_residence: "",
         password: "",
         confirmPassword: "",
       });
     } catch (error) {
       console.error("Error during registration:", error);
       setErrors({
-        server:
-          error.response?.data?.detail || "Registration failed. Please try again.",
+        server: error.response?.data?.detail || "Registration failed. Please try again.",
       });
     }
   };
@@ -89,18 +86,9 @@ const RegisterPage = () => {
   return (
     <Box sx={{ backgroundColor: "#f0f4f8", minHeight: "100vh", py: 6 }}>
       <Container maxWidth="md">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <Paper elevation={3} sx={{ p: 5, borderRadius: 4 }}>
-            <Typography
-              variant="h4"
-              align="center"
-              gutterBottom
-              sx={{ fontWeight: 700, color: "green" }}
-            >
+            <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 700, color: "green" }}>
               Create Account
             </Typography>
             <Typography variant="body1" align="center" sx={{ mb: 4, color: "#666" }}>
@@ -111,20 +99,18 @@ const RegisterPage = () => {
               <Grid container spacing={3}>
                 {errors.form && (
                   <Grid item xs={12}>
-                    <Typography color="error" align="center">
-                      {errors.form}
-                    </Typography>
+                    <Typography color="error" align="center">{errors.form}</Typography>
                   </Grid>
                 )}
 
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Full Names"
-                    name="sellerName"
-                    value={formData.sellerName}
+                    name="seller_name"
+                    value={formData.seller_name}
                     onChange={handleChange}
-                    error={!!errors.sellerName}
-                    helperText={errors.sellerName}
+                    error={!!errors.seller_name}
+                    helperText={errors.seller_name}
                     fullWidth
                     variant="outlined"
                     sx={fieldStyle}
@@ -148,11 +134,11 @@ const RegisterPage = () => {
                 <Grid item xs={12}>
                   <TextField
                     label="Residence"
-                    name="sellerResidence"
-                    value={formData.sellerResidence}
+                    name="seller_residence"
+                    value={formData.seller_residence}
                     onChange={handleChange}
-                    error={!!errors.sellerResidence}
-                    helperText={errors.sellerResidence}
+                    error={!!errors.seller_residence}
+                    helperText={errors.seller_residence}
                     fullWidth
                     variant="outlined"
                     sx={fieldStyle}
@@ -198,16 +184,8 @@ const RegisterPage = () => {
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <IconButton
-                            onClick={() =>
-                              setShowConfirmPassword(!showConfirmPassword)
-                            }
-                          >
-                            {showConfirmPassword ? (
-                              <VisibilityOff />
-                            ) : (
-                              <Visibility />
-                            )}
+                          <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
                         </InputAdornment>
                       ),
@@ -217,9 +195,7 @@ const RegisterPage = () => {
 
                 {errors.server && (
                   <Grid item xs={12}>
-                    <Typography color="error" align="center">
-                      {errors.server}
-                    </Typography>
+                    <Typography color="error" align="center">{errors.server}</Typography>
                   </Grid>
                 )}
 
@@ -236,9 +212,7 @@ const RegisterPage = () => {
                         borderRadius: "8px",
                         textTransform: "none",
                         fontSize: "1rem",
-                        "&:hover": {
-                          backgroundColor: "#116d11",
-                        },
+                        "&:hover": { backgroundColor: "#116d11" },
                       }}
                     >
                       Register
@@ -258,10 +232,7 @@ const RegisterPage = () => {
 
             <Typography variant="body2" align="center" sx={{ mt: 4, color: "#555" }}>
               Already have an account?{" "}
-              <Link
-                to="/LoginPage"
-                style={{ color: "green", fontWeight: "bold" }}
-              >
+              <Link to="/LoginPage" style={{ color: "green", fontWeight: "bold" }}>
                 Login here
               </Link>
             </Typography>

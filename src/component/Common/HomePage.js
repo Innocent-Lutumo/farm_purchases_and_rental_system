@@ -49,18 +49,18 @@ const Home = () => {
       </AppBar>
 
       <Button
-            variant="contained"
-            color="warning"
-            sx={{
-              m: 1,
-              "&:hover": { backgroundColor: "#f57c00" },
-              borderRadius: 20,
-            }}
-            component={Link}
-            to="/RentalAgreement"
-          >
-           Farm
-          </Button>
+        variant="contained"
+        color="warning"
+        sx={{
+          m: 1,
+          "&:hover": { backgroundColor: "#f57c00" },
+          borderRadius: 20,
+        }}
+        component={Link}
+        to="/AdminLogin"
+      >
+        Farm
+      </Button>
 
       {/* Description Section */}
       <Container

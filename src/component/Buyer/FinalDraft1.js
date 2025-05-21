@@ -11,6 +11,7 @@ import {
   Box,
   Tooltip,
   Dialog,
+  Grid,
   DialogTitle,
   DialogContent,
   DialogContentText,
@@ -315,58 +316,74 @@ const FinalDraft1 = () => {
       </Container>
 
       {/* Buyer Form Dialog */}
-      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)}>
+      <Dialog
+        open={emailDialogOpen}
+        onClose={() => setEmailDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle sx={{ textAlign: "center", color: "green" }}>
           Buyer Information
         </DialogTitle>
+
         <DialogContent>
-          <TextField
-            label="Full Names"
-            fullWidth
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Address"
-            fullWidth
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Contact Info (Phone)"
-            fullWidth
-            value={contactInfo}
-            onChange={(e) => setContactInfo(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="National ID / Passport (Optional)"
-            fullWidth
-            value={nationalId}
-            onChange={(e) => setNationalId(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Intended Use of Farm"
-            multiline
-            rows={2}
-            fullWidth
-            value={intendedUse}
-            onChange={(e) => setIntendedUse(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Email"
-            type="email"
-            fullWidth
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-            required
-          />
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Full Names"
+                fullWidth
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Address"
+                fullWidth
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Contact Info (Phone)"
+                fullWidth
+                value={contactInfo}
+                onChange={(e) => setContactInfo(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="National ID / Passport (Optional)"
+                fullWidth
+                value={nationalId}
+                onChange={(e) => setNationalId(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Intended Use of Farm"
+                multiline
+                rows={2}
+                fullWidth
+                value={intendedUse}
+                onChange={(e) => setIntendedUse(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                required
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setEmailDialogOpen(false)} color="error">
             Cancel
           </Button>
