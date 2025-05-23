@@ -14,6 +14,7 @@ import {
   CardContent,
   Button,
   TextField,
+  CardMedia,
   Grid,
   Box,
   Chip,
@@ -34,11 +35,8 @@ import {
   ImageList,
   ImageListItem,
   Modal,
-  CardMedia,
 } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
-
-// Icon imports consolidated
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Menu as MenuIcon,
   Search as SearchIcon,
@@ -57,7 +55,6 @@ import {
   Image as ImageIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
-
 import axios from "axios";
 
 // Theme creation moved to separate function
@@ -129,7 +126,11 @@ const StatusChip = ({ farm }) => {
 };
 
 // Image gallery component
-const ImageGallery = ({ images, baseUrl = "http://127.0.0.1:8000" }) => {
+const ImageGallery = ({
+  images,
+  baseUrl = "http://127.0.0.1:8000",
+  title = "Images",
+}) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
@@ -148,7 +149,9 @@ const ImageGallery = ({ images, baseUrl = "http://127.0.0.1:8000" }) => {
         sx={{ display: "flex", alignItems: "center", color: "text.secondary" }}
       >
         <ImageIcon sx={{ mr: 1, fontSize: 20 }} />
-        <Typography variant="body2">No images</Typography>
+        <Typography variant="body2">
+          No {title.toLowerCase()} available
+        </Typography>
       </Box>
     );
   }
@@ -156,28 +159,31 @@ const ImageGallery = ({ images, baseUrl = "http://127.0.0.1:8000" }) => {
   return (
     <>
       <ImageList sx={{ height: 120 }} cols={3} rowHeight={100} gap={8}>
-        {images.map((img, index) => (
-          <ImageListItem
-            key={index}
-            sx={{
-              cursor: "pointer",
-              overflow: "hidden",
-              borderRadius: 1,
-              "&:hover": {
-                opacity: 0.8,
-                transition: "0.3s",
-              },
-            }}
-            onClick={() => handleImageClick(`${baseUrl}${img.image}`)}
-          >
-            <img
-              src={`${baseUrl}${img.image}`}
-              alt={`Farm ${index + 1}`}
-              loading="lazy"
-              style={{ objectFit: "cover", height: "100%" }}
-            />
-          </ImageListItem>
-        ))}
+        {images.map((img, index) => {
+          const imageUrl = `${baseUrl}${img.image}`;
+          return (
+            <ImageListItem
+              key={index}
+              sx={{
+                cursor: "pointer",
+                overflow: "hidden",
+                borderRadius: 1,
+                "&:hover": {
+                  opacity: 0.8,
+                  transition: "0.3s",
+                },
+              }}
+              onClick={() => handleImageClick(imageUrl)}
+            >
+              <img
+                src={imageUrl}
+                alt={`${title} ${index + 1}`}
+                loading="lazy"
+                style={{ objectFit: "cover", height: "100%" }}
+              />
+            </ImageListItem>
+          );
+        })}
       </ImageList>
 
       <Modal
@@ -208,7 +214,7 @@ const ImageGallery = ({ images, baseUrl = "http://127.0.0.1:8000" }) => {
           </IconButton>
           <img
             src={selectedImage}
-            alt="Enlarged farm view"
+            alt="Enlarged view"
             style={{
               maxWidth: "100%",
               maxHeight: "80vh",
@@ -278,6 +284,8 @@ function AdminDashboard() {
   const [activeView, setActiveView] = useState("table");
   const [loading, setLoading] = useState(false);
   const [expandedFarm, setExpandedFarm] = useState(null);
+  const [singleImageModalOpen, setSingleImageModalOpen] = useState(false);
+  const [selectedSingleImage, setSelectedSingleImage] = useState(null);
 
   // Menu items configuration
   const menuItems = useMemo(
@@ -291,6 +299,7 @@ function AdminDashboard() {
   );
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("access");
@@ -319,8 +328,7 @@ function AdminDashboard() {
   // Load saved feedback for each farm when farms data is fetched
   const loadFeedback = useCallback((farmsList) => {
     const newFeedbackMap = {};
-    farmsList.forEach(farm => {
-      // Use admin_feedback from the server if it exists
+    farmsList.forEach((farm) => {
       if (farm.admin_feedback) {
         newFeedbackMap[`${farm.farm_type}-${farm.id}`] = farm.admin_feedback;
       }
@@ -336,13 +344,11 @@ function AdminDashboard() {
       axios.get("http://127.0.0.1:8000/api/farmsrent/"),
     ])
       .then(([saleRes, rentRes]) => {
-        // Combine and process farm data
         const combinedFarms = [
           ...saleRes.data.map((farm) => ({ ...farm, farm_type: "Sale" })),
           ...rentRes.data.map((farm) => ({ ...farm, farm_type: "Rent" })),
         ];
         setFarms(combinedFarms);
-        // Load feedback for farms
         loadFeedback(combinedFarms);
         setLoading(false);
       })
@@ -358,23 +364,25 @@ function AdminDashboard() {
   }, []);
 
   // Get feedback for specific farm
-  const getFeedback = useCallback((farm) => {
-    const key = getFarmFeedbackKey(farm);
-    return feedbackMap[key] || "";
-  }, [feedbackMap, getFarmFeedbackKey]);
+  const getFeedback = useCallback(
+    (farm) => {
+      const key = getFarmFeedbackKey(farm);
+      return feedbackMap[key] || "";
+    },
+    [feedbackMap, getFarmFeedbackKey]
+  );
 
   const handleValidate = useCallback(
     (farm, status) => {
+      console.log(`Attempting to ${status} farm:`, farm);
       setLoading(true);
-      
-      // Get farm ID and type
+
       const id = farm.id;
       const farmType = farm.farm_type;
-      
-      // Get current feedback for this specific farm
+
       const key = getFarmFeedbackKey(farm);
       const currentFeedback = feedbackMap[key] || "";
-      
+
       const payload = {
         is_validated: status === "approve",
         is_rejected: status === "reject",
@@ -393,7 +401,6 @@ function AdminDashboard() {
         .then((response) => {
           console.log("API response:", response.data);
 
-          // Update only the specific farm that was changed
           setFarms((prevFarms) =>
             prevFarms.map((farmItem) =>
               farmItem.id === id && farmItem.farm_type === farmType
@@ -408,7 +415,8 @@ function AdminDashboard() {
           );
         })
         .catch((err) => {
-          console.error("Error validating farm:", err);
+          console.error(`Error ${status}ing farm:`, err);
+          alert(`Failed to ${status} farm. Please check console for details.`);
         })
         .finally(() => {
           setLoading(false);
@@ -417,11 +425,13 @@ function AdminDashboard() {
     [feedbackMap, getFarmFeedbackKey]
   );
 
-  // Event handlers
-  const handleFeedbackChange = useCallback((farm, value) => {
-    const key = getFarmFeedbackKey(farm);
-    setFeedbackMap((prev) => ({ ...prev, [key]: value }));
-  }, [getFarmFeedbackKey]);
+  const handleFeedbackChange = useCallback(
+    (farm, value) => {
+      const key = getFarmFeedbackKey(farm);
+      setFeedbackMap((prev) => ({ ...prev, [key]: value }));
+    },
+    [getFarmFeedbackKey]
+  );
 
   const handleDrawerToggle = useCallback(
     () => setDrawerOpen((prev) => !prev),
@@ -448,9 +458,16 @@ function AdminDashboard() {
     setExpandedFarm(null);
   }, []);
 
-  // Filter farms based on criteria
+  const handleCloseSingleImageModal = () => {
+    setSingleImageModalOpen(false);
+    setSelectedSingleImage(null);
+  };
+
   const filterFarms = useCallback(() => {
-    if (!farms.length) return;
+    if (!farms.length) {
+      setFilteredFarms([]);
+      return;
+    }
 
     const filtered = farms.filter((farm) => {
       const matchesFilter =
@@ -466,12 +483,13 @@ function AdminDashboard() {
         farm.user?.toString(),
         farm.description,
         farm.quality,
+        farm.farm_number,
       ].filter(Boolean);
 
       const matchesSearch =
         searchQuery === "" ||
         searchableFields.some((field) =>
-          field.toLowerCase().includes(searchQuery.toLowerCase())
+          String(field).toLowerCase().includes(searchQuery.toLowerCase())
         );
 
       return matchesFilter && matchesSearch;
@@ -480,7 +498,6 @@ function AdminDashboard() {
     setFilteredFarms(filtered);
   }, [farms, filter, searchQuery]);
 
-  // Effects
   useEffect(() => {
     fetchFarms();
   }, [fetchFarms]);
@@ -489,11 +506,48 @@ function AdminDashboard() {
     filterFarms();
   }, [filterFarms]);
 
-  // Display farms for current page
   const displayedFarms = useMemo(
     () =>
       filteredFarms.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
     [filteredFarms, page, rowsPerPage]
+  );
+
+  const renderSingleImageThumbnail = useCallback(
+    (imageUrl, title, isRound = false) => {
+      if (!imageUrl) {
+        return (
+          <Typography variant="caption" color="text.secondary">
+            N/A
+          </Typography>
+        );
+      }
+      const fullImageUrl = `http://127.0.0.1:8000${imageUrl}`;
+      return (
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <img
+            src={fullImageUrl}
+            alt={`${title} thumbnail`}
+            style={{
+              width: 40,
+              height: 40,
+              objectFit: "cover",
+              borderRadius: isRound ? "50%" : "4px",
+              marginRight: "8px",
+              cursor: "pointer",
+            }}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent row click from expanding modal
+              setSelectedSingleImage(fullImageUrl);
+              setSingleImageModalOpen(true);
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            View
+          </Typography>
+        </Box>
+      );
+    },
+    []
   );
 
   return (
@@ -633,7 +687,6 @@ function AdminDashboard() {
 
             <List>
               {menuItems.map((item) => {
-                // eslint-disable-next-line no-restricted-globals
                 const isActive = location.pathname === item.path;
 
                 return (
@@ -850,12 +903,14 @@ function AdminDashboard() {
                 <Table size="medium">
                   <TableHead>
                     <TableRow>
+                      <TableCell>Passport</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Price (Tshs)</TableCell>
                       <TableCell>Size (Acres)</TableCell>
                       <TableCell>Farm Number</TableCell>
                       <TableCell>Type</TableCell>
-                      <TableCell>Images</TableCell>
+                      <TableCell>Farm Images</TableCell>
+                      <TableCell>Ownership Certificate</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
@@ -868,6 +923,13 @@ function AdminDashboard() {
                         onClick={() => handleExpandFarm(farm)}
                         sx={{ cursor: "pointer" }}
                       >
+                        <TableCell>
+                          {renderSingleImageThumbnail(
+                            farm.passport,
+                            "Passport",
+                            true
+                          )}
+                        </TableCell>
                         <TableCell>{farm.location}</TableCell>
                         <TableCell>{farm.price}</TableCell>
                         <TableCell>{farm.size}</TableCell>
@@ -875,33 +937,23 @@ function AdminDashboard() {
                         <TableCell>{farm.farm_type}</TableCell>
                         <TableCell>
                           {farm.images && farm.images.length > 0 ? (
-                            <Box sx={{ display: "flex", alignItems: "center" }}>
-                              <img
-                                src={`http://127.0.0.1:8000${farm.images[0].image}`}
-                                alt="Farm thumbnail"
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  objectFit: "cover",
-                                  borderRadius: "4px",
-                                  marginRight: "8px",
-                                }}
-                              />
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {farm.images.length} image
-                                {farm.images.length > 1 ? "s" : ""}
-                              </Typography>
-                            </Box>
+                            renderSingleImageThumbnail(
+                              farm.images[0].image,
+                              "Farm Image"
+                            )
                           ) : (
                             <Typography
                               variant="caption"
                               color="text.secondary"
                             >
-                              No images
+                              N/A
                             </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {renderSingleImageThumbnail(
+                            farm.ownership_certificate,
+                            "Ownership Certificate"
                           )}
                         </TableCell>
                         <TableCell>
@@ -924,9 +976,8 @@ function AdminDashboard() {
                                     e.stopPropagation();
                                     handleValidate(farm, "approve");
                                   }}
-                                  disabled={farm.is_validated}
                                 >
-                                  <CheckCircleIcon fontSize="small" />
+                                  <CheckCircleIcon />
                                 </IconButton>
                               </span>
                             </Tooltip>
@@ -939,9 +990,8 @@ function AdminDashboard() {
                                     e.stopPropagation();
                                     handleValidate(farm, "reject");
                                   }}
-                                  disabled={farm.is_rejected}
                                 >
-                                  <CancelIcon fontSize="small" />
+                                  <CancelIcon />
                                 </IconButton>
                               </span>
                             </Tooltip>
@@ -949,15 +999,6 @@ function AdminDashboard() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {displayedFarms.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                          <Typography variant="body1" color="text.secondary">
-                            No farms found matching your criteria
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -974,302 +1015,306 @@ function AdminDashboard() {
           )}
 
           {/* Cards View */}
-{!loading && activeView === "cards" && (
-  <Grid container spacing={3}>
-    {displayedFarms.map((farm) => (
-      <Grid item xs={12} sm={6} md={4} key={`${farm.farm_type}-${farm.id}`}>
-        <Card 
-          sx={{ 
-            height: '100%', 
-            display: 'flex', 
-            flexDirection: 'column',
-            cursor: 'pointer',
-            '&:hover': {
-              boxShadow: 6,
-              transform: 'translateY(-2px)',
-              transition: 'all 0.2s'
-            }
-          }}
-          onClick={() => handleExpandFarm(farm)}
-        >
-          {farm.images && farm.images.length > 0 ? (
-            <CardMedia
-              component="img"
-              height="160"
-              image={`http://127.0.0.1:8000${farm.images[0].image}`}
-              alt="Farm image"
-            />
-          ) : (
-            <Box 
-              sx={{ 
-                height: 160, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                bgcolor: 'action.hover' 
+          {!loading && activeView === "cards" && (
+            <Grid container spacing={3}>
+              {displayedFarms.map((farm) => (
+                <Grid
+                  item
+                  key={`${farm.farm_type}-${farm.id}`}
+                  xs={12}
+                  sm={6}
+                  md={4}
+                  lg={3}
+                >
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => handleExpandFarm(farm)}
+                  >
+                    {farm.images && farm.images.length > 0 && (
+                      <CardMedia
+                        component="img"
+                        height="180"
+                        image={`http://127.0.0.1:8000${farm.images[0].image}`}
+                        alt="Farm image"
+                        sx={{ objectFit: "cover" }}
+                      />
+                    )}
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          mb: 1,
+                        }}
+                      >
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {farm.location}
+                        </Typography>
+                        <StatusChip farm={farm} />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Type: {farm.farm_type}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Price: Tshs {farm.price}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        Size: {farm.size} Acres
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        Farm #: {farm.farm_number}
+                      </Typography>
+
+                      <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          startIcon={<CheckCircleIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleValidate(farm, "approve");
+                          }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          startIcon={<CancelIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleValidate(farm, "reject");
+                          }}
+                          re
+                        >
+                          Reject
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+
+          {!loading && filteredFarms.length === 0 && (
+            <Paper sx={{ p: 3, textAlign: "center", mt: 3 }}>
+              <Typography variant="h6" color="text.secondary">
+                No farms found matching your criteria.
+              </Typography>
+            </Paper>
+          )}
+
+          {/* Modal for Expanded Farm Details */}
+          {expandedFarm && (
+            <Modal
+              open={Boolean(expandedFarm)}
+              onClose={handleCloseExpanded}
+              aria-labelledby="farm-details-modal"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <ImageIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
-            </Box>
-          )}
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-              <Typography variant="h6" component="div" noWrap>
-                {farm.location}
-              </Typography>
-              <StatusChip farm={farm} />
-            </Box>
-            
-            <Grid container spacing={1} sx={{ mb: 2 }}>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Farm Type
-                </Typography>
-                <Typography variant="body1">
-                  {farm.farm_type}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Size
-                </Typography>
-                <Typography variant="body1">
-                  {farm.size} acres
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Price
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {farm.price} Tshs
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Farm #
-                </Typography>
-                <Typography variant="body1">
-                  {farm.farm_number}
-                </Typography>
-              </Grid>
-            </Grid>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleValidate(farm, "approve");
+              <Paper
+                sx={{
+                  p: 4,
+                  maxWidth: 800,
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  position: "relative",
+                  borderRadius: 2,
                 }}
-                disabled={farm.is_validated}
               >
-                Approve
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleValidate(farm, "reject");
-                }}
-                disabled={farm.is_rejected}
-              >
-                Reject
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-    ))}
-    
-    {displayedFarms.length === 0 && (
-      <Grid item xs={12}>
-        <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            No farms found matching your criteria
-          </Typography>
-        </Box>
-      </Grid>
-    )}
-  </Grid>
-)}
+                <IconButton
+                  sx={{ position: "absolute", top: 8, right: 8 }}
+                  onClick={handleCloseExpanded}
+                >
+                  <CloseIcon />
+                </IconButton>
+                <Typography variant="h5" gutterBottom fontWeight="bold">
+                  Farm Details - {expandedFarm.farm_type}
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
 
-{/* Expanded Farm Modal */}
-<Modal
-  open={expandedFarm !== null}
-  onClose={handleCloseExpanded}
-  aria-labelledby="farm-detail-modal"
-  sx={{
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  }}
->
-  <Paper
-    sx={{
-      maxWidth: 800,
-      width: '90%',
-      maxHeight: '90vh',
-      overflow: 'auto',
-      p: 3,
-      outline: 'none',
-    }}
-  >
-    {expandedFarm && (
-      <>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" component="h2">
-            Farm Details
-          </Typography>
-          <IconButton onClick={handleCloseExpanded}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        
-        <Divider sx={{ mb: 3 }} />
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Location
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              {expandedFarm.location}
-            </Typography>
-            
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>
-              Description
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              {expandedFarm.description || 'No description provided'}
-            </Typography>
-            
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>
-              Soil Quality
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              {expandedFarm.quality || 'Not specified'}
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Farm Type
-                </Typography>
-                <Typography variant="body1">
-                  {expandedFarm.farm_type}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Size
-                </Typography>
-                <Typography variant="body1">
-                  {expandedFarm.size} acres
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Price
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  {expandedFarm.price} Tshs
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Farm Number
-                </Typography>
-                <Typography variant="body1">
-                  {expandedFarm.farm_number}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Status
-                </Typography>
-                <StatusChip farm={expandedFarm} />
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Seller ID
-                </Typography>
-                <Typography variant="body1">
-                  {expandedFarm.user}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Grid>
-          
-          {/* Farm Images */}
-          <Grid item xs={12} sx={{ mt: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Farm Images
-            </Typography>
-            <ImageGallery images={expandedFarm.images || []} />
-          </Grid>
-          
-          {/* Admin Feedback */}
-          <Grid item xs={12} sx={{ mt: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Admin Feedback
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              variant="outlined"
-              placeholder="Enter feedback for the farm owner..."
-              value={getFeedback(expandedFarm)}
-              onChange={(e) => handleFeedbackChange(expandedFarm, e.target.value)}
-            />
-          </Grid>
-          
-          {/* Action Buttons */}
-          <Grid item xs={12} sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={() => handleValidate(expandedFarm, "reject")}
-                disabled={expandedFarm.is_rejected}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1" color="text.secondary">
+                      **Location:** {expandedFarm.location}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      **Price:** Tshs {expandedFarm.price}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      **Size:** {expandedFarm.size} Acres
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      **Farm Number:** {expandedFarm.farm_number}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      **Quality:** {expandedFarm.quality}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      **Description:** {expandedFarm.description || "N/A"}
+                    </Typography>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Current Status: <StatusChip farm={expandedFarm} />
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Typography
+                      variant="subtitle1"
+                      gutterBottom
+                      fontWeight="bold"
+                    >
+                      Owner's Documents
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        **Passport/ID:**
+                      </Typography>
+                      {renderSingleImageThumbnail(
+                        expandedFarm.passport,
+                        "Passport/ID",
+                        true
+                      )}
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        **Ownership Certificate:**
+                      </Typography>
+                      {renderSingleImageThumbnail(
+                        expandedFarm.ownership_certificate,
+                        "Ownership Certificate"
+                      )}
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Typography
+                      variant="subtitle1"
+                      gutterBottom
+                      fontWeight="bold"
+                    >
+                      Farm Images
+                    </Typography>
+                    <ImageGallery
+                      images={expandedFarm.images}
+                      title="Farm Images"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Typography
+                      variant="subtitle1"
+                      gutterBottom
+                      fontWeight="bold"
+                      sx={{ mt: 2 }}
+                    >
+                      Admin Feedback
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      variant="outlined"
+                      placeholder="Add feedback for this farm..."
+                      value={getFeedback(expandedFarm)}
+                      onChange={(e) =>
+                        handleFeedbackChange(expandedFarm, e.target.value)
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircleIcon />}
+                        onClick={() => handleValidate(expandedFarm, "approve")}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<CancelIcon />}
+                        onClick={() => handleValidate(expandedFarm, "reject")}
+                      >
+                        Reject
+                      </Button>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Modal>
+          )}
+
+          {/* Single Image Modal */}
+          <Modal
+            open={singleImageModalOpen}
+            onClose={handleCloseSingleImageModal}
+            aria-labelledby="single-image-modal"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Box
+              sx={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }}
+            >
+              <IconButton
+                sx={{
+                  position: "absolute",
+                  top: -28,
+                  right: -28,
+                  color: "white",
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  "&:hover": {
+                    backgroundColor: "rgba(0,0,0,0.7)",
+                  },
+                }}
+                onClick={handleCloseSingleImageModal}
               >
-                Reject
-              </Button>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={() => handleValidate(expandedFarm, "approve")}
-                disabled={expandedFarm.is_validated}
-              >
-                Approve
-              </Button>
+                <CloseIcon />
+              </IconButton>
+              <img
+                src={selectedSingleImage}
+                alt="Enlarged view"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "80vh",
+                  objectFit: "contain",
+                  border: "2px solid white",
+                  borderRadius: "4px",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+                }}
+              />
             </Box>
-          </Grid>
-        </Grid>
-      </>
-    )}
-  </Paper>
-</Modal>
-    </Box>
-  </Box>
-</ThemeProvider>
-);
+          </Modal>
+        </Box>
+      </Box>
+    </ThemeProvider>
+  );
 }
 
 export default AdminDashboard;

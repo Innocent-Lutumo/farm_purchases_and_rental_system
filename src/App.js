@@ -6,8 +6,6 @@ import Purchases2 from "./component/Buyer/PurchasesPage2";
 import LoginPage from "./component/Common/LoginPage";
 import RegistrationForm from "./component/Common/RegisterPage";
 import Trial from "./component/Buyer/trial";
-import FinalDraft from "./component/Renter/FinalDraft";
-import FinalDraft1 from "./component/Buyer/FinalDraft1";
 import RentPage from "./component/Renter/RentPage";
 import SellerPage from "./component/Seller/SellerPage";
 import UploadFarmForm from "./component/Seller/UploadFarmForm";
@@ -37,8 +35,6 @@ function App() {
       <Route path="/RegisterPage" element={<RegistrationForm />} />
       <Route path="/Trial" element={<Trial />} />
       <Route path="/RentPage" element={<RentPage />} />
-      <Route path="/farm/:id" element={<FinalDraft />} />
-      <Route path="/farm1/:id" element={<FinalDraft1 />} />
       <Route path="/RentalAgreement" element={<RentalAgreement />} />
       <Route path="AdminLogin" element={<AdminLogin />} />
       <Route

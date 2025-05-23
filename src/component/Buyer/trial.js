@@ -8,53 +8,65 @@ import {
   CardMedia,
   CardContent,
   Box,
-  InputAdornment,
   IconButton,
-  TextField,
-  Popover,
-  List,
-  ListItem,
   Button,
-  ListItemText,
-  Divider,
   Modal,
   CircularProgress,
+  Tooltip,
+  InputBase,
+  alpha,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  ListItemIcon,
+  // Removed Switch and FormControlLabel as they were primarily for admin toggling
 } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import TwitterIcon from "@mui/icons-material/Twitter";
-import SearchIcon from "@mui/icons-material/Search";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { Link } from "react-router-dom";
+import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import SearchIcon from "@mui/icons-material/Search";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+// Removed AdminPanelSettingsIcon
 import axios from "axios";
+import PurchaseDialog from "./PurchaseDialog"; // Assuming this component exists
+import FarmMapModal from "./FarmMapModal"; // Assuming this component exists
+import PersonIcon from "@mui/icons-material/Person";
+import HomeIcon from "@mui/icons-material/Home";
+import HistoryIcon from "@mui/icons-material/History";
 
 const Trial = () => {
-  const [search, setSearch] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [currentFarm, setCurrentFarm] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [selectedFarm, setSelectedFarm] = useState(null);
+  const [showMap, setShowMap] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [confirmPurchaseOpen, setConfirmPurchaseOpen] = useState(false);
+  const [miniSidebarOpen, setMiniSidebarOpen] = useState(false);
+  // Removed showAdminDashboard state
 
   useEffect(() => {
+    // This effect now fetches ONLY validated/not rejected farms for the main display.
     const fetchFarms = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/farmsale/validated/"
+          "http://127.0.0.1:8000/api/farmsale/" // Assuming your API endpoint for validated/not rejected farms
         );
-        // Filter farms that are validated only
-        const validatedFarms = response.data.filter(
-          (farm) => farm.is_validated && !farm.is_rejected
-        );
-        setFarms(validatedFarms);
+        // Filter farms to display only validated and not rejected ones directly here
+        setFarms(response.data.filter(farm => farm.is_validated && !farm.is_rejected));
       } catch (error) {
         console.error("Error fetching farms:", error);
         setError("Failed to load farms");
@@ -65,14 +77,6 @@ const Trial = () => {
 
     fetchFarms();
   }, []);
-
-  const handleProfileIconClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
-  };
 
   const handleImageClick = (farm, index) => {
     setCurrentFarm(farm);
@@ -101,217 +105,360 @@ const Trial = () => {
   };
 
   const handlePurchase = (farm) => {
-    const confirmPurchase = window.confirm(
-      `Do you really want to purchase ${farm.name} located in ${farm.location}?`
-    );
-    if (confirmPurchase) {
-      navigate(`/farm1/${farm.id}`);
+    if (farm.is_sold) {
+      // Prevent purchase if farm is sold
+      return;
     }
+    setSelectedFarm(farm);
+    setConfirmPurchaseOpen(true);
   };
 
-  const filteredFarms = farms.filter((farm) =>
-    farm.location.toLowerCase().includes(search.toLowerCase())
+  const handleConfirmPurchase = () => {
+    setConfirmPurchaseOpen(false);
+    setPurchaseDialogOpen(true);
+  };
+
+  // Function to update the farm's `is_sold` status (called by PurchaseDialog)
+  const handleFarmSold = (farmId) => {
+    setFarms((prevFarms) =>
+      prevFarms.map((farm) =>
+        farm.id === farmId ? { ...farm, is_sold: true } : farm
+      )
+    );
+  };
+
+  // Removed handleToggleSoldStatus as it was specific to admin
+  // Removed handleAdminClick as it was specific to admin dashboard
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleToggleMiniSidebar = () => {
+    setMiniSidebarOpen(!miniSidebarOpen);
+  };
+
+  // Filter farms for the main display and search (already handled in useEffect and here)
+  const filteredDisplayFarms = farms.filter(
+    (farm) =>
+      farm.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (farm.price &&
+        farm.price.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
+      farm.size.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      farm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      farm.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <AppBar position="static" sx={{ background: "green", height: "80px" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      <AppBar
+        position="fixed"
+        sx={{
+          background: "green",
+          height: "80px",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
         <Toolbar>
+          {/* Menu Icon - toggles the mini sidebar */}
+          <IconButton
+            color="inherit"
+            aria-label="toggle sidebar"
+            onClick={handleToggleMiniSidebar}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon sx={{ fontSize: "2.5rem" }} />
+          </IconButton>
+
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6">Farm Finder</Typography>
             <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
               Find your ideal farmland for purchase.
             </Typography>
           </Box>
-          <IconButton color="inherit" onClick={handleProfileIconClick}>
-            <AccountCircleIcon sx={{ fontSize: "2.5rem" }} />
-          </IconButton>
+
+          {/* Search Input and Button */}
+          <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
+            {showSearchInput && (
+              <InputBase
+                placeholder="Search farms..."
+                inputProps={{ "aria-label": "search" }}
+                value={searchTerm}
+                onChange={handleSearchChange}
+                sx={{
+                  color: "inherit",
+                  "& .MuiInputBase-input": {
+                    padding: (theme) => theme.spacing(1, 1, 1, 0),
+                    paddingLeft: `calc(1em + 24px)`,
+                    transition: (theme) => theme.transitions.create("width"),
+                    width: "120px",
+                    "&:focus": {
+                      width: "200px",
+                    },
+                    borderBottom: "1px solid",
+                    borderColor: alpha("#fff", 0.7),
+                  },
+                  backgroundColor: alpha("#fff", 0.15),
+                  borderRadius: (theme) => theme.shape.borderRadius,
+                  "&:hover": {
+                    backgroundColor: alpha("#fff", 0.25),
+                  },
+                  position: "relative",
+                  marginRight: (theme) => theme.spacing(1),
+                }}
+              />
+            )}
+            <IconButton
+              color="inherit"
+              onClick={() => setShowSearchInput(!showSearchInput)}
+            >
+              <SearchIcon sx={{ fontSize: "2.0rem" }} />
+            </IconButton>
+          </Box>
+
+          {/* Profile Icon on the right */}
+          <Tooltip title="My Profile">
+            <IconButton
+              color="inherit"
+              component={Link}
+              to="#" // Link to your profile page
+              sx={{ ml: 2 }} // Margin left for spacing from search
+            >
+              <PersonIcon sx={{ fontSize: "2.5rem" }} />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
-      <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={handlePopoverClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      {/* Custom Mini-Sidebar */}
+      <Box
+        sx={{
+          width: miniSidebarOpen ? 200 : 60, // Expanded vs. collapsed width
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+          overflowX: "hidden", // Hide horizontal overflow when collapsed
+          transition: (theme) =>
+            theme.transitions.create("width", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+          backgroundColor: "#f0f0f0",
+          pt: "80px", // Offset for AppBar height
+          borderRight: "1px solid #ccc", // Optional: add a subtle border
+        }}
       >
-        <Box
-          sx={{
-            width: 150,
-            padding: 2,
-            backgroundColor: "#f0f0f0",
-            borderRadius: 2,
-          }}
-        >
-          <List sx={{ padding: 0 }}>
-            <ListItem button component={Link} to="#" sx={{ color: "black" }}>
-              <ListItemText primary="My profile" />
-            </ListItem>
-            <ListItem
-              button
-              component={Link}
-              to="/HomePage"
-              sx={{ color: "black" }}
-            >
-              <ListItemText primary="Home" />
-            </ListItem>
-            <Divider />
-            <ListItem
-              button
-              component={Link}
-              to="/PurchasesPage2"
-              sx={{ color: "black" }}
-            >
-              <ListItemText primary="History" />
-            </ListItem>
-            <Divider />
-          </List>
-        </Box>
-      </Popover>
-
-      <Container sx={{ my: 4, flex: 1 }}>
-        <Typography
-          variant="h5"
-          color="green"
-          textAlign="center"
-          fontWeight={600}
-          gutterBottom
-        >
-          Featured Farmlands
-        </Typography>
-        <Typography textAlign="center" sx={{ mb: 2 }}>
-          Below are the available farmlands for purchase. Explore and find your
-          ideal property.
-        </Typography>
-
-        <Box
-          sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 4 }}
-        >
-          <TextField
-            variant="standard"
-            placeholder="Search Farms by Location"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ width: "80%" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="outlined"
-            color="success"
-            onClick={() => console.log("Search triggered:", search)}
+        <List>
+          <ListItem
+            button
+            onClick={() => setMiniSidebarOpen(false)} // Just close sidebar
+            component={Link}
+            to="#" // Can be the current page or a dedicated home route
+            sx={{ color: "black" }}
           >
-            Search
-          </Button>
-        </Box>
-
-        {loading ? (
-          <Box textAlign="center" mt={5}>
-            <CircularProgress color="success" />
-            <Typography>Loading farms...</Typography>
-          </Box>
-        ) : error ? (
-          <Typography textAlign="center" color="error">
-            {error}
-          </Typography>
-        ) : filteredFarms.length === 0 ? (
-          <Typography textAlign="center">
-            No farms match your search.
-          </Typography>
-        ) : (
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-              gap: 6,
-            }}
+            <ListItemIcon>
+              <HomeIcon sx={{ color: "green" }} />
+            </ListItemIcon>
+            {miniSidebarOpen && <ListItemText primary="Home" />}
+          </ListItem>
+          <Divider />
+          <ListItem
+            button
+            component={Link}
+            to="/PurchasesPage2"
+            sx={{ color: "black" }}
           >
-            {filteredFarms.map((farm) => (
-              <Card
-                key={farm.id}
-                sx={{
-                  boxShadow: 5,
-                  borderRadius: 3,
-                  overflow: "hidden",
-                  transition: "0.3s",
-                  "&:hover": { transform: "scale(1.05)" },
-                }}
-              >
-                <Box sx={{ display: "flex" }}>
-                  {farm.images && farm.images.length > 0 ? (
-                    <CardMedia
-                      component="img"
-                      image={`http://localhost:8000${farm.images[0].image}`}
-                      alt={farm.name}
-                      onClick={() => handleImageClick(farm, 0)}
-                      sx={{
-                        width: "40%",
-                        height: "200px",
-                        objectFit: "cover",
-                        borderRadius: 2,
-                        margin: 1,
-                        cursor: "pointer",
-                      }}
-                    />
-                  ) : (
+            <ListItemIcon>
+              <HistoryIcon sx={{ color: "green" }} />
+            </ListItemIcon>
+            {miniSidebarOpen && <ListItemText primary="History" />}
+          </ListItem>
+          <Divider />
+          {/* Removed Admin Dashboard Link */}
+        </List>
+      </Box>
+
+      {/* Main Content Area */}
+      <Container
+        sx={{
+          my: 4,
+          flex: 1,
+          ml: 0,
+          pt: "80px",
+          transition: (theme) =>
+            theme.transitions.create("margin-left", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+        }}
+      >
+        {/* Only the main display logic remains */}
+        <>
+          <Typography
+            variant="h5"
+            color="green"
+            textAlign="center"
+            fontWeight={600}
+            gutterBottom
+          >
+            Featured Farmlands
+          </Typography>
+          <Typography textAlign="center" sx={{ mb: 2 }}>
+            Below are the available farmlands for purchase. Explore and find your
+            ideal property.
+          </Typography>
+
+          {loading ? (
+            <Box textAlign="center" mt={5}>
+              <CircularProgress color="success" />
+              <Typography>Loading farms...</Typography>
+            </Box>
+          ) : error ? (
+            <Typography textAlign="center" color="error">
+              {error}
+            </Typography>
+          ) : filteredDisplayFarms.length === 0 ? (
+            <Typography textAlign="center">
+              {searchTerm
+                ? `No farms found matching "${searchTerm}".`
+                : "No farms available at the moment."}
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+                gap: 6,
+              }}
+            >
+              {filteredDisplayFarms.map((farm) => (
+                <Card
+                  key={farm.id}
+                  sx={{
+                    boxShadow: 5,
+                    borderRadius: 3,
+                    overflow: "hidden",
+                    transition: "0.3s",
+                    "&:hover": { transform: "scale(1.05)" },
+                    position: "relative", // Needed for absolute positioning of 'Sold Out' badge
+                    opacity: farm.is_sold ? 0.7 : 1, // Dim if sold
+                  }}
+                >
+                  {farm.is_sold && (
                     <Box
                       sx={{
-                        width: "40%",
-                        height: "200px",
-                        margin: 1,
-                        backgroundColor: "#e0e0e0",
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        zIndex: 1,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        borderRadius: 3,
                       }}
                     >
-                      <Typography>No Image</Typography>
+                      <Typography
+                        variant="h4"
+                        color="white"
+                        fontWeight="bold"
+                        sx={{
+                          transform: "rotate(-25deg)", // Angle the text
+                          border: "2px solid white",
+                          padding: "8px 16px",
+                          borderRadius: "5px",
+                          textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
+                        }}
+                      >
+                        SOLD OUT
+                      </Typography>
                     </Box>
                   )}
+                  <Box sx={{ display: "flex" }}>
+                    {farm.images && farm.images.length > 0 ? (
+                      <CardMedia
+                        component="img"
+                        image={`http://localhost:8000${farm.images[0].image}`}
+                        alt={farm.name}
+                        onClick={() => handleImageClick(farm, 0)}
+                        sx={{
+                          width: "40%",
+                          height: "200px",
+                          objectFit: "cover",
+                          borderRadius: 2,
+                          margin: 1,
+                          cursor: "pointer",
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: "40%",
+                          height: "200px",
+                          margin: 1,
+                          backgroundColor: "#e0e0e0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Typography>No Image</Typography>
+                      </Box>
+                    )}
 
-                  <CardContent sx={{ width: "60%", padding: 1 }}>
-                    <Typography variant="h6" fontWeight="bold">
-                      {farm.name}
-                    </Typography>
-                    <Typography>
-                      <strong>Price:</strong> {farm.price}/= Tshs
-                    </Typography>
-                    <Typography>
-                      <strong>Size:</strong> {farm.size}
-                    </Typography>
-                    <Typography>
-                      <strong>Quality:</strong> {farm.quality}
-                    </Typography>
-                    <Typography fontSize="12px">
-                      <strong>Location:</strong> {farm.location}{" "}
-                      <LocationOnIcon />
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      fullWidth
-                      onClick={() => handlePurchase(farm)}
-                      sx={{ mt: 2, fontSize: 10 }}
-                    >
-                      Click to Purchase
-                    </Button>
-                  </CardContent>
-                </Box>
-                <Typography sx={{ p: 1, backgroundColor: "#d8f9d8" }}>
-                  {farm.description}
-                </Typography>
-              </Card>
-            ))}
-          </Box>
-        )}
+                    <CardContent sx={{ width: "60%", padding: 1 }}>
+                      <Typography variant="h6" fontWeight="bold">
+                        {farm.name}
+                      </Typography>
+                      <Typography>
+                        <strong>Price:</strong> {farm.price}/= Tshs
+                      </Typography>
+                      <Typography>
+                        <strong>Size:</strong> {farm.size}
+                      </Typography>
+                      <Typography>
+                        <strong>Quality:</strong> {farm.quality}
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Typography fontSize="12px">
+                          <strong>Location:</strong> {farm.location}
+                        </Typography>
+                        <Tooltip title="Show on Map">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedFarm(farm);
+                              setShowMap(true);
+                            }}
+                          >
+                            <LocationOnIcon fontSize="small" color="success" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        onClick={() => handlePurchase(farm)}
+                        sx={{ mt: 2, fontSize: 10 }}
+                        disabled={farm.is_sold} // Disable button if sold
+                      >
+                        {farm.is_sold ? "SOLD OUT" : "Click to Purchase"}
+                      </Button>
+                    </CardContent>
+                  </Box>
+                  <Typography sx={{ p: 1, backgroundColor: "#d8f9d8" }}>
+                    {farm.description}
+                  </Typography>
+                </Card>
+              ))}
+            </Box>
+          )}
+        </>
       </Container>
 
+      {/* Image Modal */}
       <Modal open={imageModalOpen} onClose={handleImageClose}>
         <Box
           sx={{
@@ -368,52 +515,47 @@ const Trial = () => {
         </Box>
       </Modal>
 
-      {/* Footer */}
-      <Box
-        sx={{
-          backgroundColor: "#d8f9d8",
-          textAlign: "center",
-          padding: 2,
-          mt: "auto",
-        }}
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmPurchaseOpen}
+        onClose={() => setConfirmPurchaseOpen(false)}
+        aria-labelledby="confirm-purchase-title"
+        aria-describedby="confirm-purchase-description"
       >
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <IconButton
-            href="https://www.instagram.com"
-            target="_blank"
-            sx={{ color: "#E4405F", mx: 1 }}
-          >
-            <InstagramIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.twitter.com"
-            target="_blank"
-            sx={{ color: "#1DA1F2", mx: 1 }}
-          >
-            <TwitterIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.facebook.com"
-            target="_blank"
-            sx={{ color: "#1877F2", mx: 1 }}
-          >
-            <FacebookIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.linkedin.com"
-            target="_blank"
-            sx={{ color: "#0077B5", mx: 1 }}
-          >
-            <LinkedInIcon />
-          </IconButton>
-        </Box>
-        <Typography fontSize={14}>
-          Created by <strong>S/N 19</strong>
-        </Typography>
-        <Typography fontSize={14}>
-          Contacts: 2557 4757 0004 <br /> Email: serialnumber19@gmail.com
-        </Typography>
-      </Box>
+        <DialogTitle id="confirm-purchase-title">Confirm Purchase</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-purchase-description">
+            Are you sure you want to proceed with purchasing{" "}
+            <Typography component="span" fontWeight="bold">
+              {selectedFarm?.name || "this farm"}
+            </Typography>
+            ? This action will initiate the purchase process.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmPurchaseOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmPurchase} color="success" autoFocus>
+            Yes, I'm sure
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Purchase Dialog */}
+      <PurchaseDialog
+        open={purchaseDialogOpen}
+        onClose={() => setPurchaseDialogOpen(false)}
+        farm={selectedFarm}
+        onFarmSold={handleFarmSold} 
+      />
+
+      {/* Map Modal */}
+      <FarmMapModal
+        open={showMap}
+        onClose={() => setShowMap(false)}
+        farm={selectedFarm}
+      />
     </Box>
   );
 };

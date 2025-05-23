@@ -28,6 +28,8 @@ import {
   DialogTitle,
   Tooltip,
   CircularProgress,
+  Switch, 
+  FormControlLabel, 
 } from "@mui/material";
 import {
   LocationOn as LocationOnIcon,
@@ -37,10 +39,10 @@ import {
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { green } from "@mui/material/colors";
+import { green } from "@mui/material/colors"; 
 import "../../styles/Animation.css";
 
-export default function Rent() {
+export default function Purchases() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function Rent() {
       setOrders(updated);
       setFilteredOrders(updated);
     } catch (error) {
-      alert("Failed to update order status. Please try again.");
+      console.error("Failed to update order status:", error);
     }
   };
 
@@ -114,6 +116,28 @@ export default function Rent() {
       console.error("Failed to delete transaction:", error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleFarmAvailabilityToggle = async (farmId, currentIsSold) => {
+    try {
+      const token = localStorage.getItem("access");
+      const newIsSoldStatus = !currentIsSold; 
+      await axios.patch(
+        `http://127.0.0.1:8000/api/farmsale/${farmId}/`,
+        { is_sold: newIsSoldStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const updatedOrders = orders.map((order) =>
+        order.farm.id === farmId
+          ? { ...order, farm: { ...order.farm, is_sold: newIsSoldStatus } }
+          : order
+      );
+      setOrders(updatedOrders);
+      setFilteredOrders(updatedOrders);
+    } catch (error) {
+      console.error("Failed to update farm availability:", error);
     }
   };
 
@@ -244,6 +268,7 @@ export default function Rent() {
                 <TableCell>Email</TableCell>
                 <TableCell>Edit Status</TableCell>
                 <TableCell>Delete</TableCell>
+                <TableCell>Availability</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -324,6 +349,26 @@ export default function Rent() {
                     >
                       <DeleteIcon />
                     </IconButton>
+                  </TableCell>
+                  <TableCell>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={!order.farm.is_sold}
+                          onChange={() =>
+                            handleFarmAvailabilityToggle(
+                              order.farm.id,
+                              order.farm.is_sold
+                            )
+                          }
+                          color={order.farm.is_sold ? "warning" : "success"} 
+                        />
+                      }
+                      label={order.farm.is_sold ? "Sold" : "Available"}
+                      sx={{
+                        color: order.farm.is_sold ? "orange" : green[700],
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

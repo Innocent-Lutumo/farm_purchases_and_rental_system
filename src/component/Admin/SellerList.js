@@ -100,7 +100,7 @@ const SellerList = () => {
   const fetchSellers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin-sellers/');
+      const response = await api.get('http://127.0.0.1:8000/api/admin-sellers/');
       setSellers(response.data);
       setError(null);
     } catch (err) {
@@ -127,7 +127,7 @@ const SellerList = () => {
     try {
       await api.put(`/admin-sellers/${currentSeller.id}/`, currentSeller);
       setOpenEditDialog(false);
-      fetchSellers(); // Refresh the list
+      fetchSellers(); 
       setSnackbar({
         open: true,
         message: 'Seller updated successfully',
@@ -154,7 +154,7 @@ const SellerList = () => {
     try {
       await api.delete(`/admin-sellers/${currentSeller.id}/`);
       setOpenDeleteDialog(false);
-      fetchSellers(); // Refresh the list after successful deletion
+      fetchSellers(); 
       setSnackbar({
         open: true,
         message: 'Seller deleted successfully',
@@ -185,7 +185,6 @@ const SellerList = () => {
 
   return (
     <>
-      {/* Header with AppBar in green */}
       <AppBar position="static" sx={{ backgroundColor: themeColor.primary }}>
         <Toolbar>
           <IconButton 
@@ -204,7 +203,7 @@ const SellerList = () => {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-        {/* Page Title Section with enhanced styling */}
+        {/* Page Title Section*/}
         <Box sx={{ mb: 4, textAlign: 'left' }}>
           <Typography 
             variant="h4" 
@@ -235,7 +234,7 @@ const SellerList = () => {
 
         <Divider sx={{ mb: 4 }} />
 
-        {/* Loading and Error States with improved styling */}
+        {/* Loading and Error States */}
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
             <CircularProgress size={40} thickness={4} sx={{ color: themeColor.primary }} />
@@ -268,7 +267,7 @@ const SellerList = () => {
           </Alert>
         )}
 
-        {/* Table with enhanced styling and new action buttons */}
+        {/* Table  and new action buttons */}
         {!loading && sellers.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -380,7 +379,7 @@ const SellerList = () => {
               </Table>
             </Paper>
             
-            {/* Additional statistics box with green theme */}
+            {/* Additional statistics */}
             <Box 
               sx={{ 
                 mt: 4, 

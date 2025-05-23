@@ -1,4 +1,3 @@
-// Purchases2.jsx
 import React, { useEffect, useState } from "react";
 import RegistrationDialog from "../Shared/FeedbackDialog";
 import AdvertisementSection from "../Shared/Advertisement";
@@ -52,8 +51,8 @@ const Purchases2 = () => {
       ...farm,
       transactionId: purchase.transaction_id,
       purchaseStatus: purchase.status,
-      email: purchase.farm.email,  
-      phone: purchase.farm.phone 
+      email: purchase.farm.email,
+      phone: purchase.farm.phone,
     });
     setDialogOpen(true);
   };
@@ -78,9 +77,31 @@ const Purchases2 = () => {
     fetchPurchases();
   }, []);
 
-  const filteredPurchases = purchases.filter((purchase) =>
-    purchase.transaction_id.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter purchases for display based on transaction ID AND the associated farm's is_sold status
+  const filteredAndDisplayPurchases = purchases.filter((purchase) => {
+    const matchesSearch = purchase.transaction_id.toLowerCase().includes(search.toLowerCase());
+
+    // A purchase should be displayed in history only if:
+    // 1. The transaction is still considered 'active' (not 'Cancelled')
+    // AND
+    // 2. If it was a 'Confirmed' or 'Completed' sale, the farm associated with it is *still* marked as sold (is_sold: true).
+    //    If the farm's `is_sold` is `false`, it means it has been reactivated and should be hidden.
+    //    'Pending' transactions should always show as they represent an ongoing process.
+
+    const isActualSoldPurchase =
+      (purchase.status === 'Confirmed' || purchase.status === 'Completed') &&
+      purchase.farm &&
+      purchase.farm.is_sold === true; // Keep if the farm is *still* sold
+
+    const isPendingPurchase = purchase.status === 'Pending'; // Always show pending transactions
+
+    const isRelevantPurchase = isActualSoldPurchase || isPendingPurchase;
+
+    // Additionally, you might want to explicitly exclude 'Cancelled' transactions from history
+    const isCancelled = purchase.status === 'Cancelled';
+
+    return matchesSearch && isRelevantPurchase && !isCancelled;
+  });
 
   return (
     <Box>
@@ -168,8 +189,8 @@ const Purchases2 = () => {
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {filteredPurchases.length > 0 ? (
-              filteredPurchases.map((purchase, index) => {
+            {filteredAndDisplayPurchases.length > 0 ? (
+              filteredAndDisplayPurchases.map((purchase, index) => {
                 const farm = purchase.farm;
                 const mainImage =
                   farm.images && farm.images.length > 0 && farm.images[0].image
@@ -227,7 +248,7 @@ const Purchases2 = () => {
                           Size: {farm.size} acres
                         </Typography>
                         <Typography variant="body2">
-                          Price: ${farm.price}
+                          Price: {farm.price}TZS
                         </Typography>
                         <Typography variant="body2">
                           Status:{" "}
@@ -250,7 +271,11 @@ const Purchases2 = () => {
               })
             ) : (
               <Grid item xs={12}>
-                <Typography>No purchases found for "{search}"</Typography>
+                <Typography>
+                  {search
+                    ? `No active purchases found matching "${search}"`
+                    : "No active purchase history to display."}
+                </Typography>
               </Grid>
             )}
           </Grid>

@@ -79,7 +79,6 @@ const FinalDraft = () => {
       return isTaken;
     } catch (err) {
       console.error("Error checking farm status:", err);
-      // On error, keep existing status
       return isRented;
     }
   }, [id, isRented]);
@@ -95,7 +94,7 @@ const FinalDraft = () => {
         }
 
         const response = await fetch(
-          `http://127.0.0.1:8000/api/farmrent/validated/${id}`
+          `http://127.0.0.1:8000/api/farmrent/${id}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch farm data");
@@ -127,7 +126,6 @@ const FinalDraft = () => {
     Math.floor(1000000000 + Math.random() * 9000000000);
 
   const handleRentClick = () => {
-    // Don't allow renting if the farm is already rented
     if (isRented) {
       return;
     }

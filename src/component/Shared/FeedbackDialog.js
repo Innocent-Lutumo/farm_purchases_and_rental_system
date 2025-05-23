@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from 'react-router-dom';
 import {
   Button,
   Box,
@@ -169,7 +170,9 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
                 </>
               ) : (
                 <Box sx={{ mt: 2 }}>
-                  <Typography color="success">Contact the Landowner:</Typography>
+                  <Typography color="success">
+                    Contact the Landowner:
+                  </Typography>
                   <Box
                     sx={{
                       display: "flex",
@@ -222,7 +225,14 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
           <Button onClick={onClose} color="error">
             Close
           </Button>
-          <Button color="success">Agreement</Button>
+          <Button
+            component={Link}
+            to="/RentalAgreement"
+            variant="outlined"
+            color="success"
+          >
+            Agreement
+          </Button>
         </DialogActions>
       </Box>
     </Dialog>
