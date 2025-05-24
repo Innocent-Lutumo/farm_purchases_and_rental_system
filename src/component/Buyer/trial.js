@@ -25,7 +25,6 @@ import {
   ListItemText,
   Divider,
   ListItemIcon,
-  // Removed Switch and FormControlLabel as they were primarily for admin toggling
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -34,10 +33,9 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-// Removed AdminPanelSettingsIcon
 import axios from "axios";
-import PurchaseDialog from "./PurchaseDialog"; // Assuming this component exists
-import FarmMapModal from "./FarmMapModal"; // Assuming this component exists
+import PurchaseDialog from "./PurchaseDialog";
+import FarmMapModal from "./FarmMapModal";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
@@ -56,17 +54,16 @@ const Trial = () => {
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [confirmPurchaseOpen, setConfirmPurchaseOpen] = useState(false);
   const [miniSidebarOpen, setMiniSidebarOpen] = useState(false);
-  // Removed showAdminDashboard state
 
   useEffect(() => {
-    // This effect now fetches ONLY validated/not rejected farms for the main display.
     const fetchFarms = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/farmsale/" // Assuming your API endpoint for validated/not rejected farms
+          "http://127.0.0.1:8000/api/farmsale/validated/"
         );
-        // Filter farms to display only validated and not rejected ones directly here
-        setFarms(response.data.filter(farm => farm.is_validated && !farm.is_rejected));
+        setFarms(
+          response.data.filter((farm) => farm.is_validated && !farm.is_rejected)
+        );
       } catch (error) {
         console.error("Error fetching farms:", error);
         setError("Failed to load farms");
@@ -106,7 +103,6 @@ const Trial = () => {
 
   const handlePurchase = (farm) => {
     if (farm.is_sold) {
-      // Prevent purchase if farm is sold
       return;
     }
     setSelectedFarm(farm);
@@ -127,9 +123,6 @@ const Trial = () => {
     );
   };
 
-  // Removed handleToggleSoldStatus as it was specific to admin
-  // Removed handleAdminClick as it was specific to admin dashboard
-
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
   };
@@ -143,10 +136,11 @@ const Trial = () => {
     (farm) =>
       farm.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (farm.price &&
-        farm.price.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
-      farm.size.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      farm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      farm.description.toLowerCase().includes(searchTerm.toLowerCase())
+        farm.price
+          .toString()
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      farm.size.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -218,12 +212,7 @@ const Trial = () => {
 
           {/* Profile Icon on the right */}
           <Tooltip title="My Profile">
-            <IconButton
-              color="inherit"
-              component={Link}
-              to="#" // Link to your profile page
-              sx={{ ml: 2 }} // Margin left for spacing from search
-            >
+            <IconButton color="inherit" component={Link} to="#" sx={{ ml: 2 }}>
               <PersonIcon sx={{ fontSize: "2.5rem" }} />
             </IconButton>
           </Tooltip>
@@ -233,26 +222,26 @@ const Trial = () => {
       {/* Custom Mini-Sidebar */}
       <Box
         sx={{
-          width: miniSidebarOpen ? 200 : 60, // Expanded vs. collapsed width
+          width: miniSidebarOpen ? 200 : 60,
           flexShrink: 0,
           whiteSpace: "nowrap",
-          overflowX: "hidden", // Hide horizontal overflow when collapsed
+          overflowX: "hidden",
           transition: (theme) =>
             theme.transitions.create("width", {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
           backgroundColor: "#f0f0f0",
-          pt: "80px", // Offset for AppBar height
-          borderRight: "1px solid #ccc", // Optional: add a subtle border
+          pt: "80px",
+          borderRight: "1px solid #ccc",
         }}
       >
         <List>
           <ListItem
             button
-            onClick={() => setMiniSidebarOpen(false)} // Just close sidebar
+            onClick={() => setMiniSidebarOpen(false)}
             component={Link}
-            to="#" // Can be the current page or a dedicated home route
+            to="/HomePage"
             sx={{ color: "black" }}
           >
             <ListItemIcon>
@@ -273,7 +262,6 @@ const Trial = () => {
             {miniSidebarOpen && <ListItemText primary="History" />}
           </ListItem>
           <Divider />
-          {/* Removed Admin Dashboard Link */}
         </List>
       </Box>
 
@@ -303,8 +291,8 @@ const Trial = () => {
             Featured Farmlands
           </Typography>
           <Typography textAlign="center" sx={{ mb: 2 }}>
-            Below are the available farmlands for purchase. Explore and find your
-            ideal property.
+            Below are the available farmlands for purchase. Explore and find
+            your ideal property.
           </Typography>
 
           {loading ? (
@@ -339,8 +327,8 @@ const Trial = () => {
                     overflow: "hidden",
                     transition: "0.3s",
                     "&:hover": { transform: "scale(1.05)" },
-                    position: "relative", // Needed for absolute positioning of 'Sold Out' badge
-                    opacity: farm.is_sold ? 0.7 : 1, // Dim if sold
+                    position: "relative",
+                    opacity: farm.is_sold ? 0.7 : 1,
                   }}
                 >
                   {farm.is_sold && (
@@ -364,7 +352,7 @@ const Trial = () => {
                         color="white"
                         fontWeight="bold"
                         sx={{
-                          transform: "rotate(-25deg)", // Angle the text
+                          transform: "rotate(-25deg)",
                           border: "2px solid white",
                           padding: "8px 16px",
                           borderRadius: "5px",
@@ -442,7 +430,7 @@ const Trial = () => {
                         fullWidth
                         onClick={() => handlePurchase(farm)}
                         sx={{ mt: 2, fontSize: 10 }}
-                        disabled={farm.is_sold} // Disable button if sold
+                        disabled={farm.is_sold}
                       >
                         {farm.is_sold ? "SOLD OUT" : "Click to Purchase"}
                       </Button>
@@ -547,7 +535,7 @@ const Trial = () => {
         open={purchaseDialogOpen}
         onClose={() => setPurchaseDialogOpen(false)}
         farm={selectedFarm}
-        onFarmSold={handleFarmSold} 
+        onFarmSold={handleFarmSold}
       />
 
       {/* Map Modal */}

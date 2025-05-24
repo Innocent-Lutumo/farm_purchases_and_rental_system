@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
 import RentDialog from "./RentDialog";
-import FarmStatusIndicator from "./FarmStatusIndicator";
-import { MapTilerFarmMap } from "../Shared/UserMap";
+import FarmMapModal from "../Buyer/FarmMapModal";
+
 import {
   AppBar,
   Toolbar,
@@ -41,7 +41,6 @@ import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
 import axios from "axios";
 
-
 const RentPage = () => {
   const [search, setSearch] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -49,7 +48,6 @@ const RentPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [farmStatus, setFarmStatus] = useState({});
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
   const [selectedFarm, setSelectedFarm] = useState(null);
   const [showMap, setShowMap] = useState(false);
@@ -84,16 +82,16 @@ const RentPage = () => {
     }
   };
 
-  // Handler for opening the map modal (updated to use showMap)
+  // Handler for opening the map modal
   const handleLocationClick = (farm) => {
-    setSelectedFarm(farm); 
+    setSelectedFarm(farm);
     setShowMap(true);
   };
 
-  // Handler for closing the map modal (updated to use showMap)
+  // Handler for closing the map modal
   const handleMapModalClose = () => {
     setShowMap(false);
-    setSelectedFarm(null); 
+    setSelectedFarm(null);
   };
 
   // Handler for opening the confirmation dialog
@@ -104,9 +102,9 @@ const RentPage = () => {
 
   // Handle user's confirmation
   const handleConfirmRent = () => {
-    setConfirmDialogOpen(false); 
-    setSelectedFarm(farmToConfirm); 
-    setRentDialogOpen(true); 
+    setConfirmDialogOpen(false);
+    setSelectedFarm(farmToConfirm);
+    setRentDialogOpen(true);
   };
 
   // Handle cancellation of confirmation
@@ -115,60 +113,40 @@ const RentPage = () => {
     setFarmToConfirm(null);
   };
 
+  const fetchFarms = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        "http://127.0.0.1:8000/api/farmsrent/validated/"
+      );
+      // *** MODIFIED: Removed !farm.is_rented from the filter ***
+      // Now, all validated and not rejected farms will be fetched.
+      const availableFarms = response.data.filter(
+        (farm) => farm.is_validated && !farm.is_rejected
+      );
+      setFarms(availableFarms);
+    } catch (error) {
+      console.error("Error fetching farms:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Empty dependency array means this function is created once
+
+  useEffect(() => {
+    fetchFarms();
+  }, [fetchFarms]); // Re-run effect if fetchFarms changes (though it's useCallback here)
+
   const handleRentDialogClose = () => {
     setRentDialogOpen(false);
-    if (selectedFarm) {
-      checkFarmStatus(selectedFarm.id);
-    }
-    // Clear selected farm after closing the main dialog
     setSelectedFarm(null);
   };
 
-  const checkFarmStatus = async (farmId) => {
-    try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/transactions/farm/${farmId}`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to check farm status: ${response.status}`);
-      }
-      const data = await response.json();
-      const isTaken = data.length > 0;
-      updateFarmStatus(farmId, isTaken);
-      return isTaken;
-    } catch (err) {
-      console.error("Error checking farm status:", err);
-      return false;
-    }
+  // Function to call when a rental is successful in RentDialog
+  const handleRentSuccess = (rentedFarmId) => {
+    setRentDialogOpen(false); // Close the dialog
+    setSelectedFarm(null); // Clear selected farm
+    fetchFarms(); // Re-fetch farms to update the list and reflect the rented status
   };
-
-  const updateFarmStatus = (farmId, status) => {
-    setFarmStatus((prevStatus) => ({
-      ...prevStatus,
-      [farmId]: status,
-    }));
-  };
-
-  useEffect(() => {
-    const fetchFarms = async () => {
-      try {
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/farmsrent/validated/"
-        );
-        const validatedFarms = response.data.filter(
-          (farm) => farm.is_validated && !farm.is_rejected
-        );
-
-        setFarms(validatedFarms);
-      } catch (error) {
-        console.error("Error fetching farms:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFarms();
-  }, []);
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
@@ -178,6 +156,8 @@ const RentPage = () => {
     setMiniSidebarOpen(!miniSidebarOpen);
   };
 
+  // Filtered farms still apply the search term.
+  // The 'is_rented' status will be handled in the rendering logic, not here.
   const filteredFarms = farms.filter(
     (farm) =>
       farm.location.toLowerCase().includes(search.toLowerCase()) ||
@@ -255,12 +235,7 @@ const RentPage = () => {
             </IconButton>
           </Box>
           <Tooltip title="My Profile">
-            <IconButton
-              color="inherit"
-              component={Link}
-              to="#"
-              sx={{ ml: 2 }} 
-            >
+            <IconButton color="inherit" component={Link} to="#" sx={{ ml: 2 }}>
               <PersonIcon sx={{ fontSize: "2.5rem" }} />
             </IconButton>
           </Tooltip>
@@ -270,10 +245,10 @@ const RentPage = () => {
       {/* Custom Mini-Sidebar */}
       <Box
         sx={{
-          width: miniSidebarOpen ? 200 : 60, 
+          width: miniSidebarOpen ? 200 : 60,
           flexShrink: 0,
           whiteSpace: "nowrap",
-          overflowX: "hidden", 
+          overflowX: "hidden",
           transition: (theme) =>
             theme.transitions.create("width", {
               easing: theme.transitions.easing.sharp,
@@ -281,7 +256,7 @@ const RentPage = () => {
             }),
           backgroundColor: "#f0f0f0",
           pt: "80px",
-          borderRight: "1px solid #ccc", 
+          borderRight: "1px solid #ccc",
         }}
       >
         <List>
@@ -300,7 +275,7 @@ const RentPage = () => {
           <ListItem
             button
             component={Link}
-            to="/PurchasesPage2"
+            to="/PurchasesPage"
             sx={{ color: "black" }}
           >
             <ListItemIcon>
@@ -360,8 +335,6 @@ const RentPage = () => {
             }}
           >
             {filteredFarms.map((farm) => {
-              const isTaken = farmStatus[farm.id] || false;
-
               return (
                 <Card
                   key={farm.id}
@@ -370,62 +343,27 @@ const RentPage = () => {
                     borderRadius: 3,
                     overflow: "hidden",
                     transition: "0.3s",
-                    "&:hover": { transform: isTaken ? "none" : "scale(1.05)" },
+                    "&:hover": { transform: "scale(1.05)" },
                     position: "relative",
-                    opacity: isTaken ? 0.6 : 1,
-                    backgroundColor: isTaken ? "#f0f0f0" : "white",
-                    filter: isTaken ? "grayscale(50%)" : "none",
+                    // *** ADDED: Visual cue for rented farms ***
+                    opacity: farm.is_rented ? 0.7 : 1, // Make it slightly faded
+                    pointerEvents: farm.is_rented ? 'none' : 'auto', // Disable click events on the card
                   }}
                 >
-                  <FarmStatusIndicator
-                    farmId={farm.id}
-                    farmType="rent"
-                    size="medium"
-                    initialStatus={isTaken}
-                    statusCallback={(status) => updateFarmStatus(farm.id, status)}
-                  />
-
-                  {isTaken && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: "40%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%) rotate(-30deg)",
-                        backgroundColor: "rgba(220, 0, 0, 0.7)",
-                        color: "white",
-                        padding: "5px 20px",
-                        borderRadius: "5px",
-                        fontWeight: "bold",
-                        fontSize: "24px",
-                        zIndex: 5,
-                        boxShadow: "0 0 10px rgba(0,0,0,0.3)",
-                        border: "2px solid #fff",
-                      }}
-                    >
-                      TAKEN
-                    </Box>
-                  )}
-
                   <Box sx={{ display: "flex" }}>
                     {farm.images && farm.images.length > 0 ? (
                       <CardMedia
                         component="img"
                         image={`http://localhost:8000${farm.images[0].image}`}
                         alt={farm.name}
-                        onClick={
-                          isTaken ? undefined : () => handleImageClick(farm, 0)
-                        }
+                        onClick={() => handleImageClick(farm, 0)}
                         sx={{
                           width: "40%",
                           height: "200px",
                           objectFit: "cover",
                           borderRadius: 2,
                           margin: 1,
-                          cursor: isTaken ? "default" : "pointer",
-                          filter: isTaken
-                            ? "grayscale(80%) brightness(0.9)"
-                            : "none",
+                          cursor: "pointer",
                         }}
                       />
                     ) : (
@@ -481,32 +419,37 @@ const RentPage = () => {
                           Duration: {farm.rent_duration} Months
                         </Typography>
                       )}
-                      <Button
-                        variant="contained"
-                        color={isTaken ? "inherit" : "success"}
-                        fullWidth
-                        disabled={isTaken}
-                        onClick={
-                          isTaken ? undefined : () => handleRentClick(farm)
-                        }
-                        sx={{
-                          mt: 2,
-                          fontSize: 10,
-                          backgroundColor: isTaken ? "#dcdcdc" : undefined,
-                          color: isTaken ? "#999" : undefined,
-                          cursor: isTaken ? "not-allowed" : "pointer",
-                          pointerEvents: isTaken ? "none" : "auto",
-                          "&:hover": {
-                            backgroundColor: isTaken ? "#dcdcdc" : undefined,
-                          },
-                          textDecoration: isTaken ? "line-through" : "none",
-                        }}
-                      >
-                        {isTaken ? "Already Rented" : "Click to Rent"}
-                      </Button>
+                      {/* *** MODIFIED: Conditional rendering for Rent button/label *** */}
+                      {farm.is_rented ? (
+                        <Typography
+                          variant="h6"
+                          color="error" // Use a strong color for "RENTED"
+                          sx={{ mt: 2, textAlign: "center", fontWeight: "bold", textTransform: 'uppercase' }}
+                        >
+                          Rented
+                        </Typography>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          color="success"
+                          fullWidth
+                          onClick={() => handleRentClick(farm)}
+                          sx={{
+                            mt: 2,
+                            fontSize: 10,
+                          }}
+                        >
+                          Click to Rent
+                        </Button>
+                      )}
                     </CardContent>
                   </Box>
-                  <Typography sx={{ p: 1, backgroundColor: isTaken ? "#f0f0f0" : "#d8f9d8" }}>
+                  <Typography
+                    sx={{
+                      p: 1,
+                      backgroundColor: "#d8f9d8",
+                    }}
+                  >
                     {farm.description}
                   </Typography>
                 </Card>
@@ -516,7 +459,7 @@ const RentPage = () => {
         )}
       </Container>
 
-      {/* Image Modal */}
+      {/* Image Modal (unchanged) */}
       <Modal open={imageModalOpen} onClose={handleImageClose}>
         <Box
           sx={{
@@ -573,52 +516,14 @@ const RentPage = () => {
         </Box>
       </Modal>
 
-      {/* Map Modal */}
-      <Modal open={showMap} onClose={handleMapModalClose}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "white",
-            boxShadow: 24,
-            p: 2,
-            maxHeight: "90vh",
-            overflow: "auto",
-            borderRadius: 2,
-            width: "80%",
-            height: "80%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconButton
-            onClick={handleMapModalClose}
-            sx={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              color: "black",
-              zIndex: 10,
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 25 }} />
-          </IconButton>
-          {selectedFarm && selectedFarm.location ? (
-            <MapTilerFarmMap
-              location={selectedFarm.location}
-              style={{ width: "100%", height: "100%" }}
-            />
-          ) : (
-            <Typography>Loading map...</Typography>
-          )}
-        </Box>
-      </Modal>
+      {/* Map Modal - This now uses the FarmMapModal component from Trial.js */}
+      <FarmMapModal
+        open={showMap}
+        onClose={handleMapModalClose}
+        farm={selectedFarm}
+      />
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog (unchanged) */}
       <Dialog
         open={confirmDialogOpen}
         onClose={handleCancelRent}
@@ -649,6 +554,7 @@ const RentPage = () => {
         open={rentDialogOpen}
         onClose={handleRentDialogClose}
         farm={selectedFarm}
+        onRentSuccess={handleRentSuccess}
       />
     </Box>
   );

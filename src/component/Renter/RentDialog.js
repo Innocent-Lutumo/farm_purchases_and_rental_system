@@ -10,12 +10,13 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Modal, 
+  Modal,
+  IconButton,
 } from "@mui/material";
 import { CheckCircle as CheckCircleIcon } from "@mui/icons-material";
-import CloseIcon from "@mui/icons-material/Close"; 
+import CloseIcon from "@mui/icons-material/Close";
 
-const RentDialog = ({ open, onClose, farm }) => {
+const RentDialog = ({ open, onClose, farm, onRentSuccess }) => { 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionComplete, setTransactionComplete] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
@@ -59,7 +60,7 @@ const RentDialog = ({ open, onClose, farm }) => {
     setIsSubmitting(true);
 
     try {
-      // Create transaction
+      // 1. Create transaction
       const transactionResponse = await fetch(
         "http://127.0.0.1:8000/api/transactions/",
         {
@@ -75,7 +76,7 @@ const RentDialog = ({ open, onClose, farm }) => {
             full_name: fullName,
             residence,
             national_id: nationalId,
-            is_rented: true,
+            is_rented: true, // This field is part of the transaction record
           }),
         }
       );
@@ -84,15 +85,17 @@ const RentDialog = ({ open, onClose, farm }) => {
         throw new Error("Failed to create transaction");
       }
 
+      // 2. Update farm's rented status
+      // THIS IS THE KEY CHANGE FOR THE PATH
       const updateResponse = await fetch(
-        `http://127.0.0.1:8000/api/farmrent/${farm.id}/update_status/`,
+        `http://127.0.0.1:8000/api/farmsrent/${farm.id}/update_rented_status/`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            is_rented: true,
+            is_rented: true, // This is the field to update on the Farm model
           }),
         }
       );
@@ -101,9 +104,10 @@ const RentDialog = ({ open, onClose, farm }) => {
         console.warn(
           "Failed to update farm status, but transaction was created"
         );
+        // Optionally, you might want to revert the transaction if the farm update fails critically.
       }
 
-      // Send email notification
+      // 3. Send email notification
       const emailResponse = await fetch(
         "http://127.0.0.1:8000/api/send-transaction-email-rent/",
         {
@@ -123,6 +127,9 @@ const RentDialog = ({ open, onClose, farm }) => {
       }
 
       setTransactionComplete(true);
+      if (onRentSuccess) {
+        onRentSuccess(farm.id); // Notify parent component (RentPage) of success
+      }
     } catch (error) {
       console.error("Failed to submit rental:", error);
       showCustomAlert("Submission Failed", "There was an error submitting your request. Please try again.");
@@ -134,6 +141,7 @@ const RentDialog = ({ open, onClose, farm }) => {
   const handleClose = () => {
     onClose();
     if (transactionComplete) {
+      // Reset form fields only if transaction was successful
       setFullName("");
       setRenterEmail("");
       setRenterPhone("");
@@ -279,7 +287,7 @@ const RentDialog = ({ open, onClose, farm }) => {
         >
           <DialogTitle id="alert-modal-title" sx={{ pb: 1 }}>
             {alertTitle}
-            <Button
+            <IconButton
               onClick={closeCustomAlert}
               sx={{
                 position: 'absolute',
@@ -289,7 +297,7 @@ const RentDialog = ({ open, onClose, farm }) => {
               }}
             >
               <CloseIcon />
-            </Button>
+            </IconButton>
           </DialogTitle>
           <DialogContent id="alert-modal-description" sx={{ pt: 0 }}>
             <Typography>{alertMessage}</Typography>

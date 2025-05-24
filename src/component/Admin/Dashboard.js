@@ -1150,22 +1150,22 @@ function AdminDashboard() {
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body1" color="text.secondary">
-                      **Location:** {expandedFarm.location}
+                      <strong>Location:</strong> {expandedFarm.location}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      **Price:** Tshs {expandedFarm.price}
+                      <strong>Price:</strong> Tshs {expandedFarm.price}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      **Size:** {expandedFarm.size} Acres
+                      <strong>Size:</strong> {expandedFarm.size} Acres
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      **Farm Number:** {expandedFarm.farm_number}
+                      <strong>Farm Number:</strong> {expandedFarm.farm_number}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      **Quality:** {expandedFarm.quality}
+                      <strong>Quality:</strong> {expandedFarm.quality}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      **Description:** {expandedFarm.description || "N/A"}
+                      <strong>Description:</strong> {expandedFarm.description || "N/A"}
                     </Typography>
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>
@@ -1184,7 +1184,7 @@ function AdminDashboard() {
                     </Typography>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" color="text.secondary">
-                        **Passport/ID:**
+                        <strong>Passport/ID:</strong>
                       </Typography>
                       {renderSingleImageThumbnail(
                         expandedFarm.passport,
@@ -1194,7 +1194,7 @@ function AdminDashboard() {
                     </Box>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" color="text.secondary">
-                        **Ownership Certificate:**
+                          <strong>Ownership Certificate:</strong>
                       </Typography>
                       {renderSingleImageThumbnail(
                         expandedFarm.ownership_certificate,

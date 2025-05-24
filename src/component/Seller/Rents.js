@@ -28,6 +28,8 @@ import {
   DialogTitle,
   Tooltip,
   CircularProgress,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -36,11 +38,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { green } from "@mui/material/colors";
-import "../../styles/Animation.css"; 
+import "../../styles/Animation.css";
 
 export default function Rent() {
-  const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [orders, setOrders] = useState([]); 
+  const [filteredOrders, setFilteredOrders] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
@@ -54,6 +56,17 @@ export default function Rent() {
     { label: "Back", path: "/SellerPage" },
   ];
 
+  // Function to apply current filters (search and is_rented status)
+  const applyFilters = (currentOrders, currentSearchQuery) => {
+    return currentOrders.filter(
+      (order) =>
+        order.farm.is_rented && 
+        order.farm.location
+          .toLowerCase()
+          .includes(currentSearchQuery.toLowerCase())
+    );
+  };
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -64,7 +77,7 @@ export default function Rent() {
           { headers }
         );
         setOrders(response.data);
-        setFilteredOrders(response.data);
+        setFilteredOrders(applyFilters(response.data, searchQuery));
       } catch (error) {
         console.error("Error fetching orders:", error.response || error);
       } finally {
@@ -73,7 +86,7 @@ export default function Rent() {
     };
 
     fetchOrders();
-  }, []);
+  }, [searchQuery]);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -95,7 +108,7 @@ export default function Rent() {
         order.id === id ? { ...order, status: newStatus } : order
       );
       setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
+      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
     } catch (error) {
       console.error("Error updating status:", error);
       alert("Failed to update order status. Please try again.");
@@ -115,7 +128,7 @@ export default function Rent() {
       );
       const updatedOrders = orders.filter((order) => order.id !== deleteId);
       setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
+      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
     } catch (error) {
       console.error("Failed to delete transaction:", error);
     } finally {
@@ -123,15 +136,38 @@ export default function Rent() {
     }
   };
 
+  // New handler for farm availability toggle
+  const handleFarmAvailabilityToggle = async (farmId, currentIsRented) => {
+    try {
+      const token = localStorage.getItem("access");
+      const newIsRentedStatus = !currentIsRented; 
+      await axios.patch(
+        `http://127.0.0.1:8000/api/farmsrent/${farmId}/`,
+        { is_rented: newIsRentedStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const updatedOrders = orders.map((order) =>
+        order.farm.id === farmId
+          ? { ...order, farm: { ...order.farm, is_rented: newIsRentedStatus } }
+          : order
+      );
+      setOrders(updatedOrders); 
+      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
+    } catch (error) {
+      console.error("Failed to update farm availability:", error);
+      alert("Failed to update farm availability. Please try again.");
+    }
+  };
+
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
+
   };
 
   const handleSearch = () => {
-    const filtered = orders.filter((order) =>
-      order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredOrders(filtered);
+    // Explicitly call applyFilters when search button is clicked
+    setFilteredOrders(applyFilters(orders, searchQuery));
   };
 
   const openConfirmationDialog = (id) => {
@@ -147,8 +183,90 @@ export default function Rent() {
   if (loading) {
     return (
       <Container sx={{ py: 4, textAlign: "center" }}>
+        <CircularProgress color="success" />
         <Typography>Loading rented farms...</Typography>
       </Container>
+    );
+  }
+
+  // If there are no filtered orders (after initial load or after un-renting all), display message
+  if (filteredOrders.length === 0 && !loading) {
+    return (
+      <Box>
+        <AppBar position="static" sx={{ bgcolor: green[700], py: 2 }}>
+          <Toolbar sx={{ justifyContent: "space-between" }}>
+            <Box sx={{ display: "flex", flexDirection: "column" }}>
+              <Typography variant="h5" fontWeight="bold">
+                Farm Seller Dashboard
+              </Typography>
+              <Typography variant="body2">
+                Manage listings, track rentals, and more.
+              </Typography>
+            </Box>
+            <Box>
+              <IconButton onClick={handleMenu} color="inherit">
+                <AccountCircleIcon sx={{ fontSize: 40 }} />
+              </IconButton>
+              <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+                {profileMenu.map((item) => (
+                  <MenuItem
+                    key={item.label}
+                    component={Link}
+                    to={item.path}
+                    onClick={handleClose}
+                    sx={{
+                      textDecoration: "none",
+                      color: "black",
+                      "&:hover": {
+                        backgroundColor: green[100],
+                        color: green[700],
+                      },
+                    }}
+                  >
+                    {item.label}
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        <Container sx={{ py: 4, textAlign: "center" }}>
+          <Typography variant="h4" color="green" gutterBottom>
+            Rented Farms
+          </Typography>
+          <Typography variant="h6" color="textSecondary" mt={4}>
+            No farms currently rented or found matching your search.
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 2,
+              mb: 4,
+              mt: 4,
+            }}
+          >
+            <TextField
+              variant="standard"
+              placeholder="Search Farms by Location"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              sx={{ width: "80%" }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button variant="outlined" color="success" onClick={handleSearch}>
+              Search
+            </Button>
+          </Box>
+        </Container>
+      </Box>
     );
   }
 
@@ -241,11 +359,16 @@ export default function Rent() {
                 <TableCell>Email</TableCell>
                 <TableCell>Update Status</TableCell>
                 <TableCell>Delete</TableCell>
+                <TableCell>Availability</TableCell> 
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
+              {filteredOrders.map((order, index) => (
+                <TableRow
+                  key={order.id}
+                  className="fade-in"
+                  sx={{ animationDelay: `${index * 0.1}s` }}
+                >
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={2}>
                       <Avatar
@@ -265,7 +388,7 @@ export default function Rent() {
                         <Tooltip title="View Location">
                           <LocationOnIcon sx={{ color: "green" }} />
                         </Tooltip>
-                        <Typography color="success">
+                        <Typography color="success.main">
                           {order.farm.location}
                         </Typography>
                       </Box>
@@ -318,6 +441,27 @@ export default function Rent() {
                     >
                       <DeleteIcon />
                     </IconButton>
+                  </TableCell>
+                  <TableCell>
+                    {/* Availability Switch */}
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={!order.farm.is_rented} 
+                          onChange={() =>
+                            handleFarmAvailabilityToggle(
+                              order.farm.id,
+                              order.farm.is_rented
+                            )
+                          }
+                          color={order.farm.is_rented ? "warning" : "success"}
+                        />
+                      }
+                      label={order.farm.is_rented ? "Rented" : "Available"}
+                      sx={{
+                        color: order.farm.is_rented ? "orange" : green[700],
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
