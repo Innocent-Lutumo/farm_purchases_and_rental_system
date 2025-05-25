@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  Container,
   Typography,
   Table,
   TableHead,
@@ -23,22 +21,43 @@ import {
   DialogContentText,
   DialogTitle,
   Button,
-  TextField,
-  Snackbar
-} from '@mui/material';
-import StorefrontIcon from '@mui/icons-material/Storefront';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { motion } from 'framer-motion';
+  Snackbar,
+  Drawer, // Added for Drawer
+  List, // Added for Drawer
+  ListItem, // Added for Drawer
+  ListItemText, // Added for Drawer
+  ListItemIcon, // Added for Drawer
+  Avatar, // Added for Drawer/AppBar profile
+  CssBaseline, // Added for ThemeProvider
+  ThemeProvider, // Added for ThemeProvider
+  createTheme, // Added for ThemeProvider
+  TextField, // Added for Search
+  InputAdornment, // Added for Search
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { motion } from "framer-motion";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Import for navigation and location
+import {
+  Menu as MenuIcon, // Added for Drawer toggle
+  Dashboard as DashboardIcon, // Added for Dashboard menu item
+  People as PeopleIcon, // Added for Sellers menu item
+  CalendarToday as CalendarIcon, // Added for Farm Rentals menu item
+  Spa as FarmIcon, // Added for Farm Sales menu item
+  LightMode as LightModeIcon, // Added for Theme toggle
+  DarkMode as DarkModeIcon, // Added for Theme toggle
+  Refresh as RefreshIcon, // Added for Refresh button
+  ExitToApp as ExitToAppIcon, // Added for Logout button
+  Search as SearchIcon, // Added for Search input
+} from "@mui/icons-material";
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: "http://localhost:8000/api",
 });
 
 // Request interceptor to add access token
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('access');
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -47,31 +66,34 @@ api.interceptors.request.use(config => {
 
 // Response interceptor to handle token refresh
 api.interceptors.response.use(
-  response => response,
-  async error => {
+  (response) => response,
+  async (error) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refresh = localStorage.getItem('refresh');
+      const refresh = localStorage.getItem("refresh");
 
       if (!refresh) {
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
-        window.location.href = '/login';
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        window.location.href = "/AdminLogin"; // Redirect to admin login
         return Promise.reject(error);
       }
 
       try {
-        const response = await axios.post('http://localhost:8000/api/token/refresh/', { refresh });
-        localStorage.setItem('access', response.data.access);
+        const response = await axios.post(
+          "http://localhost:8000/api/token/refresh/",
+          { refresh }
+        );
+        localStorage.setItem("access", response.data.access);
 
         originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
         return api(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
-        window.location.href = '/login';
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        window.location.href = "/AdminLogin"; // Redirect to admin login
         return Promise.reject(refreshError);
       }
     }
@@ -80,434 +102,709 @@ api.interceptors.response.use(
   }
 );
 
-const SellerList = () => {
-  const [sellers, setSellers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [currentSeller, setCurrentSeller] = useState({});
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
+// Theme creation moved to separate function
+const getTheme = (mode) =>
+  createTheme({
+    palette: {
+      mode,
+      primary: { main: "#2e7d32" },
+      secondary: { main: "#f50057" },
+      background: {
+        default: mode === "light" ? "#f5f5f5" : "#121212",
+        paper: mode === "light" ? "#ffffff" : "#1e1e1e",
+      },
+    },
+    shape: { borderRadius: 12 },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: { borderRadius: 8, textTransform: "none", fontWeight: 600 },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
+            boxShadow:
+              mode === "light"
+                ? "0px 2px 4px -1px rgba(0,0,0,0.1)"
+                : "0px 2px 4px -1px rgba(0,0,0,0.2)",
+          },
+        },
+      },
+    },
+    typography: {
+      fontFamily: '"Inter", "Roboto", "Arial", sans-serif',
+      h6: { fontWeight: 600 },
+    },
   });
 
-  useEffect(() => {
-    fetchSellers();
-  }, []);
+const SellerList = () => {
+  const [sellers, setSellers] = useState([]);
+  const [filteredSellers, setFilteredSellers] = useState([]); // New state for filtered sellers
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [sellerToDelete, setSellerToDelete] = useState({});
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [drawerOpen, setDrawerOpen] = useState(true); // State for drawer
+  const [darkMode, setDarkMode] = useState(false); // State for theme
+  const [searchQuery, setSearchQuery] = useState(""); // State for search query
 
-  const fetchSellers = async () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Theme setup
+  const theme = useMemo(
+    () => getTheme(darkMode ? "dark" : "light"),
+    [darkMode]
+  );
+  const drawerWidth = 240;
+
+  // Menu items configuration
+  const menuItems = useMemo(
+    () => [
+      { text: "Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
+      { text: "Sellers", icon: <PeopleIcon />, path: "/SellerList" },
+      { text: "Farm Rentals", icon: <CalendarIcon />, path: "/FarmRentals" },
+      { text: "Farm Sales", icon: <FarmIcon />, path: "/FarmSales" },
+    ],
+    []
+  );
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh"); // Also remove refresh token on logout
+    navigate("/AdminLogin");
+  }, [navigate]);
+
+  const handleDrawerToggle = useCallback(
+    () => setDrawerOpen((prev) => !prev),
+    []
+  );
+
+  const handleThemeToggle = useCallback(() => setDarkMode((prev) => !prev), []);
+
+  const fetchSellers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('http://127.0.0.1:8000/api/admin-sellers/');
+      const response = await api.get("http://127.0.0.1:8000/api/admin-sellers");
+      console.log("Fetched sellers:", response.data);
       setSellers(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching sellers:", err);
-      setError('Failed to fetch sellers: ' + (err.response?.data?.detail || err.message));
+
+      let errorMessage = "Failed to fetch sellers";
+      if (err.response?.status === 403) {
+        errorMessage = "Access denied. Admin privileges required.";
+      } else if (err.response?.status === 401) {
+        errorMessage = "Authentication required. Please login again.";
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage += ": " + err.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Handler for navigating back
-  const handleBack = () => {
-    window.history.back();
-  };
-
-  // Handler for edit seller
-  const handleEdit = (seller) => {
-    setCurrentSeller(seller);
-    setOpenEditDialog(true);
-  };
-
-  // Handler for saving edited seller
-  const handleSaveEdit = async () => {
-    try {
-      await api.put(`/admin-sellers/${currentSeller.id}/`, currentSeller);
-      setOpenEditDialog(false);
-      fetchSellers(); 
-      setSnackbar({
-        open: true,
-        message: 'Seller updated successfully',
-        severity: 'success'
-      });
-    } catch (err) {
-      console.error("Error updating seller:", err);
-      setSnackbar({
-        open: true,
-        message: 'Failed to update seller: ' + (err.response?.data?.detail || err.message),
-        severity: 'error'
-      });
+  const filterSellers = useCallback(() => {
+    if (!sellers.length) {
+      setFilteredSellers([]);
+      return;
     }
-  };
 
-  // Handler for delete seller dialog
-  const handleDeleteClick = (seller) => {
-    setCurrentSeller(seller);
+    const filtered = sellers.filter((seller) => {
+      const searchableFields = [
+        seller.seller_name,
+        seller.username,
+        seller.seller_residence,
+      ].filter(Boolean); // Removed email from searchable fields
+
+      const matchesSearch =
+        searchQuery === "" ||
+        searchableFields.some((field) =>
+          String(field).toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      return matchesSearch;
+    });
+
+    setFilteredSellers(filtered);
+  }, [sellers, searchQuery]);
+
+  useEffect(() => {
+    fetchSellers();
+  }, [fetchSellers]);
+
+  useEffect(() => {
+    filterSellers();
+  }, [filterSellers]);
+
+  const handleDeleteClick = useCallback((seller) => {
+    console.log("Delete clicked for seller:", seller);
+    setSellerToDelete({
+      id: seller.id || seller.pk,
+      seller_name: seller.seller_name,
+      username: seller.username,
+      seller_residence: seller.seller_residence,
+    });
     setOpenDeleteDialog(true);
-  };
+  }, []);
 
-  // Handler for confirming delete
   const handleConfirmDelete = async () => {
     try {
-      await api.delete(`/admin-sellers/${currentSeller.id}/`);
+      setDeleteLoading(true);
+
+      console.log("Deleting seller with ID:", sellerToDelete.id);
+
+      if (!sellerToDelete.id) {
+        throw new Error("Seller ID is missing");
+      }
+
+      await api.delete(
+        `http://127.0.0.1:8000/api/admin-sellers/${sellerToDelete.id}/`
+      );
+
       setOpenDeleteDialog(false);
-      fetchSellers(); 
+      fetchSellers();
       setSnackbar({
         open: true,
-        message: 'Seller deleted successfully',
-        severity: 'success'
+        message: "Seller removed successfully",
+        severity: "success",
       });
     } catch (err) {
       console.error("Error deleting seller:", err);
+
+      let errorMessage = "Failed to delete seller";
+      if (err.message === "Seller ID is missing") {
+        errorMessage = "Unable to delete: Seller ID is missing";
+      } else if (err.response?.status === 403) {
+        errorMessage = "Access denied. Admin privileges required.";
+      } else if (err.response?.status === 404) {
+        errorMessage = "Seller not found.";
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+
       setSnackbar({
         open: true,
-        message: 'Failed to delete seller: ' + (err.response?.data?.detail || err.message),
-        severity: 'error'
+        message: errorMessage,
+        severity: "error",
       });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  // Handler for closing snackbar
-  const handleCloseSnackbar = () => {
-    setSnackbar({...snackbar, open: false});
-  };
-
-  // Define the green color theme
-  const themeColor = {
-    primary: '#2e7d32',
-    light: '#4caf50',   
-    lighter: '#e8f5e9', 
-    hover: '#c8e6c9'   
-  };
+  const handleCloseSnackbar = useCallback(() => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
 
   return (
-    <>
-      <AppBar position="static" sx={{ backgroundColor: themeColor.primary }}>
-        <Toolbar>
-          <IconButton 
-            edge="start" 
-            color="inherit" 
-            onClick={handleBack}
-            sx={{ marginRight: 2 }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <StorefrontIcon sx={{ mr: 2 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            Admin Dashboard for Sellers
-          </Typography>
-        </Toolbar>
-      </AppBar>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ display: "flex" }}>
+        {/* AppBar */}
+        <AppBar
+          position="fixed"
+          sx={{ zIndex: theme.zIndex.drawer + 1, boxShadow: "none" }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{ flexGrow: 1 }}
+            >
+              Admin Dashboard for Sellers
+            </Typography>
 
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-        {/* Page Title Section*/}
-        <Box sx={{ mb: 4, textAlign: 'left' }}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            sx={{ 
-              fontWeight: 'bold',
-              color: themeColor.primary,
-              display: 'inline-block',
-              position: 'relative',
-              '&:after': {
-                content: '""',
-                position: 'absolute',
-                width: '60%',
-                height: '4px',
-                bottom: '-8px',
-                left: '0',
-                backgroundColor: themeColor.primary,
-                borderRadius: '2px'
-              }
-            }}
-          >
-            Registered Sellers
-          </Typography>
-          <Typography variant="subtitle1" sx={{ mt: 2, color: '#555', fontWeight: 500 }}>
-            View and manage all registered sellers in the system
-          </Typography>
-        </Box>
-
-        <Divider sx={{ mb: 4 }} />
-
-        {/* Loading and Error States */}
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-            <CircularProgress size={40} thickness={4} sx={{ color: themeColor.primary }} />
-          </Box>
-        )}
-        
-        {error && (
-          <Alert 
-            severity="error" 
-            sx={{ 
-              mb: 4, 
-              borderRadius: 2,
-              '& .MuiAlert-icon': { fontSize: '1.5rem' } 
-            }}
-          >
-            {error}
-          </Alert>
-        )}
-        
-        {!loading && sellers.length === 0 && (
-          <Alert 
-            severity="info" 
-            sx={{ 
-              mb: 4, 
-              borderRadius: 2,
-              '& .MuiAlert-icon': { fontSize: '1.5rem' } 
-            }}
-          >
-            No sellers found.
-          </Alert>
-        )}
-
-        {/* Table  and new action buttons */}
-        {!loading && sellers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          >
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                overflowX: 'auto', 
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                border: '1px solid #e0e0e0'
+            {/* Search */}
+            <Box
+              sx={{
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                borderRadius: 2,
+                mr: 2,
+                display: { xs: "none", md: "flex" },
+                width: 300,
               }}
             >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: themeColor.primary }}>
-                    <TableCell 
-                      sx={{ 
-                        color: 'white', 
-                        fontWeight: 'bold', 
-                        fontSize: '1rem',
-                        padding: '16px 24px'
-                      }}
-                    >
-                      Seller Name
-                    </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        color: 'white', 
-                        fontWeight: 'bold', 
-                        fontSize: '1rem',
-                        padding: '16px 24px'
-                      }}
-                    >
-                      Username
-                    </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        color: 'white', 
-                        fontWeight: 'bold', 
-                        fontSize: '1rem',
-                        padding: '16px 24px'
-                      }}
-                    >
-                      Seller Residence
-                    </TableCell>
-                    <TableCell 
-                      sx={{ 
-                        color: 'white', 
-                        fontWeight: 'bold', 
-                        fontSize: '1rem',
-                        padding: '16px 24px',
-                        textAlign: 'center'
-                      }}
-                    >
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {sellers.map((seller, index) => (
-                    <TableRow
-                      key={seller.id || index}
-                      hover
+              <TextField
+                placeholder="Search sellers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                variant="standard"
+                fullWidth
+                InputProps={{
+                  disableUnderline: true,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: "white", mx: 1 }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ mx: 1, color: "white", "& input": { color: "white" } }}
+              />
+            </Box>
+
+            {/* Action buttons */}
+            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
+              <IconButton color="inherit" onClick={handleThemeToggle}>
+                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Refresh Sellers">
+              <IconButton
+                color="inherit"
+                onClick={fetchSellers}
+                disabled={loading}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+
+            <IconButton edge="end" color="inherit" sx={{ ml: 1 }}>
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: theme.palette.secondary.main,
+                }}
+              >
+                A
+              </Avatar>
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+
+        {/* Side Drawer */}
+        <Drawer
+          variant="permanent"
+          open={drawerOpen}
+          sx={{
+            width: drawerOpen ? drawerWidth : theme.spacing(7),
+            flexShrink: 0,
+            "& .MuiDrawer-paper": {
+              width: drawerOpen ? drawerWidth : theme.spacing(7),
+              boxSizing: "border-box",
+              whiteSpace: "nowrap",
+              overflowX: "hidden",
+              transition: theme.transitions.create("width", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            },
+          }}
+        >
+          <Toolbar /> {/* Keeps content below AppBar */}
+          <Box sx={{ overflow: "hidden", mt: 2 }}>
+            {drawerOpen && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  mb: 4,
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    mb: 1,
+                    backgroundColor: theme.palette.primary.main,
+                  }}
+                >
+                  A
+                </Avatar>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Admin User
+                </Typography>
+              </Box>
+            )}
+
+            <List>
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <ListItem
+                    key={item.text}
+                    component={Link}
+                    to={item.path}
+                    button
+                    sx={{
+                      backgroundColor: isActive
+                        ? theme.palette.action.selected
+                        : "transparent",
+                      borderRadius: drawerOpen ? 1 : 0,
+                      mx: drawerOpen ? 1 : 0,
+                      mb: 0.5,
+                      textDecoration: "none",
+                      color: "inherit",
+                    }}
+                  >
+                    <ListItemIcon
                       sx={{
-                        '&:nth-of-type(odd)': { backgroundColor: '#f9f9f9' },
-                        '&:hover': { backgroundColor: themeColor.hover },
-                        transition: 'all 0.2s ease-in-out'
+                        minWidth: drawerOpen ? 48 : "100%",
+                        color: isActive
+                          ? theme.palette.primary.main
+                          : "inherit",
+                        textAlign: "center",
                       }}
                     >
-                      <TableCell sx={{ padding: '16px 24px', fontWeight: 500 }}>
-                        {seller.seller_name}
+                      {item.icon}
+                    </ListItemIcon>
+                    {drawerOpen && (
+                      <ListItemText
+                        primary={item.text}
+                        primaryTypographyProps={{
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive
+                            ? theme.palette.primary.main
+                            : "inherit",
+                        }}
+                      />
+                    )}
+                  </ListItem>
+                );
+              })}
+            </List>
+            <Divider sx={{ my: 2 }} />
+            <List>
+              <ListItem
+                button
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: drawerOpen ? 1 : 0,
+                  mx: drawerOpen ? 1 : 0,
+                  mb: 0.5,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: drawerOpen ? 48 : "100%",
+                    textAlign: "center",
+                  }}
+                >
+                  <ExitToAppIcon />
+                </ListItemIcon>
+                {drawerOpen && <ListItemText primary="Logout" />}
+              </ListItem>
+            </List>
+          </Box>
+        </Drawer>
+
+        {/* Main Content */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: `calc(100% - ${
+              drawerOpen ? drawerWidth : theme.spacing(7)
+            }px)`,
+            mt: 8, // Adjusts for AppBar height
+          }}
+        >
+          {/* Page Title Section*/}
+          <Box sx={{ mb: 4, textAlign: "left" }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: "bold",
+                color: theme.palette.primary.main, // Using theme color
+                display: "inline-block",
+                position: "relative",
+                "&:after": {
+                  content: '""',
+                  position: "absolute",
+                  width: "60%",
+                  height: "4px",
+                  bottom: "-8px",
+                  left: "0",
+                  backgroundColor: theme.palette.primary.main, // Using theme color
+                  borderRadius: "2px",
+                },
+              }}
+            >
+              Registered Sellers
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              sx={{ mt: 2, color: "text.secondary", fontWeight: 500 }}
+            >
+              View and manage all registered sellers in the system
+            </Typography>
+          </Box>
+
+          <Divider sx={{ mb: 4 }} />
+
+          {/* Loading and Error States */}
+          {loading && (
+            <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+              <CircularProgress
+                size={40}
+                thickness={4}
+                sx={{ color: theme.palette.primary.main }}
+              />
+            </Box>
+          )}
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 4,
+                borderRadius: 2,
+                "& .MuiAlert-icon": { fontSize: "1.5rem" },
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          {!loading && filteredSellers.length === 0 && !error && (
+            <Alert
+              severity="info"
+              sx={{
+                mb: 4,
+                borderRadius: 2,
+                "& .MuiAlert-icon": { fontSize: "1.5rem" },
+              }}
+            >
+              No sellers found matching your criteria.
+            </Alert>
+          )}
+
+          {/* Table and action buttons */}
+          {!loading && filteredSellers.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
+              <Paper
+                elevation={3}
+                sx={{
+                  overflowX: "auto",
+                  borderRadius: 3,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: theme.palette.primary.main }}>
+                      <TableCell
+                        sx={{
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                          padding: "8px 12px",
+                        }}
+                      >
+                        Seller Name
                       </TableCell>
-                      <TableCell sx={{ padding: '16px 24px' }}>
-                        {seller.username}
+                      <TableCell
+                        sx={{
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                          padding: "8px 12px",
+                        }}
+                      >
+                        Username
                       </TableCell>
-                      <TableCell sx={{ padding: '16px 24px' }}>
-                        {seller.seller_residence}
+                      {/* Removed Email column */}
+                      <TableCell
+                        sx={{
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                          padding: "8px 12px",
+                        }}
+                      >
+                        Residence
                       </TableCell>
-                      <TableCell sx={{ padding: '16px 24px', textAlign: 'center' }}>
-                        <Tooltip title="Edit Seller">
-                          <IconButton 
-                            onClick={() => handleEdit(seller)}
-                            sx={{ 
-                              color: themeColor.primary,
-                              '&:hover': { backgroundColor: themeColor.hover }
-                            }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Seller">
-                          <IconButton 
-                            onClick={() => handleDeleteClick(seller)}
-                            sx={{ 
-                              color: '#d32f2f',
-                              '&:hover': { backgroundColor: '#ffebee' }
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
+                      <TableCell
+                        sx={{
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                          padding: "8px 12px",
+                          textAlign: "center",
+                        }}
+                      >
+                        Actions
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-            
-            {/* Additional statistics */}
-            <Box 
-              sx={{ 
-                mt: 4, 
-                p: 3, 
-                backgroundColor: themeColor.lighter, 
-                borderRadius: 3,
-                border: `1px solid ${themeColor.light}`,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-              }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: themeColor.primary }}>
-                Summary
-              </Typography>
-              <Typography variant="body1" sx={{ mt: 1 }}>
-                Total registered sellers: <b>{sellers.length}</b>
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, color: '#555' }}>
-                Last updated: {new Date().toLocaleString()}
-              </Typography>
-            </Box>
-          </motion.div>
-        )}
+                  </TableHead>
+                  <TableBody>
+                    {filteredSellers.map((seller, index) => (
+                      <TableRow
+                        key={seller.id || index}
+                        hover
+                        sx={{
+                          "&:nth-of-type(odd)": {
+                            backgroundColor: theme.palette.background.default,
+                          },
+                          "&:hover": {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                          transition: "all 0.2s ease-in-out",
+                        }}
+                      >
+                        <TableCell
+                          sx={{
+                            padding: "8px 12px",
+                            fontWeight: 500,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          {seller.seller_name || "N/A"}
+                        </TableCell>
+                        <TableCell
+                          sx={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                        >
+                          {seller.username || "N/A"}
+                        </TableCell>
+                        <TableCell
+                          sx={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                        >
+                          {seller.seller_residence || "N/A"}
+                        </TableCell>
+                        <TableCell
+                          sx={{ padding: "8px 12px", textAlign: "center" }}
+                        >
+                          <Tooltip title="Delete Seller">
+                            <IconButton
+                              onClick={() => handleDeleteClick(seller)}
+                              disabled={deleteLoading}
+                              sx={{
+                                color: theme.palette.error.main,
+                                "&:hover": {
+                                  backgroundColor: theme.palette.action.hover,
+                                },
+                                padding: "6px",
+                              }}
+                            >
+                              <DeleteIcon sx={{ fontSize: "1.2rem" }} />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
 
-        {/* Edit Seller Dialog */}
-        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ backgroundColor: themeColor.primary, color: 'white' }}>
-            Edit Seller
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Seller Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={currentSeller.seller_name || ''}
-              onChange={(e) => setCurrentSeller({...currentSeller, seller_name: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              margin="dense"
-              label="Username"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={currentSeller.username || ''}
-              onChange={(e) => setCurrentSeller({...currentSeller, username: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              margin="dense"
-              label="Seller Residence"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={currentSeller.seller_residence || ''}
-              onChange={(e) => setCurrentSeller({...currentSeller, seller_residence: e.target.value})}
-            />
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button 
-              onClick={() => setOpenEditDialog(false)} 
-              sx={{ 
-                color: '#666',
-                '&:hover': { backgroundColor: '#f5f5f5' }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveEdit} 
-              variant="contained"
-              sx={{ 
-                backgroundColor: themeColor.primary,
-                '&:hover': { backgroundColor: '#1b5e20' }
-              }}
-            >
-              Save
-            </Button>
-          </DialogActions>
-        </Dialog>
+              {/* Additional statistics */}
+              <Box
+                sx={{
+                  mt: 4,
+                  p: 3,
+                  backgroundColor: theme.palette.background.paper,
+                  borderRadius: 3,
+                  border: `1px solid ${theme.palette.divider}`,
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: "bold", color: theme.palette.primary.main }}
+                >
+                  Summary
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  Total registered sellers:{" "}
+                  <b>{filteredSellers.length}</b> {/* Use filteredSellers here */}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
+                  Last updated: {new Date().toLocaleString()}
+                </Typography>
+              </Box>
+            </motion.div>
+          )}
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        >
-          <DialogTitle>{"Confirm Deletion"}</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to delete seller "{currentSeller.seller_name}"? This action cannot be undone.
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button 
-              onClick={() => setOpenDeleteDialog(false)} 
-              sx={{ color: '#666' }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmDelete} 
-              sx={{ color: '#d32f2f' }} 
-              autoFocus
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert 
-            onClose={handleCloseSnackbar} 
-            severity={snackbar.severity} 
-            sx={{ width: '100%' }}
+          {/* Delete Confirmation Dialog */}
+          <Dialog
+            open={openDeleteDialog}
+            onClose={() => !deleteLoading && setOpenDeleteDialog(false)}
+            maxWidth="xs"
           >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Container>
-    </>
+            <DialogTitle>{"Confirm Deletion"}</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                Are you sure you want to remove seller "
+                <b>{sellerToDelete.seller_name}</b>"? This will remove them
+                from the seller group but keep their user account.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setOpenDeleteDialog(false)}
+                disabled={deleteLoading}
+                sx={{ color: theme.palette.text.secondary }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                sx={{ color: theme.palette.error.main }}
+                autoFocus
+              >
+                {deleteLoading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  "Remove"
+                )}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Snackbar for notifications */}
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          >
+            <Alert
+              onClose={handleCloseSnackbar}
+              severity={snackbar.severity}
+              sx={{ width: "100%" }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 };
 

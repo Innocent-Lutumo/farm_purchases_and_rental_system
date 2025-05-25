@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // Keep Link import
 import {
   Button,
   Box,
@@ -225,9 +225,12 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
           <Button onClick={onClose} color="error">
             Close
           </Button>
+          {/* Modified Link to pass farm.id in state */}
           <Button
             component={Link}
-            to="/RentalAgreement"
+            to={{
+              pathname: "/RentalAgreement",
+            }}
             variant="outlined"
             color="success"
           >

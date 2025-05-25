@@ -28,7 +28,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
-const Purchases2 = () => {
+const Purchase = () => {
   const [purchases, setPurchases] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -266,4 +266,4 @@ const Purchases2 = () => {
   );
 };
 
-export default Purchases2;
+export default Purchase;

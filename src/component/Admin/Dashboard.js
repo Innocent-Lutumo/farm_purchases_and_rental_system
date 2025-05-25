@@ -513,7 +513,7 @@ function AdminDashboard() {
   );
 
   const renderSingleImageThumbnail = useCallback(
-    (imageUrl, title, isRound = false) => {
+    (imageUrl, isRound = false) => {
       if (!imageUrl) {
         return (
           <Typography variant="caption" color="text.secondary">
@@ -526,7 +526,7 @@ function AdminDashboard() {
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <img
             src={fullImageUrl}
-            alt={`${title} thumbnail`}
+            alt={`L/C`}
             style={{
               width: 40,
               height: 40,
@@ -536,7 +536,7 @@ function AdminDashboard() {
               cursor: "pointer",
             }}
             onClick={(e) => {
-              e.stopPropagation(); // Prevent row click from expanding modal
+              e.stopPropagation(); 
               setSelectedSingleImage(fullImageUrl);
               setSingleImageModalOpen(true);
             }}
@@ -904,8 +904,9 @@ function AdminDashboard() {
                   <TableHead>
                     <TableRow>
                       <TableCell>Passport</TableCell>
+                      <TableCell>Seller</TableCell>
                       <TableCell>Location</TableCell>
-                      <TableCell>Price (Tshs)</TableCell>
+                      <TableCell>Price (TZS)</TableCell>
                       <TableCell>Size (Acres)</TableCell>
                       <TableCell>Farm Number</TableCell>
                       <TableCell>Type</TableCell>
@@ -930,6 +931,7 @@ function AdminDashboard() {
                             true
                           )}
                         </TableCell>
+                        <TableCell>{farm.username}</TableCell>
                         <TableCell>{farm.location}</TableCell>
                         <TableCell>{farm.price}</TableCell>
                         <TableCell>{farm.size}</TableCell>

@@ -310,16 +310,16 @@ const UploadFarmForm = () => {
 
                 <Box mt={4} display="flex" justifyContent="space-between">
                   {activeStep > 0 && (
-                    <Button variant="outlined" onClick={handleBack} color="primary">
+                    <Button variant="outlined" onClick={handleBack} color="success">
                       Back
                     </Button>
                   )}
                   {activeStep < steps.length - 1 ? (
-                    <Button variant="contained" onClick={handleNext} color="primary">
+                    <Button variant="contained" onClick={handleNext} color="success">
                       Next
                     </Button>
                   ) : (
-                    <Button variant="contained" type="submit" color="primary">
+                    <Button variant="contained" type="submit" color="success">
                       Submit
                     </Button>
                   )}
