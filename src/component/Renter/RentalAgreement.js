@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton, // Import IconButton
+  IconButton,
 } from '@mui/material';
 import {
   Download,
@@ -31,9 +31,9 @@ import {
   Email,
   Person,
   Home,
-  ArrowBack, // Import ArrowBack icon
+  ArrowBack,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
 const RentalAgreement = () => {
   const [contractData, setContractData] = useState(null);
@@ -41,62 +41,89 @@ const RentalAgreement = () => {
   const [error, setError] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const [farmId, setFarmId] = useState(null); 
 
-  const navigate = useNavigate(); // Initialize useNavigate hook
+  const navigate = useNavigate();
 
-  // API Endpoints
-  const FARM_RENT_API_ENDPOINT = 'http://127.0.0.1:8000/api/farmsrent/validated/';
-  const ADMIN_SELLERS_API_ENDPOINT = 'http://127.0.0.1:8000/api/admin-sellers/';
+  const RENTAL_AGREEMENT_DETAILS_API_ENDPOINT = 'http://127.0.0.1:8000/api/get-transactions/';
+  const DOWNLOAD_CONTRACT_API_ENDPOINT = 'http://127.0.0.1:8000/api/download-contract/';
+  const ADMIN_SELLERS_API_ENDPOINT = 'http://127.0.0.1:8000/api/admin-sellers_list/'; 
 
   useEffect(() => {
-    fetchContractData();
+    const storedFarmId = localStorage.getItem('selectedAgreementFarmId'); 
+    if (storedFarmId) {
+      setFarmId(storedFarmId);
+      fetchContractData(storedFarmId);
+    } else {
+      setLoading(false);
+      setError("No farm ID found for the rental agreement. Please go back and select a farm.");
+    }
   }, []);
 
-  const fetchContractData = async () => {
+  const fetchContractData = async (idToFetch) => {
     try {
       setLoading(true);
-      const [farmRentResponse, adminSellersResponse] = await Promise.all([
-        fetch(FARM_RENT_API_ENDPOINT),
-        fetch(ADMIN_SELLERS_API_ENDPOINT),
-      ]);
+      setError(null);
 
-      if (!farmRentResponse.ok) {
-        throw new Error('Failed to fetch farm rental data');
+      if (!idToFetch) {
+        throw new Error("Missing transaction ID to fetch agreement data.");
       }
-      const farmRentData = await farmRentResponse.json();
 
-      let adminSellersData = null;
+      const transactionsResponse = await fetch(RENTAL_AGREEMENT_DETAILS_API_ENDPOINT);
+
+      if (!transactionsResponse.ok) {
+        const errorText = await transactionsResponse.text();
+        throw new Error(`Failed to fetch transactions list. Status: ${transactionsResponse.status}. Response: ${errorText.substring(0, 100)}...`);
+      }
+      const allTransactions = await transactionsResponse.json();
+
+      const foundContract = allTransactions.find(
+        (transaction) => String(transaction.id) === String(idToFetch)
+      );
+
+      if (!foundContract) {
+        throw new Error(`No rental agreement found for transaction ID ${idToFetch}.`);
+      }
+
+      const adminSellersResponse = await fetch(ADMIN_SELLERS_API_ENDPOINT);
       if (!adminSellersResponse.ok) {
-        console.warn('Failed to fetch admin sellers data. Proceeding without it.');
-      } else {
-        try {
-          adminSellersData = await adminSellersResponse.json();
-          if (Array.isArray(adminSellersData) && adminSellersData.length > 0) {
-            adminSellersData = adminSellersData[0];
-          } else if (adminSellersData && typeof adminSellersData === 'object') {
-          } else {
-            adminSellersData = null;
-          }
-        } catch (jsonError) {
-          console.warn('Could not parse admin sellers JSON:', jsonError);
-          adminSellersData = null;
-        }
+        const errorText = await adminSellersResponse.text();
+        throw new Error(`Failed to fetch admin sellers data. Status: ${adminSellersResponse.status}. Response: ${errorText.substring(0, 100)}...`);
       }
+      const adminSellers = await adminSellersResponse.json();
 
-      const finalContractData = {
-        ...farmRentData,
-        landlord_name: adminSellersData && adminSellersData.name ? adminSellersData.name : (farmRentData.name || 'Jina la Mkodishaji'),
-        phone: adminSellersData && adminSellersData.phone ? adminSellersData.phone : (farmRentData.phone || '+255 7XX XXX XXX'),
-        email: adminSellersData && adminSellersData.email ? adminSellersData.email : (farmRentData.email || 'mkodishaji@mfano.com'),
-        landlord_residence: adminSellersData && adminSellersData.residence ? adminSellersData.residence : 'Makazi ya Mkodishaji',
-        tenant_name: farmRentData.full_name || 'Jina la Mkodishwa',
-        tenant_phone: farmRentData.phone || '+255 7XX XXX XXX',
-        tenant_email: farmRentData.email || 'mkodishwa@mfano.com',
-        tenant_residence: farmRentData.tenant_residence || 'Makazi ya Mkodishwa',
+      const relevantLandlord = adminSellers.find(
+        (seller) => seller.username === foundContract.farm.username
+      );
+
+      const restructuredData = {
+        id: foundContract.id, 
+        farm_number: foundContract.farm.farm_number,
+        created_at: foundContract.rent_date, 
+        location: foundContract.farm.location,
+        size: foundContract.farm.size,
+        quality: foundContract.farm.quality,
+        farm_type: foundContract.farm.farm_type,
+        description: foundContract.farm.description,
+        price: foundContract.farm.price,
+        
+        // Renter details (using fetched data)
+        full_name: foundContract.full_name,
+        phone: foundContract.renter_phone,
+        email: foundContract.renter_email,
+        tenant_residence: foundContract.residence,
+
+        // Landlord/Admin Seller details (using fetched data)
+        landlord_name: relevantLandlord ? relevantLandlord.seller_name : "Jina la Mkodishaji Halipatikani",
+        landlord_phone: foundContract.farm.phone,
+        landlord_email: foundContract.farm.email, 
+        landlord_residence: relevantLandlord ? relevantLandlord.seller_residence : "Makazi ya Mkodishaji Hayapatikani",
       };
-      setContractData(finalContractData);
+
+      setContractData(restructuredData);
 
     } catch (err) {
+      console.error("Error fetching contract data:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -105,11 +132,15 @@ const RentalAgreement = () => {
 
   const downloadContract = async () => {
     try {
+      if (!contractData || !contractData.id) {
+        throw new Error("No contract data or ID available for download.");
+      }
       const response = await fetch(
-        `http://127.0.0.1:8000/api/download-contract/${contractData.id}/`
+        `${DOWNLOAD_CONTRACT_API_ENDPOINT}${contractData.id}/`
       );
       if (!response.ok) {
-        throw new Error("Failed to download contract");
+        const errorText = await response.text();
+        throw new Error(`Failed to download contract. Status: ${response.status}. Response: ${errorText.substring(0, 100)}...`);
       }
 
       const blob = await response.blob();
@@ -131,11 +162,20 @@ const RentalAgreement = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "Invalid Date";
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -149,7 +189,7 @@ const RentalAgreement = () => {
   };
 
   const handleGoBack = () => {
-    navigate(-1); // Navigates back one entry in the history stack
+    navigate(-1);
   };
 
   if (loading) {
@@ -190,10 +230,17 @@ const RentalAgreement = () => {
           </Alert>
           <Button
             variant="contained"
-            onClick={fetchContractData}
+            onClick={() => fetchContractData(farmId)} 
             sx={{ mt: 2 }}
           >
             Jaribu Tena
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleGoBack}
+            sx={{ mt: 2, ml: 1 }}
+          >
+            Rudi Nyuma
           </Button>
         </Paper>
       </Box>
@@ -297,13 +344,13 @@ const RentalAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Phone fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.phone} />
+                    <ListItemText primary={contractData.landlord_phone} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Email fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.email} />
+                    <ListItemText primary={contractData.landlord_email} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
@@ -322,19 +369,19 @@ const RentalAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Person fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.tenant_name} />
+                    <ListItemText primary={contractData.full_name} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Phone fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.tenant_phone} />
+                    <ListItemText primary={contractData.phone} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Email fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.tenant_email} />
+                    <ListItemText primary={contractData.email} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
@@ -582,7 +629,7 @@ const RentalAgreement = () => {
               size="medium"
               startIcon={<Download />}
               onClick={downloadContract}
-              disabled={!contractData || loading} // Keep this disabled check
+              disabled={!contractData || loading}
               sx={{ mb: 1 }}
             >
               Pakua Mkataba Kamili (PDF)

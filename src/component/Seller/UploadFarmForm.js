@@ -50,11 +50,11 @@ const UploadFarmForm = () => {
       email: "",
       phone: "",
       description: "",
-      farmNumber: "",
-      rentTime: "",
-      farmType: "",
+      farm_number: "",
+      rent_duration: "",
+      farm_type: "",
       passport: null,
-      ownershipCertificate: null,
+      ownership_certificate: null,
     },
     validationSchema: Yup.object({
       size: Yup.string().required("Required"),
@@ -64,7 +64,7 @@ const UploadFarmForm = () => {
       email: Yup.string().email("Invalid email").required("Required"),
       phone: Yup.string().required("Required"),
       description: Yup.string().required("Required"),
-      farmNumber: Yup.string().required("Required"),
+      farm_number: Yup.string().required("Required"),
     }),
     onSubmit: (values) => {
       if (images.length < 4 || images.length > 10) {
@@ -167,7 +167,7 @@ const UploadFarmForm = () => {
           <>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography variant="h4" color="primary">
-                Upload Farm - {formik.values.farmType}
+                Upload Farm - {formik.values.farm_type}
               </Typography>
               <Box>
                 <IconButton onClick={() => setDarkMode(!darkMode)} color="inherit">
@@ -216,8 +216,8 @@ const UploadFarmForm = () => {
                         <TextField
                           fullWidth
                           label="Rent Duration"
-                          name="rentTime"
-                          value={formik.values.rentTime}
+                          name="rent_duration"
+                          value={formik.values.rent_duration}
                           onChange={formik.handleChange}
                         />
                       </Grid>
@@ -231,11 +231,11 @@ const UploadFarmForm = () => {
                       <TextField
                         fullWidth
                         label="Farm Number"
-                        name="farmNumber"
-                        value={formik.values.farmNumber}
+                        name="farm_number"
+                        value={formik.values.farm_number}
                         onChange={formik.handleChange}
-                        error={formik.touched.farmNumber && Boolean(formik.errors.farmNumber)}
-                        helperText={formik.touched.farmNumber && formik.errors.farmNumber}
+                        error={formik.touched.farm_number && Boolean(formik.errors.farm_number)}
+                        helperText={formik.touched.farm_number && formik.errors.farm_number}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -257,11 +257,11 @@ const UploadFarmForm = () => {
                         <input
                           type="file"
                           hidden
-                          onChange={(e) => handleFileChange(e, "ownershipCertificate")}
+                          onChange={(e) => handleFileChange(e, "ownership_certificate")}
                         />
                       </Button>
-                      {formik.values.ownershipCertificate && (
-                        <Typography>{formik.values.ownershipCertificate.name}</Typography>
+                      {formik.values.ownership_certificate && (
+                        <Typography>{formik.values.ownership_certificate.name}</Typography>
                       )}
                     </Grid>
                     <Grid item xs={12}>

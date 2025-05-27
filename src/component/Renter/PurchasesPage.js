@@ -48,12 +48,17 @@ const Purchase = () => {
   };
 
   const handleCardClick = (farm, purchase) => {
+    // *** THIS IS THE NEW LINE TO ADD ***
+    // Store the farm.id in local storage
+    localStorage.setItem('selectedAgreementFarmId', farm.id.toString());
+    console.log(`Stored farm ID ${farm.id} for agreement page.`);
+
     setSelectedFarm({
       ...farm,
       transactionId: purchase.transaction_id,
       purchaseStatus: purchase.status,
-      email: purchase.farm.email,  
-      phone: purchase.farm.phone 
+      email: purchase.farm.email,
+      phone: purchase.farm.phone
     });
     setDialogOpen(true);
   };

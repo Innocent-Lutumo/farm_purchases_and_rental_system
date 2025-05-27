@@ -1,44 +1,89 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
   Typography,
   IconButton,
-  Menu,
-  MenuItem,
-  Box,
+  Drawer,
+  List,
+  Divider,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Card,
+  CardContent,
   Button,
   Grid,
-  Card,
-  CardActionArea,
-  CardContent,
-  Container,
-  Paper,
+  Box,
   Avatar,
-  Divider,
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Paper,
+  CardActionArea,
+  Tooltip,
+  Menu,
+  MenuItem,
 } from "@mui/material";
-import { green, red, yellow, blue, orange, grey } from "@mui/material/colors";
-import { motion } from "framer-motion";
 import {
+  Menu as MenuIcon,
+  ShoppingBag as PurchasesIcon,
+  Home as RentsIcon,
+  CloudUpload as UploadIcon,
+  CheckCircle as AcceptedIcon,
+  Cancel as SoldoutsIcon,
+  AddCircle as UploadNewIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
+  Refresh as RefreshIcon,
+  ExitToApp as ExitToAppIcon,
+  AccountCircle as AccountCircleIcon,
+  ChevronRight,
   Lightbulb,
   Image as ImageIcon,
-  RefreshCw,
-  ThumbsUp,
-  ShoppingBag,
-  Home,
-  UploadCloud,
-  CheckCircle2,
-  XCircle,
-  PlusCircle,
-  Users,
-  BarChart2,
-  ChevronRight,
-  MessageSquare,
-} from "lucide-react";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+} from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
+import { motion } from "framer-motion";
 
+// Theme creation
+const getTheme = (mode) =>
+  createTheme({
+    palette: {
+      mode,
+      primary: { main: "#2e7d32" },
+      secondary: { main: "#f50057" },
+      background: {
+        default: mode === "light" ? "#f5f5f5" : "#121212",
+        paper: mode === "light" ? "#ffffff" : "#1e1e1e",
+      },
+    },
+    shape: { borderRadius: 12 },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: { borderRadius: 8, textTransform: "none", fontWeight: 600 },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
+            boxShadow:
+              mode === "light"
+                ? "0px 2px 4px -1px rgba(0,0,0,0.1)"
+                : "0px 2px 4px -1px rgba(0,0,0,0.2)",
+          },
+        },
+      },
+    },
+    typography: {
+      fontFamily: '"Inter", "Roboto", "Arial", sans-serif',
+      h6: { fontWeight: 600 },
+    },
+  });
+
+// Styled Card Component
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: 16,
   transition: "transform 0.3s, box-shadow 0.3s",
@@ -51,83 +96,108 @@ const StyledCard = styled(Card)(({ theme }) => ({
   flexDirection: "column",
 }));
 
-const GradientBackground = styled(Box)(({ theme }) => ({
-  background: `linear-gradient(135deg, ${green[800]} 0%, ${green[600]} 100%)`,
-  color: "white",
-  borderRadius: "16px",
-  padding: theme.spacing(3),
-  position: "relative",
-  overflow: "hidden",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background:
-      "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cGF0aCBkPSJNMCwwIEwxMDAsMTAwIE0xMDAsMCBMMCwxMDAiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+') repeat",
-    opacity: 0.15,
-  },
-}));
-
-const navItems = [
+// Menu items configuration
+const menuItems = [
   {
-    label: "Purchases",
+    text: "Purchases",
+    icon: <PurchasesIcon />,
     path: "/Purchases",
-    icon: <ShoppingBag size={32} />,
-    color: "#43a012",
     description: "Track all farm purchase transactions",
   },
   {
-    label: "Rents",
+    text: "Rents",
+    icon: <RentsIcon />,
     path: "/Rents",
-    icon: <Home size={32} />,
-    color: "#43a047",
     description: "Manage your property rentals",
   },
   {
-    label: "Uploaded Farms",
+    text: "Uploaded Farms",
+    icon: <UploadIcon />,
     path: "/UploadedFarms",
-    icon: <UploadCloud size={32} />,
-    color: "#7cb342",
     description: "View and edit your farm listings",
   },
   {
-    label: "Accepted List",
+    text: "Accepted List",
+    icon: <AcceptedIcon />,
     path: "/accepted",
-    icon: <CheckCircle2 size={32} />,
-    color: "#00897b",
     description: "Review approved farm transactions",
   },
   {
-    label: "Soldouts",
+    text: "Soldouts",
+    icon: <SoldoutsIcon />,
     path: "/soldouts",
-    icon: <XCircle size={32} />,
-    color: "#e53935",
     description: "Archive of completed sales",
   },
   {
-    label: "Upload New Farm",
+    text: "Upload New Farm",
+    icon: <UploadNewIcon />,
     path: "/UploadFarmForm",
-    icon: <PlusCircle size={32} />,
-    color: "#fb8c00",
     description: "Create a new farm listing",
   },
 ];
 
-const SellerPage = () => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const navigate = useNavigate();
+// Stat card component
+const StatCard = ({ title, value, icon, color }) => (
+  <Card>
+    <CardContent>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box>
+          <Typography color="text.secondary" variant="body2">
+            {title}
+          </Typography>
+          <Typography variant="h4" fontWeight="bold" color={color}>
+            {value}
+          </Typography>
+        </Box>
+        <Avatar
+          sx={{
+            backgroundColor: `rgba(${
+              color === "error.main"
+                ? "244, 67, 54"
+                : color === "warning.main"
+                ? "255, 167, 38"
+                : color === "success.main"
+                ? "76, 175, 80"
+                : "46, 125, 50"
+            }, 0.1)`,
+            p: 1,
+          }}
+        >
+          {icon}
+        </Avatar>
+      </Box>
+    </CardContent>
+  </Card>
+);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+function SellerPage() {
+  // State management
+  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  // Placeholder for actual stats - these should come from your data source
+  const [stats] = useState({
+    purchases: 120, // Example numerical value
+    rents: 75, // Example numerical value
+    uploaded: "N/A",
+    accepted: "N/A",
+  });
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Theme setup
+  const theme = useMemo(
+    () => getTheme(darkMode ? "dark" : "light"),
+    [darkMode]
+  );
+  const drawerWidth = 240;
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -141,6 +211,13 @@ const SellerPage = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
   };
+
+  const handleDrawerToggle = useCallback(
+    () => setDrawerOpen((prev) => !prev),
+    []
+  );
+
+  const handleThemeToggle = useCallback(() => setDarkMode((prev) => !prev), []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -162,42 +239,62 @@ const SellerPage = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: "#f8faf8", minHeight: "100vh" }}>
-      <AppBar
-        position="sticky"
-        elevation={isScrolled ? 4 : 0}
-        sx={{
-          background: isScrolled
-            ? `linear-gradient(90deg, ${green[800]} 0%, ${green[600]} 100%)`
-            : `linear-gradient(90deg, ${green[800]} 0%, ${green[600]} 100%)`,
-          transition: "all 0.3s",
-        }}
-      >
-        <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Box>
-              <Typography
-                variant="h5"
-                fontWeight="bold"
-                sx={{ textShadow: "0px 1px 2px rgba(0,0,0,0.2)" }}
-              >
-                Farm Seller
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                Welcome back, John Farmer
-              </Typography>
-            </Box>
-          </Box>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ display: "flex" }}>
+        {/* AppBar */}
+        <AppBar
+          position="fixed"
+          sx={{ zIndex: theme.zIndex.drawer + 1, boxShadow: "none" }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{ flexGrow: 1 }}
+            >
+              Farm Seller Dashboard
+            </Typography>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <IconButton onClick={handleMenuOpen} color="inherit">
+            {/* Action buttons */}
+            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
+              <IconButton color="inherit" onClick={handleThemeToggle}>
+                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Refresh">
+              <IconButton color="inherit">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+
+            <IconButton
+              edge="end"
+              color="inherit"
+              onClick={handleMenuOpen}
+              sx={{ ml: 1 }}
+            >
               <Avatar
-                src="/path-to-profile-pic.jpg"
-                sx={{ width: 40, height: 40, border: "2px solid white" }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: theme.palette.secondary.main,
+                }}
               >
                 JF
               </Avatar>
             </IconButton>
+
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
@@ -207,11 +304,11 @@ const SellerPage = () => {
                 sx: { borderRadius: 2, minWidth: 180 },
               }}
             >
-              <Box sx={{ px: 2, py: 1.5, bgcolor: green[50] }}>
-                <Typography variant="subtitle2" fontWeight="bold">
+              <Box sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}>
+                <Typography variant="subtitle2" fontWeight="bold" color="white">
                   John Farmer
                 </Typography>
-                <Typography variant="caption" color="textSecondary">
+                <Typography variant="caption" color="rgba(255,255,255,0.7)">
                   Premium Seller
                 </Typography>
               </Box>
@@ -233,462 +330,477 @@ const SellerPage = () => {
                 }}
                 sx={{ py: 1.5, display: "flex", gap: 1.5 }}
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={red[600]}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
+                <ExitToAppIcon fontSize="small" color="error" />
                 <Typography variant="body2" color="error">
                   Logout
                 </Typography>
               </MenuItem>
             </Menu>
-          </Box>
-        </Toolbar>
-      </AppBar>
+          </Toolbar>
+        </AppBar>
 
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+        {/* Side Drawer */}
+        <Drawer
+          variant="permanent"
+          open={drawerOpen}
+          sx={{
+            width: drawerOpen ? drawerWidth : theme.spacing(7),
+            flexShrink: 0,
+            "& .MuiDrawer-paper": {
+              width: drawerOpen ? drawerWidth : theme.spacing(7),
+              boxSizing: "border-box",
+              whiteSpace: "nowrap",
+              overflowX: "hidden",
+              transition: theme.transitions.create("width", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            },
+          }}
         >
-          <GradientBackground sx={{ mb: 4 }}>
-            <Grid container spacing={3} alignItems="center">
-              <Grid item xs={12} md={7}>
-                <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                  Welcome back to your Farm Seller Dashboard
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 2, opacity: 0.9 }}>
-                  Your farm empire is growing! Here's what's happening with your
-                  properties today.
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <Box sx={{ position: "relative", textAlign: "center" }}>
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2, type: "spring" }}
-                  >
-                    <Paper
-                      elevation={8}
-                      sx={{
-                        p: 2,
-                        borderRadius: 4,
-                        display: "inline-block",
-                        background: "rgba(255,255,255,0.95)",
-                        backdropFilter: "blur(10px)",
-                        maxWidth: 300,
-                        mx: "auto",
-                      }}
-                    ></Paper>
-                  </motion.div>
-                </Box>
-              </Grid>
-            </Grid>
-          </GradientBackground>
-        </motion.div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Typography
-            variant="h5"
-            sx={{
-              mb: 3,
-              fontWeight: "bold",
-              color: green[800],
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <BarChart2 size={24} />
-            Farm Management
-          </Typography>
-
-          <Grid container spacing={3}>
-            {navItems.map((item, index) => (
-              <Grid item xs={12} sm={6} md={4} key={item.label}>
-                <motion.div variants={itemVariants}>
-                  <StyledCard elevation={2}>
-                    <CardActionArea
-                      component={Link}
-                      to={item.path}
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        justifyContent: "flex-start",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          height: 8,
-                          width: "100%",
-                          bgcolor: item.color,
-                        }}
-                      />
-                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            mb: 2,
-                          }}
-                        >
-                          <Avatar
-                            sx={{
-                              bgcolor: `${item.color}15`,
-                              color: item.color,
-                              width: 56,
-                              height: 56,
-                              mr: 2,
-                            }}
-                          >
-                            {React.cloneElement(item.icon, {
-                              color: item.color,
-                            })}
-                          </Avatar>
-                          <Box sx={{ flexGrow: 1 }}>
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                fontWeight: "bold",
-                                mb: 0.5,
-                                color: grey[800],
-                              }}
-                            >
-                              {item.label}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              color="textSecondary"
-                              sx={{ mb: 1 }}
-                            >
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "flex-end",
-                            mt: 1,
-                          }}
-                        >
-                          <ChevronRight size={20} color={grey[500]} />
-                        </Box>
-                      </CardContent>
-                    </CardActionArea>
-                  </StyledCard>
-                </motion.div>
-              </Grid>
-            ))}
-          </Grid>
-        </motion.div>
-
-          <Grid item xs={12} md={4}></Grid>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Paper
-                elevation={2}
+          <Toolbar />
+          <Box sx={{ overflow: "hidden", mt: 2 }}>
+            {drawerOpen && (
+              <Box
                 sx={{
-                  borderRadius: 4,
-                  p: 3,
-                  bgcolor: "#f9fff9",
-                  height: "100%",
-                  background: `linear-gradient(135deg, #f9fff9 0%, #e8f5e9 100%)`,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  mb: 4,
                 }}
               >
-                <Typography
-                  variant="h6"
+                <Avatar
                   sx={{
-                    fontWeight: "bold",
-                    mb: 3,
-                    color: green[800],
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
+                    width: 64,
+                    height: 64,
+                    mb: 1,
+                    backgroundColor: theme.palette.primary.main,
                   }}
                 >
-                  <Lightbulb size={20} />
-                  Selling Tips
+                  JF
+                </Avatar>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  John Farmer
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Premium Seller
+                </Typography>
+              </Box>
+            )}
 
-                <Grid container spacing={2}>
-                  {[
-                    {
-                      tip: "Use high-quality images that showcase your farm's best features",
-                      icon: <ImageIcon size={20} color={blue[600]} />,
-                    },
-                    {
-                      tip: "Update availability status weekly to keep listings fresh",
-                      icon: <RefreshCw size={20} color={green[600]} />,
-                    },
-                    {
-                      tip: "Respond to inquiries within 2 hours for higher conversion rates",
-                      icon: <ThumbsUp size={20} color={orange[600]} />,
-                    },
-                    {
-                      tip: "Highlight sustainable farming practices to attract premium buyers",
-                      icon: <Lightbulb size={20} color={yellow[800]} />,
-                    },
-                  ].map((tip, idx) => (
-                    <Grid item xs={12} key={idx}>
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: 2,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 2,
-                          borderRadius: 2,
-                          bgcolor: "rgba(255,255,255,0.7)",
-                          backdropFilter: "blur(5px)",
-                          transition: "transform 0.2s",
-                          "&:hover": {
-                            transform: "translateX(5px)",
-                            bgcolor: "white",
-                          },
+            <List>
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.path;
+
+                return (
+                  <ListItem
+                    key={item.text}
+                    component={Link}
+                    to={item.path}
+                    button
+                    sx={{
+                      backgroundColor: isActive
+                        ? theme.palette.action.selected
+                        : "transparent",
+                      borderRadius: drawerOpen ? 1 : 0,
+                      mx: drawerOpen ? 1 : 0,
+                      mb: 0.5,
+                      textDecoration: "none",
+                      color: "inherit",
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: drawerOpen ? 48 : "100%",
+                        color: isActive
+                          ? theme.palette.primary.main
+                          : "inherit",
+                        textAlign: "center",
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    {drawerOpen && (
+                      <ListItemText
+                        primary={item.text}
+                        primaryTypographyProps={{
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive
+                            ? theme.palette.primary.main
+                            : "inherit",
                         }}
-                      >
-                        <Avatar
-                          sx={{
-                            width: 36,
-                            height: 36,
-                            bgcolor: "white",
-                            color: blue[600],
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                          }}
-                        >
-                          {tip.icon}
-                        </Avatar>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {tip.tip}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Paper>
-            </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Paper
-            elevation={3}
-            sx={{
-              borderRadius: 4,
-              p: { xs: 3, md: 4 },
-              mt: 4,
-              bgcolor: "#ffffff",
-              background: `linear-gradient(135deg, #ffffff 0%, #f5f9f5 100%)`,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <Box
-              sx={{ position: "absolute", right: -20, top: -20, opacity: 0.05 }}
-            >
-              <svg
-                width="200"
-                height="200"
-                viewBox="0 0 24 24"
-                fill={green[800]}
+                      />
+                    )}
+                  </ListItem>
+                );
+              })}
+            </List>
+            <Divider sx={{ my: 2 }} />
+            <List>
+              <ListItem
+                button
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: drawerOpen ? 1 : 0,
+                  mx: drawerOpen ? 1 : 0,
+                  mb: 0.5,
+                }}
               >
-                <path d="M12 2L1 21h22L12 2zm0 4l7.53 13H4.47L12 6zm1 5v4h-2v-4h2zm-2 6h2v2h-2v-2z" />
-              </svg>
-            </Box>
+                <ListItemIcon
+                  sx={{
+                    minWidth: drawerOpen ? 48 : "100%",
+                    textAlign: "center",
+                  }}
+                >
+                  <ExitToAppIcon />
+                </ListItemIcon>
+                {drawerOpen && <ListItemText primary="Logout" />}
+              </ListItem>
+            </List>
+          </Box>
+        </Drawer>
 
+        {/* Main Content */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: `calc(100% - ${
+              drawerOpen ? drawerWidth : theme.spacing(7)
+            }px)`,
+            mt: 8,
+          }}
+        >
+          {/* Dashboard Title */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" fontWeight="bold" gutterBottom>
+              Seller Dashboard
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage your farm listings and transactions
+            </Typography>
+          </Box>
+
+          {/* Stats Cards */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Total Purchases"
+                value={stats.purchases}
+                icon={<PurchasesIcon color="primary" />}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Active Rents"
+                value={stats.rents}
+                color="success.main"
+                icon={<RentsIcon color="success" />}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Uploaded Farms"
+                value={stats.uploaded}
+                color="warning.main"
+                icon={<UploadIcon color="warning" />}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Accepted Offers"
+                value={stats.accepted}
+                color="info.main"
+                icon={<AcceptedIcon color="info" />}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Welcome Banner - Removed GradientBackground */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Paper
+              sx={{
+                mb: 4,
+                borderRadius: "16px",
+                padding: theme.spacing(3),
+                bgcolor: "background.paper", // Use background.paper for a clean background
+                boxShadow: theme.shadows[3], // Add some shadow for depth
+              }}
+            >
+              <Grid container spacing={3} alignItems="center">
+                <Grid item xs={12} md={5}>
+                  <Box sx={{ position: "relative", textAlign: "center" }}>
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.2, type: "spring" }}
+                    >
+                      <img
+                        src="https://via.placeholder.com/200" // Replace with your actual image
+                        alt="Farm Illustration"
+                        style={{ maxWidth: "100%", height: "auto", borderRadius: '8px' }}
+                      />
+                    </motion.div>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </motion.div>
+
+          {/* Main Navigation Cards */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <Typography
               variant="h5"
-              sx={{ fontWeight: "bold", mb: 2, color: green[800] }}
+              sx={{
+                mb: 3,
+                fontWeight: "bold",
+                color: "text.primary",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
             >
-              🌾 Grow Your Farm Empire!
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 3, maxWidth: 800 }}>
-              Selling your land has never been easier or more profitable. Our
-              platform connects you with qualified buyers looking for exactly
-              what you have to offer. With advanced analytics, targeted
-              marketing, and dedicated support, Farm Seller helps you
-              maximize your profits while minimizing hassle.
+              Farm Management
             </Typography>
 
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Box
-                  sx={{
-                    border: `1px solid ${green[100]}`,
-                    borderRadius: 3,
-                    p: 2,
-                    height: "100%",
-                    bgcolor: "rgba(255,255,255,0.7)",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      boxShadow: `0 4px 20px rgba(0,150,0,0.1)`,
-                      bgcolor: "white",
-                      transform: "translateY(-5px)",
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mb: 1.5,
-                      gap: 1,
-                      color: green[700],
-                    }}
-                  >
-                    <Users size={20} />
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      Wide Buyer Network
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Access our network of over 50,000 qualified land buyers
-                    actively seeking agricultural properties like yours.
-                  </Typography>
-                </Box>
-              </Grid>
+              {menuItems.map((item, index) => (
+                <Grid item xs={12} sm={6} md={4} key={item.text}>
+                  <motion.div variants={itemVariants}>
+                    <StyledCard elevation={2}>
+                      <CardActionArea
+                        component={Link}
+                        to={item.path}
+                        sx={{
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                          justifyContent: "flex-start",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: 8,
+                            width: "100%",
+                            bgcolor: theme.palette.primary.main,
+                          }}
+                        />
+                        <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              mb: 2,
+                            }}
+                          >
+                            <Avatar
+                              sx={{
+                                bgcolor: `${theme.palette.primary.main}15`,
+                                color: theme.palette.primary.main,
+                                width: 56,
+                                height: 56,
+                                mr: 2,
+                              }}
+                            >
+                              {item.icon}
+                            </Avatar>
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography
+                                variant="h6"
+                                sx={{
+                                  fontWeight: "bold",
+                                  mb: 0.5,
+                                  color: "text.primary",
+                                }}
+                              >
+                                {item.text}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
+                                {item.description}
+                              </Typography>
+                            </Box>
+                          </Box>
 
-              <Grid item xs={12} md={4}>
-                <Box
-                  sx={{
-                    border: `1px solid ${green[100]}`,
-                    borderRadius: 3,
-                    p: 2,
-                    height: "100%",
-                    bgcolor: "rgba(255,255,255,0.7)",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      boxShadow: `0 4px 20px rgba(0,150,0,0.1)`,
-                      bgcolor: "white",
-                      transform: "translateY(-5px)",
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mb: 1.5,
-                      gap: 1,
-                      color: green[500],
-                    }}
-                  >
-                    <BarChart2 size={20} />
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      Smart Analytics
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Make data-driven decisions with our market insights,
-                    property comparison tools, and performance tracking.
-                  </Typography>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <Box
-                  sx={{
-                    border: `1px solid ${green[100]}`,
-                    borderRadius: 3,
-                    p: 2,
-                    height: "100%",
-                    bgcolor: "rgba(255,255,255,0.7)",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      boxShadow: `0 4px 20px rgba(0,150,0,0.1)`,
-                      bgcolor: "white",
-                      transform: "translateY(-5px)",
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mb: 1.5,
-                      gap: 1,
-                      color: orange[700],
-                    }}
-                  >
-                    <MessageSquare size={20} />
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      24/7 Support
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Our dedicated team of farm-savvy agents is always available
-                    to assist with any questions or issues.
-                  </Typography>
-                </Box>
-              </Grid>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-end",
+                              mt: 1,
+                            }}
+                          >
+                            <ChevronRight color="action" />
+                          </Box>
+                        </CardContent>
+                      </CardActionArea>
+                    </StyledCard>
+                  </motion.div>
+                </Grid>
+              ))}
             </Grid>
+          </motion.div>
 
-            <Box
+          {/* Tips Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Paper
+              elevation={2}
               sx={{
-                display: "flex",
-                justifyContent: "center",
+                borderRadius: 4,
+                p: 3,
                 mt: 4,
+                bgcolor: "background.paper",
               }}
             >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 3,
+                  color: "text.primary",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
               >
-                <Link to="/UploadFarmForm" style={{ textDecoration: "none" }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<PlusCircle size={18} />}
-                    sx={{
-                      marginTop: 2,
-                      borderRadius: 3,
-                      py: 1.5,
-                      px: 4,
-                      fontWeight: "bold",
-                      background: `linear-gradient(45deg, ${green[800]} 0%, ${green[600]} 100%)`,
-                      boxShadow: `0 4px 20px ${green[500]}40`,
-                      color: "white",
-                      "&:hover": {
-                        background: `linear-gradient(45deg, ${green[700]} 0%, ${green[500]} 100%)`,
-                      },
-                    }}
-                  >
-                    Upload a New Farm
-                  </Button>
-                </Link>
-              </motion.div>
-            </Box>
-          </Paper>
-        </motion.div>
-      </Container>
-    </Box>
+                <Lightbulb />
+                Selling Tips
+              </Typography>
+
+              <Grid container spacing={2}>
+                {[
+                  {
+                    tip: "Use high-quality images that showcase your farm's best features",
+                    icon: <ImageIcon color="primary" />,
+                  },
+                  {
+                    tip: "Update availability status weekly to keep listings fresh",
+                    icon: <RefreshIcon color="success" />,
+                  },
+                  {
+                    tip: "Respond to inquiries within 2 hours for higher conversion rates",
+                    icon: <AcceptedIcon color="warning" />,
+                  },
+                  {
+                    tip: "Highlight sustainable farming practices to attract premium buyers",
+                    icon: <Lightbulb color="secondary" />,
+                  },
+                ].map((tip, idx) => (
+                  <Grid item xs={12} key={idx}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        borderRadius: 2,
+                        bgcolor: "background.default",
+                        transition: "transform 0.2s",
+                        "&:hover": {
+                          transform: "translateX(5px)",
+                        },
+                      }}
+                    >
+                      <Avatar
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          bgcolor: "background.paper",
+                          color: "primary.main",
+                        }}
+                      >
+                        {tip.icon}
+                      </Avatar>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {tip.tip}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </motion.div>
+
+          {/* Call to Action */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Paper
+              elevation={3}
+              sx={{
+                borderRadius: 4,
+                p: { xs: 3, md: 4 },
+                mt: 4,
+                bgcolor: "background.paper",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: "bold", mb: 2, color: "text.primary" }}
+              >
+                🌾 Grow Your Farm Empire!
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3, maxWidth: 800 }}>
+                Selling your land has never been easier or more profitable. Our
+                platform connects you with qualified buyers looking for exactly
+                what you have to offer.
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  mt: 4,
+                }}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Link to="/UploadFarmForm" style={{ textDecoration: "none" }}>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<UploadNewIcon />}
+                      sx={{
+                        py: 1.5,
+                        px: 4,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Upload a New Farm
+                    </Button>
+                  </Link>
+                </motion.div>
+              </Box>
+            </Paper>
+          </motion.div>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
-};
+}
 
 export default SellerPage;
