@@ -47,6 +47,10 @@ const Purchases2 = () => {
   };
 
   const handleCardClick = (farm, purchase) => {
+    // Store the farm.id in local storage
+    localStorage.setItem('selectedAgreementFarmId', farm.id.toString());
+    console.log(`Stored farm ID ${farm.id} for agreement page.`);
+
     setSelectedFarm({
       ...farm,
       transactionId: purchase.transaction_id,
@@ -81,23 +85,13 @@ const Purchases2 = () => {
   const filteredAndDisplayPurchases = purchases.filter((purchase) => {
     const matchesSearch = purchase.transaction_id.toLowerCase().includes(search.toLowerCase());
 
-    // A purchase should be displayed in history only if:
-    // 1. The transaction is still considered 'active' (not 'Cancelled')
-    // AND
-    // 2. If it was a 'Confirmed' or 'Completed' sale, the farm associated with it is *still* marked as sold (is_sold: true).
-    //    If the farm's `is_sold` is `false`, it means it has been reactivated and should be hidden.
-    //    'Pending' transactions should always show as they represent an ongoing process.
-
     const isActualSoldPurchase =
       (purchase.status === 'Confirmed' || purchase.status === 'Completed') &&
       purchase.farm &&
-      purchase.farm.is_sold === true; // Keep if the farm is *still* sold
+      purchase.farm.is_sold === true;
 
-    const isPendingPurchase = purchase.status === 'Pending'; // Always show pending transactions
-
+    const isPendingPurchase = purchase.status === 'Pending';
     const isRelevantPurchase = isActualSoldPurchase || isPendingPurchase;
-
-    // Additionally, you might want to explicitly exclude 'Cancelled' transactions from history
     const isCancelled = purchase.status === 'Cancelled';
 
     return matchesSearch && isRelevantPurchase && !isCancelled;

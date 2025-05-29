@@ -102,7 +102,7 @@ const menuItems = [
     text: "Purchases",
     icon: <PurchasesIcon />,
     path: "/Purchases",
-    description: "Track all farm purchase transactions",
+    description: "Track all farm purchase",
   },
   {
     text: "Rents",
@@ -114,7 +114,7 @@ const menuItems = [
     text: "Uploaded Farms",
     icon: <UploadIcon />,
     path: "/UploadedFarms",
-    description: "View and edit your farm listings",
+    description: "View your farm listings",
   },
   {
     text: "Accepted List",
@@ -181,12 +181,11 @@ function SellerPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  // Placeholder for actual stats - these should come from your data source
   const [stats] = useState({
-    purchases: 120, // Example numerical value
-    rents: 75, // Example numerical value
-    uploaded: "N/A",
-    accepted: "N/A",
+    purchases: 120, 
+    rents: 75, 
+    uploaded: "12",
+    accepted: "45",
   });
 
   const navigate = useNavigate();
@@ -382,9 +381,6 @@ function SellerPage() {
                 <Typography variant="subtitle1" fontWeight="bold">
                   John Farmer
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Premium Seller
-                </Typography>
               </Box>
             )}
 
@@ -435,7 +431,7 @@ function SellerPage() {
                 );
               })}
             </List>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 0 }} />
             <List>
               <ListItem
                 button
@@ -443,7 +439,7 @@ function SellerPage() {
                 sx={{
                   borderRadius: drawerOpen ? 1 : 0,
                   mx: drawerOpen ? 1 : 0,
-                  mb: 0.5,
+                  mb: 4,
                 }}
               >
                 <ListItemIcon
@@ -517,40 +513,6 @@ function SellerPage() {
             </Grid>
           </Grid>
 
-          {/* Welcome Banner - Removed GradientBackground */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Paper
-              sx={{
-                mb: 4,
-                borderRadius: "16px",
-                padding: theme.spacing(3),
-                bgcolor: "background.paper", // Use background.paper for a clean background
-                boxShadow: theme.shadows[3], // Add some shadow for depth
-              }}
-            >
-              <Grid container spacing={3} alignItems="center">
-                <Grid item xs={12} md={5}>
-                  <Box sx={{ position: "relative", textAlign: "center" }}>
-                    <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.2, type: "spring" }}
-                    >
-                      <img
-                        src="https://via.placeholder.com/200" // Replace with your actual image
-                        alt="Farm Illustration"
-                        style={{ maxWidth: "100%", height: "auto", borderRadius: '8px' }}
-                      />
-                    </motion.div>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
-          </motion.div>
 
           {/* Main Navigation Cards */}
           <motion.div
