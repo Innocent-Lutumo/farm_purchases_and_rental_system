@@ -4,229 +4,172 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Container,
   Card,
-  CardMedia,
   CardContent,
   Box,
-  IconButton,
 } from "@mui/material";
-import img1 from "../../images/img1.jpg";
-import img2 from "../../images/img2.jpg";
-import img3 from "../../images/img3.jpg";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import TwitterIcon from "@mui/icons-material/Twitter";
+import SellIcon from "@mui/icons-material/Sell";
+import HomeIcon from "@mui/icons-material/Home";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 const Home = () => {
-  const farmDetails = [
+  const farmOptions = [
     {
-      image: img1,
-      description:
-        "Learn how to sell your farmland efficiently and profitably.",
+      icon: <ShoppingCartIcon sx={{ fontSize: 60, color: "#4caf50" }} />,
+      title: "Buy Farm",
+      description: "Find the perfect farmland to purchase with ease and confidence.",
+      link: "/trial"
     },
     {
-      image: img3,
+      icon: <HomeIcon sx={{ fontSize: 60, color: "#ff9800" }} />,
+      title: "Rent Farm",
       description: "Explore rental options for profitable land utilization.",
+      link: "/RentPage"
     },
     {
-      image: img2,
-      description: "Find the perfect farmland to buy with ease and confidence.",
+      icon: <SellIcon sx={{ fontSize: 60, color: "#f44336" }} />,
+      title: "Sell Farm",
+      description: "Learn how to sell your farmland efficiently and profitably.",
+      link: "/LoginPage"
     },
   ];
 
   return (
     <Box>
-      {/* Navbar */}
+      {/* Enhanced Navbar with Header */}
       <AppBar position="static" sx={{ background: "green" }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        <Toolbar sx={{ flexDirection: "column", py: 2 }}>
+          <Typography variant="h6" sx={{ alignSelf: "flex-start", mb: 1 }}>
             S/N 19
+          </Typography>
+          <Typography
+            variant="h4"
+            sx={{ 
+              fontWeight: "bold", 
+              color: "white", 
+              textAlign: "center",
+              width: "100%"
+            }}
+          >
+            Farm Purchase and Rental System
           </Typography>
         </Toolbar>
       </AppBar>
 
-      <Button
-        variant="contained"
-        color="warning"
-        sx={{
-          m: 1,
-          "&:hover": { backgroundColor: "#f57c00" },
-          borderRadius: 20,
-        }}
-        component={Link}
-        to="/AdminLogin"
-      >
-        Farm
-      </Button>
-
-      {/* Description Section */}
-      <Container
-        sx={{ textAlign: "center", my: 4, animation: "fadeIn 1s ease-out" }}
-      >
+      {/* Main Content */}
+      <Container sx={{ textAlign: "center", my: 6 }}>
+        {/* About Section with Navigation Links */}
         <Typography
-          variant="h3"
-          gutterBottom
-          sx={{ fontWeight: "bold", color: "#05a305" }}
+          variant="h6"
+          sx={{ maxWidth: "800px", margin: "auto", color: "#333", mb: 4, lineHeight: 1.8 }}
         >
-          Find a Perfect Farm
+          Welcome to our comprehensive farm management platform. Whether you're looking to{" "}
+          <Typography 
+            component={Link} 
+            to="/trial"
+            sx={{ 
+              color: "#4caf50", 
+              fontWeight: "bold",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" }
+            }}
+          >
+            buy your dream farmland
+          </Typography>, 
+          find{" "}
+          <Typography 
+            component={Link} 
+            to="/RentPage"
+            sx={{ 
+              color: "#ff9800", 
+              fontWeight: "bold",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" }
+            }}
+          >
+            rental opportunities
+          </Typography>{" "}
+          for profitable agriculture, or{" "}
+          <Typography 
+            component={Link} 
+            to="/LoginPage"
+            sx={{ 
+              color: "#f44336", 
+              fontWeight: "bold",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" }
+            }}
+          >
+            sell your farmland
+          </Typography>{" "}
+          to the right buyer, we've got you covered.
         </Typography>
+
         <Typography
           variant="body1"
-          sx={{ maxWidth: "1000px", margin: "auto", color: "#333" }}
+          sx={{ maxWidth: "700px", margin: "auto", color: "#666", mb: 5 }}
         >
-          Discover a wide selection of farms for purchase or rent. This system
-          offers you a variety of options to select your desired farm to{" "}
-          <strong>buy</strong> or <strong>rent</strong> with all your desired
-          land qualities. You will find land details, prices, seller contacts,
-          and precise Google Map locations for easier navigation.
+          Our system provides detailed land information, competitive pricing, direct seller contacts, 
+          and precise Google Map locations for seamless navigation and decision-making.
         </Typography>
-      </Container>
 
-      {/* Featured Farms Section */}
-      <Container sx={{ my: 4 }}>
-        <Typography
-          variant="h4"
-          gutterBottom
-          sx={{ textAlign: "center", fontWeight: "bold", mb: 3 }}
-        >
-          Featured Farms
-        </Typography>
+        {/* Service Cards */}
         <Box
           sx={{
             display: "flex",
-            gap: 2,
+            gap: 3,
             justifyContent: "center",
             flexWrap: "wrap",
+            mt: 4
           }}
         >
-          {farmDetails.map((farm, index) => (
+          {farmOptions.map((option, index) => (
             <Card
               key={index}
+              component={Link}
+              to={option.link}
               sx={{
-                width: 350,
-                borderRadius: 3,
-                boxShadow: 5,
-                overflow: "hidden",
-                transition: "transform 0.3s ease-in-out",
-                "&:hover": { transform: "scale(1.05)", cursor: "pointer" },
+                width: 280,
+                height: 200,
+                borderRadius: 4,
+                boxShadow: 3,
+                textDecoration: "none",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": { 
+                  transform: "translateY(-8px)", 
+                  boxShadow: 6,
+                  backgroundColor: "#f8f9fa"
+                },
+                cursor: "pointer",
+                backgroundColor: "white"
               }}
             >
-              <CardMedia
-                component="img"
-                image={farm.image}
-                alt={`Farm ${index + 1}`}
-                sx={{ height: 200, objectFit: "cover" }}
-              />
-              <CardContent
-                sx={{ textAlign: "center", bgcolor: "#f0f4f8", padding: 2 }}
-              >
+              <CardContent sx={{ textAlign: "center", p: 3 }}>
+                <Box sx={{ mb: 2 }}>
+                  {option.icon}
+                </Box>
                 <Typography
-                  variant="body1"
-                  sx={{ fontWeight: "bold", color: "green" }}
+                  variant="h6"
+                  sx={{ fontWeight: "bold", color: "#333", mb: 1 }}
                 >
-                  {farm.description}
+                  {option.title}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#666", lineHeight: 1.5 }}
+                >
+                  {option.description}
                 </Typography>
               </CardContent>
             </Card>
           ))}
         </Box>
       </Container>
-
-      {/* Actions Section */}
-      <Container
-        sx={{ textAlign: "center", my: 4, animation: "slideUp 1s ease-out" }}
-      >
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold" }}>
-          You are welcome as one of our clients.
-        </Typography>
-        <Typography sx={{ marginBottom: 2 }}>
-          Press any of the buttons below to jump into the category you want:
-        </Typography>
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="contained"
-            color="success"
-            sx={{
-              m: 1,
-              "&:hover": { backgroundColor: "#388e3c" },
-              borderRadius: 20,
-            }}
-            component={Link}
-            to="/trial"
-          >
-            Buy Farm
-          </Button>
-          <Button
-            variant="contained"
-            color="warning"
-            sx={{
-              m: 1,
-              "&:hover": { backgroundColor: "#f57c00" },
-              borderRadius: 20,
-            }}
-            component={Link}
-            to="/RentPage"
-          >
-            Rent Farm
-          </Button>
-          <Link to="/LoginPage">
-            <Button
-              variant="contained"
-              color="error"
-              sx={{
-                m: 1,
-                "&:hover": { backgroundColor: "#d32f2f" },
-                borderRadius: 20,
-              }}
-            >
-              Sell Farm
-            </Button>
-          </Link>
-        </Box>
-      </Container>
-
-      {/* Footer */}
-      <Box sx={{ textAlign: "center", p: 2, bgcolor: "#d8f9d8", mt: 4 }}>
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <IconButton
-            href="https://www.instagram.com"
-            target="_blank"
-            sx={{ color: "#E4405F", mx: 1 }}
-          >
-            <InstagramIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.twitter.com"
-            target="_blank"
-            sx={{ color: "#1DA1F2", mx: 1 }}
-          >
-            <TwitterIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.facebook.com"
-            target="_blank"
-            sx={{ color: "#1877F2", mx: 1 }}
-          >
-            <FacebookIcon />
-          </IconButton>
-          <IconButton
-            href="https://www.linkedin.com"
-            target="_blank"
-            sx={{ color: "#0077B5", mx: 1 }}
-          >
-            <LinkedInIcon />
-          </IconButton>
-        </Box>
-        <Typography fontSize={14}>
-          Created by <strong>S/N 19</strong>
-        </Typography>
-        <Typography fontSize={14}>
-          Contacts: 2557 475 700 004 <br /> Email: serialnumber19@gmail.com
-        </Typography>
-      </Box>
     </Box>
   );
 };

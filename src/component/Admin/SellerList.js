@@ -22,32 +22,30 @@ import {
   DialogTitle,
   Button,
   Snackbar,
-  Drawer, // Added for Drawer
-  List, // Added for Drawer
-  ListItem, // Added for Drawer
-  ListItemText, // Added for Drawer
-  ListItemIcon, // Added for Drawer
-  Avatar, // Added for Drawer/AppBar profile
-  CssBaseline, // Added for ThemeProvider
-  ThemeProvider, // Added for ThemeProvider
-  createTheme, // Added for ThemeProvider
-  TextField, // Added for Search
-  InputAdornment, // Added for Search
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Avatar,
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { motion } from "framer-motion";
-import { Link, useNavigate, useLocation } from "react-router-dom"; // Import for navigation and location
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  Menu as MenuIcon, // Added for Drawer toggle
-  Dashboard as DashboardIcon, // Added for Dashboard menu item
-  People as PeopleIcon, // Added for Sellers menu item
-  CalendarToday as CalendarIcon, // Added for Farm Rentals menu item
-  Spa as FarmIcon, // Added for Farm Sales menu item
-  LightMode as LightModeIcon, // Added for Theme toggle
-  DarkMode as DarkModeIcon, // Added for Theme toggle
-  Refresh as RefreshIcon, // Added for Refresh button
-  ExitToApp as ExitToAppIcon, // Added for Logout button
-  Search as SearchIcon, // Added for Search input
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  People as PeopleIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
+  Refresh as RefreshIcon,
+  ExitToApp as ExitToAppIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import axios from "axios";
 
@@ -77,7 +75,7 @@ api.interceptors.response.use(
       if (!refresh) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/AdminLogin"; // Redirect to admin login
+        window.location.href = "/AdminLogin";
         return Promise.reject(error);
       }
 
@@ -93,7 +91,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/AdminLogin"; // Redirect to admin login
+        window.location.href = "/AdminLogin";
         return Promise.reject(refreshError);
       }
     }
@@ -141,7 +139,7 @@ const getTheme = (mode) =>
 
 const SellerList = () => {
   const [sellers, setSellers] = useState([]);
-  const [filteredSellers, setFilteredSellers] = useState([]); // New state for filtered sellers
+  const [filteredSellers, setFilteredSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sellerToDelete, setSellerToDelete] = useState({});
@@ -152,9 +150,9 @@ const SellerList = () => {
     message: "",
     severity: "success",
   });
-  const [drawerOpen, setDrawerOpen] = useState(true); // State for drawer
-  const [darkMode, setDarkMode] = useState(false); // State for theme
-  const [searchQuery, setSearchQuery] = useState(""); // State for search query
+  const [drawerOpen, setDrawerOpen] = useState(true); 
+  const [darkMode, setDarkMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); 
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,8 +169,6 @@ const SellerList = () => {
     () => [
       { text: "Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
       { text: "Sellers", icon: <PeopleIcon />, path: "/SellerList" },
-      { text: "Farm Rentals", icon: <CalendarIcon />, path: "/FarmRentals" },
-      { text: "Farm Sales", icon: <FarmIcon />, path: "/FarmSales" },
     ],
     []
   );
@@ -230,7 +226,7 @@ const SellerList = () => {
         seller.seller_name,
         seller.username,
         seller.seller_residence,
-      ].filter(Boolean); // Removed email from searchable fields
+      ].filter(Boolean);
 
       const matchesSearch =
         searchQuery === "" ||
@@ -419,7 +415,7 @@ const SellerList = () => {
             },
           }}
         >
-          <Toolbar /> {/* Keeps content below AppBar */}
+          <Toolbar /> 
           <Box sx={{ overflow: "hidden", mt: 2 }}>
             {drawerOpen && (
               <Box
@@ -526,7 +522,7 @@ const SellerList = () => {
             width: `calc(100% - ${
               drawerOpen ? drawerWidth : theme.spacing(7)
             }px)`,
-            mt: 8, // Adjusts for AppBar height
+            mt: 8, 
           }}
         >
           {/* Page Title Section*/}
@@ -536,7 +532,7 @@ const SellerList = () => {
               component="h1"
               sx={{
                 fontWeight: "bold",
-                color: theme.palette.primary.main, // Using theme color
+                color: theme.palette.primary.main,
                 display: "inline-block",
                 position: "relative",
                 "&:after": {
@@ -546,7 +542,7 @@ const SellerList = () => {
                   height: "4px",
                   bottom: "-8px",
                   left: "0",
-                  backgroundColor: theme.palette.primary.main, // Using theme color
+                  backgroundColor: theme.palette.primary.main, 
                   borderRadius: "2px",
                 },
               }}
@@ -618,7 +614,9 @@ const SellerList = () => {
               >
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: theme.palette.primary.main }}>
+                    <TableRow
+                      sx={{ backgroundColor: theme.palette.primary.main }}
+                    >
                       <TableCell
                         sx={{
                           color: "white",
@@ -740,10 +738,13 @@ const SellerList = () => {
                   Summary
                 </Typography>
                 <Typography variant="body1" sx={{ mt: 1 }}>
-                  Total registered sellers:{" "}
-                  <b>{filteredSellers.length}</b> {/* Use filteredSellers here */}
+                  Total registered sellers: <b>{filteredSellers.length}</b>{" "}
+                  {/* Use filteredSellers here */}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, color: "text.secondary" }}
+                >
                   Last updated: {new Date().toLocaleString()}
                 </Typography>
               </Box>
@@ -760,8 +761,8 @@ const SellerList = () => {
             <DialogContent>
               <DialogContentText>
                 Are you sure you want to remove seller "
-                <b>{sellerToDelete.seller_name}</b>"? This will remove them
-                from the seller group but keep their user account.
+                <b>{sellerToDelete.seller_name}</b>"? This will remove them from
+                the seller group but keep their user account.
               </DialogContentText>
             </DialogContent>
             <DialogActions>

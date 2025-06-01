@@ -161,7 +161,7 @@ const Trial = () => {
             onClick={handleToggleMiniSidebar}
             sx={{ mr: 2 }}
           >
-            <MenuIcon sx={{ fontSize: "2.5rem" }} />
+            <MenuIcon sx={{ fontSize: "1.5rem" }} />
           </IconButton>
 
           <Box sx={{ flexGrow: 1 }}>

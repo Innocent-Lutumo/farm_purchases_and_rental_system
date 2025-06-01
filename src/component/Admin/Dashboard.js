@@ -42,7 +42,6 @@ import {
   Search as SearchIcon,
   Dashboard as DashboardIcon,
   People as PeopleIcon,
-  CalendarToday as CalendarIcon,
   Spa as FarmIcon,
   FilterList as FilterListIcon,
   CheckCircle as CheckCircleIcon,
@@ -292,8 +291,6 @@ function AdminDashboard() {
     () => [
       { text: "Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
       { text: "Sellers", icon: <PeopleIcon />, path: "/SellerList" },
-      { text: "Farm Rentals", icon: <CalendarIcon />, path: "/FarmRentals" },
-      { text: "Farm Sales", icon: <FarmIcon />, path: "/FarmSales" },
     ],
     []
   );

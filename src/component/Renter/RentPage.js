@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
+import React, { useState, useEffect, useCallback } from "react";
 import RentDialog from "./RentDialog";
 import FarmMapModal from "../Buyer/FarmMapModal";
 
@@ -119,8 +119,7 @@ const RentPage = () => {
       const response = await axios.get(
         "http://127.0.0.1:8000/api/farmsrent/validated/"
       );
-      // *** MODIFIED: Removed !farm.is_rented from the filter ***
-      // Now, all validated and not rejected farms will be fetched.
+
       const availableFarms = response.data.filter(
         (farm) => farm.is_validated && !farm.is_rejected
       );
@@ -130,12 +129,10 @@ const RentPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array means this function is created once
-
+  }, []);
   useEffect(() => {
     fetchFarms();
-  }, [fetchFarms]); // Re-run effect if fetchFarms changes (though it's useCallback here)
-
+  }, [fetchFarms]);
   const handleRentDialogClose = () => {
     setRentDialogOpen(false);
     setSelectedFarm(null);
@@ -143,9 +140,9 @@ const RentPage = () => {
 
   // Function to call when a rental is successful in RentDialog
   const handleRentSuccess = (rentedFarmId) => {
-    setRentDialogOpen(false); // Close the dialog
-    setSelectedFarm(null); // Clear selected farm
-    fetchFarms(); // Re-fetch farms to update the list and reflect the rented status
+    setRentDialogOpen(false);
+    setSelectedFarm(null);
+    fetchFarms();
   };
 
   const handleSearchChange = (event) => {
@@ -156,8 +153,6 @@ const RentPage = () => {
     setMiniSidebarOpen(!miniSidebarOpen);
   };
 
-  // Filtered farms still apply the search term.
-  // The 'is_rented' status will be handled in the rendering logic, not here.
   const filteredFarms = farms.filter(
     (farm) =>
       farm.location.toLowerCase().includes(search.toLowerCase()) ||
@@ -179,14 +174,13 @@ const RentPage = () => {
         }}
       >
         <Toolbar>
-          {/* Menu Icon - toggles the mini sidebar */}
           <IconButton
             color="inherit"
             aria-label="toggle sidebar"
             onClick={handleToggleMiniSidebar}
             sx={{ mr: 2 }}
           >
-            <MenuIcon sx={{ fontSize: "2.5rem" }} />
+            <MenuIcon sx={{ fontSize: "1.5rem" }} />
           </IconButton>
 
           <Box sx={{ flexGrow: 1 }}>
@@ -345,9 +339,8 @@ const RentPage = () => {
                     transition: "0.3s",
                     "&:hover": { transform: "scale(1.05)" },
                     position: "relative",
-                    // *** ADDED: Visual cue for rented farms ***
-                    opacity: farm.is_rented ? 0.7 : 1, // Make it slightly faded
-                    pointerEvents: farm.is_rented ? 'none' : 'auto', // Disable click events on the card
+                    opacity: farm.is_rented ? 0.7 : 1,
+                    pointerEvents: farm.is_rented ? "none" : "auto",
                   }}
                 >
                   <Box sx={{ display: "flex" }}>
@@ -419,12 +412,16 @@ const RentPage = () => {
                           Duration: {farm.rent_duration} Months
                         </Typography>
                       )}
-                      {/* *** MODIFIED: Conditional rendering for Rent button/label *** */}
                       {farm.is_rented ? (
                         <Typography
                           variant="h6"
-                          color="error" // Use a strong color for "RENTED"
-                          sx={{ mt: 2, textAlign: "center", fontWeight: "bold", textTransform: 'uppercase' }}
+                          color="error"
+                          sx={{
+                            mt: 2,
+                            textAlign: "center",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                          }}
                         >
                           Rented
                         </Typography>
@@ -523,7 +520,7 @@ const RentPage = () => {
         farm={selectedFarm}
       />
 
-      {/* Confirmation Dialog (unchanged) */}
+      {/* Confirmation Dialog */}
       <Dialog
         open={confirmDialogOpen}
         onClose={handleCancelRent}

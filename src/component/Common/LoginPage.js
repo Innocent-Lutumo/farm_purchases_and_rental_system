@@ -25,6 +25,9 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Ensure password is hidden when form is submitted
+    setShowPassword(false);
 
     if (!username || !password) {
       setError("Please fill in both fields");
@@ -55,23 +58,27 @@ const LoginPage = () => {
 
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setIsLoading(true);
+    // Also hide password during Google login
+    setShowPassword(false);
+    
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/google-login/",
         {
-          token: credentialResponse.credential,
+          access: credentialResponse.credential, 
         }
       );
 
-      const { access_token, refresh_token } = response.data;
-      localStorage.setItem("access", access_token);
-      localStorage.setItem("refresh", refresh_token);
+      const { access, refresh } = response.data; 
+      localStorage.setItem("access", access);
+      localStorage.setItem("refresh", refresh);
 
       console.log("Google login successful:", response.data);
       navigate("/SellerPage");
     } catch (err) {
       console.error("Google login failed:", err);
-      setError("Google login failed");
+      console.error("Error details:", err.response?.data);
+      setError("Google login failed: " + (err.response?.data?.error || err.message));
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +86,10 @@ const LoginPage = () => {
 
   const handleBack = () => {
     navigate(-1); // Go back to previous page
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(prevShow => !prevShow);
   };
 
   // Animation variants
@@ -283,11 +294,12 @@ const LoginPage = () => {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={togglePasswordVisibility}
                       edge="end"
                       component={motion.button}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      type="button" // Prevent form submission
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
