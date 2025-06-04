@@ -1,6 +1,6 @@
 // Purchases2.jsx
 import React, { useEffect, useState } from "react";
-import RegistrationDialog from "../Shared/FeedbackDialog";
+import RegistrationDialog from "./FeedbackDialog";
 import AdvertisementSection from "../Shared/Advertisement";
 import {
   AppBar,
@@ -71,7 +71,7 @@ const Purchase = () => {
     const fetchPurchases = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactions/"
+          "http://127.0.0.1:8000/api/get-transaction/"
         );
         setPurchases(response.data);
       } catch (error) {

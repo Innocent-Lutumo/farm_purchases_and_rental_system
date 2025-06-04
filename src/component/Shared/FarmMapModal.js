@@ -1,6 +1,6 @@
 import React from "react";
 import { Modal, Box } from "@mui/material";
-import { MapTilerFarmMap } from "../Shared/UserMap";
+import { MapTilerFarmMap } from "./UserMap";
 
 const FarmMapModal = ({ open, onClose, farm }) => {
   const [userLocation, setUserLocation] = React.useState({ lat: 0, lng: 0 });

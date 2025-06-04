@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -11,17 +11,12 @@ import {
   TableHead,
   TableRow,
   Paper,
-  AppBar,
-  Toolbar,
   Avatar,
   Select,
   MenuItem,
   FormControl,
   IconButton,
-  Menu,
-  TextField,
   Button,
-  InputAdornment,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,42 +24,41 @@ import {
   Tooltip,
   CircularProgress,
   Switch,
-  FormControlLabel,
-  Drawer,
-  List,
-  Divider,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Grid,
   Card,
   CardContent,
   CssBaseline,
   ThemeProvider,
+  Tabs,
+  Tab,
+  Chip,
   Badge,
+  ToggleButton,
+  ToggleButtonGroup,
+  CardMedia,
+  CardActions,
 } from "@mui/material";
 import {
   LocationOn as LocationOnIcon,
-  AccountCircle as AccountCircleIcon,
-  Search as SearchIcon,
-  Delete as DeleteIcon,
-  Menu as MenuIcon,
   ShoppingBag as PurchasesIcon,
   Home as RentsIcon,
   CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
-  Cancel as SoldoutsIcon,
   AddCircle as UploadNewIcon,
-  LightMode as LightModeIcon,
-  DarkMode as DarkModeIcon,
-  Refresh as RefreshIcon,
-  ExitToApp as ExitToAppIcon,
-  Lightbulb,
+  Delete as DeleteIcon,
+  HourglassEmpty as PendingIcon,
+  MonetizationOn as SoldIcon,
+  ViewList as TableViewIcon,
+  ViewModule as CardViewIcon,
+  Description as AgreementIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { createTheme } from "@mui/material/styles";
-import "../../styles/Animation.css";
+import SellerDrawer from "./SellerDrawer";
+import SellerAppBar from "./SellerAppBar";
 
 // Theme creation
 const getTheme = (mode) =>
@@ -103,38 +97,25 @@ const getTheme = (mode) =>
     },
   });
 
-// Menu items configuration
 const menuItems = [
   {
     text: "Purchases",
     icon: <PurchasesIcon />,
     path: "/Purchases",
     description: "Track all farm purchases",
+    badge: 0,
   },
   {
     text: "Rents",
     icon: <RentsIcon />,
     path: "/Rents",
     description: "Manage your property rentals",
-    badge: 0,
   },
   {
     text: "Uploaded Farms",
     icon: <UploadIcon />,
     path: "/UploadedFarms",
     description: "View your farm listings",
-  },
-  {
-    text: "Accepted List",
-    icon: <AcceptedIcon />,
-    path: "/accepted",
-    description: "Review approved farm transactions",
-  },
-  {
-    text: "Soldouts",
-    icon: <SoldoutsIcon />,
-    path: "/soldouts",
-    description: "Archive of completed sales",
   },
   {
     text: "Upload New Farm",
@@ -144,77 +125,139 @@ const menuItems = [
   },
 ];
 
-export default function Rent() {
-  const currentLocation = useLocation();
-  const [orders, setOrders] = useState([]); 
-  const [filteredOrders, setFilteredOrders] = useState([]); 
+export default function Rents() {
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState(0); // 0 for All Rents, 1 for Rented
+  const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
   const [stats, setStats] = useState({
     totalRents: 0,
     confirmed: 0,
     pending: 0,
-    available: 0,
+    rented: 0,
   });
 
+  // Missing states for AppBar and Drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+
   const navigate = useNavigate();
-  const theme = useMemo(() => getTheme(darkMode ? "dark" : "light"), [darkMode]);
+  const theme = useMemo(
+    () => getTheme(darkMode ? "dark" : "light"),
+    [darkMode]
+  );
   const drawerWidth = 240;
 
-  // Function to apply current filters (search and is_rented status)
-  const applyFilters = (currentOrders, currentSearchQuery) => {
-    return currentOrders.filter(
-      (order) =>
-        order.farm.is_rented && 
-        order.farm.location
-          .toLowerCase()
-          .includes(currentSearchQuery.toLowerCase())
-    );
-  };
+  // Updated filter function to include both is_rented and status conditions
+  const filterOrdersByTab = useCallback(
+    (ordersData, tabIndex) => {
+      let filtered = [];
+      if (tabIndex === 0) {
+        // All Rents
+        filtered = ordersData;
+      } else if (tabIndex === 1) {
+        // Rented - farms with is_rented = true AND status = confirmed
+        filtered = ordersData.filter(
+          (order) =>
+            order.farm.is_rented === true && order.status === "Confirmed"
+        );
+      }
+
+      // Apply search filter if exists
+      if (searchQuery.trim()) {
+        filtered = filtered.filter((order) =>
+          order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      setFilteredOrders(filtered);
+    },
+    [searchQuery]
+  );
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("access");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const { data } = await axios.get(
+        "http://127.0.0.1:8000/api/rent-transactions/",
+        { headers }
+      );
+      setOrders(data);
+
+      // Calculate stats based on fetched data
+      const totalRents = data.length;
+      const confirmed = data.filter((o) => o.status === "Confirmed").length;
+      const pending = data.filter((o) => o.status === "Pending").length;
+      const rented = data.filter(
+        (o) => o.farm.is_rented === true && o.status === "Confirmed"
+      ).length;
+
+      setStats({
+        totalRents,
+        confirmed,
+        pending,
+        rented,
+      });
+
+      // Filter based on active tab
+      filterOrdersByTab(data, activeTab);
+    } catch (error) {
+      console.error("Error fetching orders:", error.response || error);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, filterOrdersByTab]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const token = localStorage.getItem("access");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/rent-transactions/",
-          { headers }
-        );
-        setOrders(response.data);
-        const filtered = applyFilters(response.data, searchQuery);
-        setFilteredOrders(filtered);
-        
-        // Update stats
-        setStats({
-          totalRents: filtered.length,
-          confirmed: filtered.filter(o => o.status === "Confirmed").length,
-          pending: filtered.filter(o => o.status === "Pending").length,
-          available: filtered.filter(o => !o.farm.is_rented).length,
-        });
-      } catch (error) {
-        console.error("Error fetching orders:", error.response || error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrders();
-  }, [searchQuery]);
+  }, [fetchOrders]);
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
-  const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
+  useEffect(() => {
+    filterOrdersByTab(orders, activeTab);
+  }, [activeTab, orders, searchQuery, filterOrdersByTab]);
+
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
+  };
+
+  const handleDrawerToggle = () => {
+    setDrawerOpen((prev) => !prev);
+  };
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    filterOrdersByTab(orders, activeTab);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleViewModeChange = (event, newViewMode) => {
+    if (newViewMode !== null) {
+      setViewMode(newViewMode);
+    }
   };
 
   const handleStatusChange = async (id, newStatus) => {
@@ -225,14 +268,10 @@ export default function Rent() {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const updatedOrders = orders.map((order) =>
-        order.id === id ? { ...order, status: newStatus } : order
-      );
-      setOrders(updatedOrders);
-      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
+      // Refresh data after status change
+      fetchOrders();
     } catch (error) {
-      console.error("Error updating status:", error);
-      alert("Failed to update order status. Please try again.");
+      console.error("Failed to update order status:", error);
     }
   };
 
@@ -245,46 +284,41 @@ export default function Rent() {
         `http://127.0.0.1:8000/api/rent-transactions/${deleteId}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const updatedOrders = orders.filter((order) => order.id !== deleteId);
-      setOrders(updatedOrders);
-      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
+      // Refresh data after deletion
+      fetchOrders();
     } catch (error) {
       console.error("Failed to delete transaction:", error);
     } finally {
       setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
   const handleFarmAvailabilityToggle = async (farmId, currentIsRented) => {
     try {
       const token = localStorage.getItem("access");
-      const newIsRentedStatus = !currentIsRented; 
+      const newIsRentedStatus = !currentIsRented;
       await axios.patch(
         `http://127.0.0.1:8000/api/farmsrent/${farmId}/`,
         { is_rented: newIsRentedStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      const updatedOrders = orders.map((order) =>
-        order.farm.id === farmId
-          ? { ...order, farm: { ...order.farm, is_rented: newIsRentedStatus } }
-          : order
-      );
-      setOrders(updatedOrders); 
-      setFilteredOrders(applyFilters(updatedOrders, searchQuery));
+      // Refresh data after availability toggle
+      fetchOrders();
     } catch (error) {
       console.error("Failed to update farm availability:", error);
-      alert("Failed to update farm availability. Please try again.");
     }
-  };
-
-  const handleSearch = () => {
-    setFilteredOrders(applyFilters(orders, searchQuery));
   };
 
   const openConfirmationDialog = (id) => {
     setDeleteId(id);
     setOpenDeleteDialog(true);
+  };
+
+  const handleViewAgreement = (order) => {
+    // Handle view agreement logic here
+    console.log("View agreement for:", order.transaction_id);
+    // You can implement modal or navigation to agreement page
   };
 
   const containerVariants = {
@@ -306,6 +340,249 @@ export default function Rent() {
     },
   };
 
+  // Card Component
+  const FarmCard = ({ order, index }) => (
+    <motion.div
+      variants={itemVariants}
+      className="fade-in"
+      style={{ animationDelay: `${index * 0.1}s` }}
+    >
+      <Card
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            transform: "translateY(-4px)",
+            boxShadow: theme.shadows[8],
+          },
+          opacity: order.farm.is_rented ? 0.85 : 1,
+        }}
+      >
+        {/* Farm Image */}
+        <Box sx={{ position: "relative" }}>
+          <CardMedia
+            component="img"
+            height="140"
+            image={`http://127.0.0.1:8000${order.farm.image}`}
+            alt={order.farm.name}
+            sx={{
+              filter: order.farm.is_rented ? "grayscale(50%)" : "none",
+            }}
+          />
+
+          {/* Status Badge */}
+          <Chip
+            label={order.status}
+            color={
+              order.status === "Confirmed"
+                ? "success"
+                : order.status === "Cancelled"
+                ? "error"
+                : "warning"
+            }
+            size="small"
+            sx={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              fontWeight: 600,
+              fontSize: "0.7rem",
+            }}
+          />
+
+          {/* Rented Badge */}
+          {order.farm.is_rented && (
+            <Chip
+              label="RENTED"
+              color="error"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                fontWeight: 600,
+                fontSize: "0.7rem",
+                bgcolor: "error.main",
+                color: "white",
+              }}
+            />
+          )}
+        </Box>
+
+        <CardContent sx={{ flexGrow: 1, p: 2 }}>
+          {/* Farm Name */}
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              fontWeight: 600,
+              mb: 1,
+              fontSize: "1rem",
+              textDecoration: order.farm.is_rented ? "line-through" : "none",
+              color: order.farm.is_rented ? "text.secondary" : "text.primary",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {order.farm.name}
+          </Typography>
+
+          {/* Location */}
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <LocationOnIcon
+              sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
+            />
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {order.farm.location}
+            </Typography>
+          </Box>
+
+          {/* Size and Price */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              <strong>Size:</strong> {order.farm.size}
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 700,
+                color: order.farm.is_rented ? "text.secondary" : "success.main",
+                fontSize: "0.9rem",
+              }}
+            >
+              {order.farm.price} Tshs
+            </Typography>
+          </Box>
+
+          {/* Rental Duration */}
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>Duration:</strong> {order.farm.rent_duration || "N/A"}
+            </Typography>
+          </Box>
+
+          {/* Contact Info (Compact) */}
+          {(order.renter_phone || order.renter_email) && (
+            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+              {order.renter_phone && (
+                <Tooltip title={order.renter_phone}>
+                  <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                </Tooltip>
+              )}
+              {order.renter_email && (
+                <Tooltip title={order.renter_email}>
+                  <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                </Tooltip>
+              )}
+            </Box>
+          )}
+        </CardContent>
+
+        <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+          {/* Status Change Select */}
+          <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
+            <Select
+              value={order.status || "Pending"}
+              onChange={(e) => handleStatusChange(order.id, e.target.value)}
+              disabled={order.farm.is_rented}
+              sx={{
+                fontSize: "0.8rem",
+                "& .MuiSelect-select": {
+                  py: 0.5,
+                  color:
+                    order.status === "Confirmed"
+                      ? theme.palette.success.main
+                      : order.status === "Cancelled"
+                      ? theme.palette.error.main
+                      : theme.palette.warning.main,
+                },
+              }}
+            >
+              <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
+                Confirmed
+              </MenuItem>
+              <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
+                Cancelled
+              </MenuItem>
+              <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
+                Pending
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Agreement Icon (Only for Rented in Card View) */}
+          {order.farm.is_rented && activeTab === 1 && (
+            <Tooltip title="View Agreement">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => handleViewAgreement(order)}
+                sx={{
+                  bgcolor: "primary.main",
+                  color: "white",
+                  "&:hover": {
+                    bgcolor: "primary.dark",
+                  },
+                }}
+              >
+                <AgreementIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {/* Delete Button */}
+          <Tooltip title="Delete Transaction">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => openConfirmationDialog(order.id)}
+            >
+              <DeleteIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Availability Toggle */}
+          <Tooltip
+            title={
+              order.farm.is_rented ? "Mark as Available" : "Mark as Rented"
+            }
+          >
+            <Switch
+              checked={!order.farm.is_rented}
+              onChange={() =>
+                handleFarmAvailabilityToggle(
+                  order.farm.id,
+                  order.farm.is_rented
+                )
+              }
+              color={order.farm.is_rented ? "error" : "success"}
+              size="small"
+            />
+          </Tooltip>
+        </CardActions>
+      </Card>
+    </motion.div>
+  );
+
   if (loading) {
     return (
       <ThemeProvider theme={theme}>
@@ -323,211 +600,29 @@ export default function Rent() {
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
         {/* AppBar */}
-        <AppBar
-          position="fixed"
-          sx={{ zIndex: theme.zIndex.drawer + 1, boxShadow: "none" }}
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              Farm Rentals Management
-            </Typography>
+        <SellerAppBar
+          handleDrawerToggle={handleDrawerToggle}
+          darkMode={darkMode}
+          handleThemeToggle={handleThemeToggle}
+          fetchFarms={fetchOrders}
+          anchorEl={anchorEl}
+          handleMenuOpen={handleMenuOpen}
+          handleMenuClose={handleMenuClose}
+          handleLogout={handleLogout}
+          showSearchInput={showSearchInput}
+          setShowSearchInput={setShowSearchInput}
+          searchQuery={searchQuery}
+          handleSearchChange={handleSearchChange}
+          handleSearchSubmit={handleSearchSubmit}
+        />
 
-            {/* Action buttons */}
-            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
-              <IconButton color="inherit" onClick={handleThemeToggle}>
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Refresh">
-              <IconButton color="inherit" onClick={() => window.location.reload()}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-
-            <IconButton
-              edge="end"
-              color="inherit"
-              onClick={handleMenuOpen}
-              sx={{ ml: 1 }}
-            >
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: theme.palette.secondary.main,
-                }}
-              >
-                JF
-              </Avatar>
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { borderRadius: 2, minWidth: 180 },
-              }}
-            >
-              <Box sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}>
-                <Typography variant="subtitle2" fontWeight="bold" color="white">
-                  John Farmer
-                </Typography>
-                <Typography variant="caption" color="rgba(255,255,255,0.7)">
-                  Premium Seller
-                </Typography>
-              </Box>
-              <Divider />
-              <MenuItem
-                component={Link}
-                to="/profile"
-                onClick={handleMenuClose}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <AccountCircleIcon fontSize="small" color="action" />
-                <Typography variant="body2">My Profile</Typography>
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  handleLogout();
-                  handleMenuClose();
-                }}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <ExitToAppIcon fontSize="small" color="error" />
-                <Typography variant="body2" color="error">
-                  Logout
-                </Typography>
-              </MenuItem>
-            </Menu>
-          </Toolbar>
-        </AppBar>
-
-        {/* Side Drawer */}
-        <Drawer
-          variant="permanent"
-          open={drawerOpen}
-          sx={{
-            width: drawerOpen ? drawerWidth : theme.spacing(7),
-            flexShrink: 0,
-            "& .MuiDrawer-paper": {
-              width: drawerOpen ? drawerWidth : theme.spacing(7),
-              boxSizing: "border-box",
-              whiteSpace: "nowrap",
-              overflowX: "hidden",
-              transition: theme.transitions.create("width", {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-            },
-          }}
-        >
-          <Toolbar />
-          <Box sx={{ overflow: "hidden", mt: 2 }}>
-            {drawerOpen && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  mb: 4,
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    mb: 1,
-                    backgroundColor: theme.palette.primary.main,
-                  }}
-                >
-                  JF
-                </Avatar>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  John Farmer
-                </Typography>
-              </Box>
-            )}
-
-            <List>
-              {menuItems.map((item) => (
-                <ListItem
-                  key={item.text}
-                  component={Link}
-                  to={item.path}
-                  button
-                  sx={{
-                    backgroundColor: currentLocation.pathname === item.path
-                      ? theme.palette.action.selected
-                      : "transparent",
-                    borderRadius: drawerOpen ? 1 : 0,
-                    mx: drawerOpen ? 1 : 0,
-                    mb: 0.5,
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      color: currentLocation.pathname === item.path ? theme.palette.primary.main : "inherit",
-                      textAlign: "center",
-                    }}
-                  >
-                    {item.badge ? (
-                      <Badge badgeContent={item.badge} color="error">
-                        {item.icon}
-                      </Badge>
-                    ) : (
-                      item.icon
-                    )}
-                  </ListItemIcon>
-                  {drawerOpen && (
-                    <ListItemText
-                      primary={item.text}
-                      primaryTypographyProps={{
-                        fontWeight: currentLocation.pathname === item.path ? 600 : 400,
-                        color: currentLocation.pathname === item.path ? theme.palette.primary.main : "inherit",
-                      }}
-                    />
-                  )}
-                </ListItem>
-              ))}
-            </List>
-            <Divider sx={{ my: 0 }} />
-            <List>
-              <ListItem
-                button
-                onClick={handleLogout}
-                sx={{
-                  borderRadius: drawerOpen ? 1 : 0,
-                  mx: drawerOpen ? 1 : 0,
-                  mb: 4,
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    minWidth: drawerOpen ? 48 : "100%",
-                    textAlign: "center",
-                  }}
-                >
-                  <ExitToAppIcon />
-                </ListItemIcon>
-                {drawerOpen && <ListItemText primary="Logout" />}
-              </ListItem>
-            </List>
-          </Box>
-        </Drawer>
+        <SellerDrawer
+          drawerOpen={drawerOpen}
+          drawerWidth={drawerWidth}
+          theme={theme}
+          handleLogout={handleLogout}
+          menuItems={menuItems}
+        />
 
         {/* Main Content */}
         <Box
@@ -535,24 +630,26 @@ export default function Rent() {
           sx={{
             flexGrow: 1,
             p: 3,
-            width: `calc(100% - ${
-              drawerOpen ? drawerWidth : theme.spacing(7)
-            }px)`,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
             mt: 8,
           }}
         >
           {/* Dashboard Title */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Rented Farms
+              Farm Rentals Management
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Manage your farm rentals and tenant information
+              Manage your farm rentals and track rental transactions
             </Typography>
           </Box>
 
           {/* Stats Cards */}
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} sm={6} md={3}>
                 <motion.div variants={itemVariants}>
@@ -569,7 +666,11 @@ export default function Rent() {
                           <Typography color="text.secondary" variant="body2">
                             Total Rents
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="primary">
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="primary"
+                          >
                             {stats.totalRents}
                           </Typography>
                         </Box>
@@ -601,7 +702,11 @@ export default function Rent() {
                           <Typography color="text.secondary" variant="body2">
                             Confirmed
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="success.main">
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="success.main"
+                          >
                             {stats.confirmed}
                           </Typography>
                         </Box>
@@ -633,7 +738,11 @@ export default function Rent() {
                           <Typography color="text.secondary" variant="body2">
                             Pending
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="warning.main">
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="warning.main"
+                          >
                             {stats.pending}
                           </Typography>
                         </Box>
@@ -643,7 +752,7 @@ export default function Rent() {
                             p: 1,
                           }}
                         >
-                          <UploadIcon color="warning" />
+                          <PendingIcon color="warning" />
                         </Avatar>
                       </Box>
                     </CardContent>
@@ -663,19 +772,23 @@ export default function Rent() {
                       >
                         <Box>
                           <Typography color="text.secondary" variant="body2">
-                            Available
+                            Rented
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="info.main">
-                            {stats.available}
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="error.main"
+                          >
+                            {stats.rented}
                           </Typography>
                         </Box>
                         <Avatar
                           sx={{
-                            backgroundColor: "rgba(41, 121, 255, 0.1)",
+                            backgroundColor: "rgba(244, 67, 54, 0.1)",
                             p: 1,
                           }}
                         >
-                          <PurchasesIcon color="info" />
+                          <SoldIcon color="error" />
                         </Avatar>
                       </Box>
                     </CardContent>
@@ -685,123 +798,118 @@ export default function Rent() {
             </Grid>
           </motion.div>
 
-          {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Paper
-              elevation={2}
+          {/* Tabs and View Toggle Section */}
+          <Paper sx={{ borderRadius: 3, mb: 3 }}>
+            <Box
               sx={{
-                p: 3,
-                mb: 4,
-                borderRadius: 3,
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                gap: 2,
+                p: 2,
+                pb: 0,
               }}
             >
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search Farms by Location"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleSearch}
-                sx={{ minWidth: 120 }}
-              >
-                Search
-              </Button>
-            </Paper>
-          </motion.div>
-
-          {/* Empty State or Table */}
-          {filteredOrders.length === 0 && !loading ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Paper
-                elevation={0}
+              <Tabs
+                value={activeTab}
+                onChange={handleTabChange}
                 sx={{
-                  textAlign: "center",
-                  py: 8,
-                  px: 4,
-                  borderRadius: 3,
-                  bgcolor: theme.palette.background.default,
-                  border: `2px dashed ${theme.palette.divider}`,
+                  "& .MuiTab-root": {
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: "1rem",
+                  },
                 }}
               >
-                <Avatar
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    mx: "auto",
-                    mb: 3,
-                    bgcolor: theme.palette.action.selected,
-                  }}
-                >
-                  <RentsIcon sx={{ fontSize: 40 }} color="action" />
-                </Avatar>
-                <Typography variant="h5" fontWeight="bold" gutterBottom>
-                  No Rented Farms Found
-                </Typography>
-                <Typography
-                  variant="body1"
-                  color="text.secondary"
-                  sx={{ mb: 3, maxWidth: 400, mx: "auto" }}
-                >
-                  {searchQuery
-                    ? `No farms found matching "${searchQuery}". Try adjusting your search terms.`
-                    : "No farms are currently rented or available for rent. Check your farm listings to enable rentals."}
-                </Typography>
-                <Button
-                  variant="contained"
-                  component={Link}
-                  to="/UploadedFarms"
-                  sx={{ borderRadius: 3, px: 4 }}
-                >
-                  View Farm Listings
-                </Button>
-              </Paper>
-            </motion.div>
-          ) : (
-            /* Table */
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
+                <Tab
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      All Rents
+                      <Chip
+                        label={stats.totalRents}
+                        size="small"
+                        color="primary"
+                        sx={{ height: 20, fontSize: "0.75rem" }}
+                      />
+                    </Box>
+                  }
+                />
+                <Tab
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      Rented
+                      <Chip
+                        label={stats.rented}
+                        size="small"
+                        color="error"
+                        sx={{ height: 20, fontSize: "0.75rem" }}
+                      />
+                    </Box>
+                  }
+                />
+              </Tabs>
+
+              {/* View Toggle */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={handleViewModeChange}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    "&.Mui-selected": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="table" aria-label="table view">
+                  <Tooltip title="Table View">
+                    <TableViewIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="cards" aria-label="card view">
+                  <Tooltip title="Card View">
+                    <CardViewIcon />
+                  </Tooltip>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Paper>
+
+          {/* Content - Table or Cards */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {viewMode === "table" ? (
+              // Table View
               <TableContainer
                 component={Paper}
                 sx={{ borderRadius: 3, boxShadow: 3 }}
               >
                 <Table>
-                  <TableHead sx={{ backgroundColor: theme.palette.action.selected }}>
+                  <TableHead
+                    sx={{ backgroundColor: theme.palette.action.selected }}
+                  >
                     <TableRow>
                       <TableCell>Farm</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Size</TableCell>
                       <TableCell>Price</TableCell>
+                      <TableCell>Rental Duration</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Rental Time</TableCell>
                       <TableCell>Phone</TableCell>
                       <TableCell>Rent Date</TableCell>
                       <TableCell>Transaction ID</TableCell>
                       <TableCell>Email</TableCell>
-                      <TableCell>Update Status</TableCell>
+                      <TableCell>Edit Status</TableCell>
                       <TableCell>Delete</TableCell>
                       <TableCell>Availability</TableCell>
                     </TableRow>
@@ -815,17 +923,63 @@ export default function Rent() {
                           animationDelay: `${index * 0.1}s`,
                           backgroundColor: theme.palette.background.paper,
                           transition: "0.3s",
-                          "&:hover": { backgroundColor: theme.palette.action.hover },
+                          "&:hover": {
+                            backgroundColor: theme.palette.action.hover,
+                          },
                         }}
                       >
                         <TableCell>
                           <Box display="flex" alignItems="center" gap={2}>
-                            <Avatar
-                              src={`http://127.0.0.1:8000${order.farm.image}`}
-                              variant="rounded"
-                              sx={{ width: 80, height: 80 }}
-                            />
-                            <Typography>{order.farm.name}</Typography>
+                            <Badge
+                              badgeContent={
+                                order.farm.is_rented ? "RENTED" : ""
+                              }
+                              color="error"
+                              sx={{
+                                "& .MuiBadge-badge": {
+                                  fontSize: "0.6rem",
+                                  height: 16,
+                                  minWidth: 16,
+                                },
+                              }}
+                            >
+                              <Avatar
+                                src={`http://127.0.0.1:8000${order.farm.image}`}
+                                variant="rounded"
+                                sx={{
+                                  width: 80,
+                                  height: 80,
+                                  opacity: order.farm.is_rented ? 0.7 : 1,
+                                }}
+                              />
+                            </Badge>
+                            <Box>
+                              <Typography
+                                sx={{
+                                  textDecoration: order.farm.is_rented
+                                    ? "line-through"
+                                    : "none",
+                                  color: order.farm.is_rented
+                                    ? "text.secondary"
+                                    : "text.primary",
+                                }}
+                              >
+                                {order.farm.name}
+                              </Typography>
+                              {order.farm.is_rented && (
+                                <Chip
+                                  label="Rented"
+                                  size="small"
+                                  color="error"
+                                  variant="outlined"
+                                  sx={{
+                                    mt: 0.5,
+                                    fontSize: "0.7rem",
+                                    height: 18,
+                                  }}
+                                />
+                              )}
+                            </Box>
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -844,38 +998,87 @@ export default function Rent() {
                           </Link>
                         </TableCell>
                         <TableCell>{order.farm.size}</TableCell>
-                        <TableCell>{order.farm.price} Tshs</TableCell>
                         <TableCell>
                           <Typography
-                            className={
-                              order.status === "Confirmed"
-                                ? "confirmed"
-                                : order.status === "Cancelled"
-                                ? "cancelled"
-                                : "pending"
+                            color={
+                              order.farm.is_rented
+                                ? "text.secondary"
+                                : "success.main"
                             }
+                            fontWeight="bold"
                           >
-                            {order.status || "Pending"}
+                            {order.farm.price} Tshs
                           </Typography>
                         </TableCell>
-                        <TableCell>{order.farm.rent_duration || "-"}</TableCell>
-                        <TableCell>{order.renter_phone || "-"}</TableCell>
+                        <TableCell>
+                          {order.farm.rent_duration || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={order.status}
+                            color={
+                              order.status === "Confirmed"
+                                ? "success"
+                                : order.status === "Cancelled"
+                                ? "error"
+                                : "warning"
+                            }
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {order.renter_phone ? (
+                            <Tooltip title="Call">
+                              <IconButton
+                                color="primary"
+                                href={`tel:${order.renter_phone}`}
+                                size="small"
+                              >
+                                <PhoneIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              N/A
+                            </Typography>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {order.rent_date
                             ? new Date(order.rent_date).toLocaleDateString()
-                            : "-"}
+                            : "N/A"}
                         </TableCell>
-                        <TableCell>{order.transaction_id || "-"}</TableCell>
-                        <TableCell>{order.renter_email || "-"}</TableCell>
+                        <TableCell>{order.transaction_id}</TableCell>
                         <TableCell>
-                          <FormControl fullWidth size="small">
+                          {order.renter_email ? (
+                            <Tooltip title={order.renter_email}>
+                              <IconButton
+                                color="primary"
+                                href={`mailto:${order.renter_email}`}
+                                size="small"
+                              >
+                                <EmailIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              N/A
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <FormControl size="small" sx={{ minWidth: 100 }}>
                             <Select
                               value={order.status || "Pending"}
                               onChange={(e) =>
                                 handleStatusChange(order.id, e.target.value)
                               }
+                              disabled={order.farm.is_rented}
                               sx={{
+                                fontSize: "0.8rem",
                                 "& .MuiSelect-select": {
+                                  py: 0.5,
                                   color:
                                     order.status === "Confirmed"
                                       ? theme.palette.success.main
@@ -885,139 +1088,129 @@ export default function Rent() {
                                 },
                               }}
                             >
-                              <MenuItem value="Confirmed">Confirmed</MenuItem>
-                              <MenuItem value="Cancelled">Cancelled</MenuItem>
-                              <MenuItem value="Pending">Pending</MenuItem>
+                              <MenuItem
+                                value="Confirmed"
+                                sx={{ fontSize: "0.8rem" }}
+                              >
+                                Confirmed
+                              </MenuItem>
+                              <MenuItem
+                                value="Cancelled"
+                                sx={{ fontSize: "0.8rem" }}
+                              >
+                                Cancelled
+                              </MenuItem>
+                              <MenuItem
+                                value="Pending"
+                                sx={{ fontSize: "0.8rem" }}
+                              >
+                                Pending
+                              </MenuItem>
                             </Select>
                           </FormControl>
                         </TableCell>
                         <TableCell>
-                          <IconButton
-                            color="error"
-                            onClick={() => openConfirmationDialog(order.id)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          <Tooltip title="Delete Transaction">
+                            <IconButton
+                              color="error"
+                              onClick={() => openConfirmationDialog(order.id)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={!order.farm.is_rented}
-                                onChange={() =>
-                                  handleFarmAvailabilityToggle(
-                                    order.farm.id,
-                                    order.farm.is_rented
-                                  )
-                                }
-                                color={order.farm.is_rented ? "warning" : "success"}
-                              />
+                          <Tooltip
+                            title={
+                              order.farm.is_rented
+                                ? "Mark as Available"
+                                : "Mark as Rented"
                             }
-                            label={order.farm.is_rented ? "Rented" : "Available"}
-                            sx={{
-                              color: order.farm.is_rented
-                                ? theme.palette.warning.main
-                                : theme.palette.success.main,
-                            }}
-                          />
+                          >
+                            <Switch
+                              checked={!order.farm.is_rented}
+                              onChange={() =>
+                                handleFarmAvailabilityToggle(
+                                  order.farm.id,
+                                  order.farm.is_rented
+                                )
+                              }
+                              color={order.farm.is_rented ? "error" : "success"}
+                            />
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
+                    {filteredOrders.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={13} align="center">
+                          <Typography
+                            variant="h6"
+                            color="text.secondary"
+                            sx={{ py: 3 }}
+                          >
+                            No rental transactions found.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
-            </motion.div>
-          )}
-
-          {/* Tips Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Paper
-              elevation={2}
-              sx={{
-                borderRadius: 3,
-                p: 3,
-                mt: 4,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}15, ${theme.palette.secondary.main}10)`,
-                border: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: theme.palette.warning.main,
-                    width: 32,
-                    height: 32,
-                  }}
-                >
-                  <Lightbulb />
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  Farm Rental Management Tips
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Here are some helpful tips to manage your farm rentals effectively:
-              </Typography>
-              <Box component="ul" sx={{ pl: 2, m: 0 }}>
-                <Typography component="li" variant="body2" sx={{ mb: 1 }}>
-                  <strong>Regular Communication:</strong> Stay in touch with your tenants to ensure smooth operations
-                </Typography>
-                <Typography component="li" variant="body2" sx={{ mb: 1 }}>
-                  <strong>Status Updates:</strong> Keep transaction statuses updated to maintain clear records
-                </Typography>
-                <Typography component="li" variant="body2" sx={{ mb: 1 }}>
-                  <strong>Availability Management:</strong> Toggle farm availability to control rental opportunities
-                </Typography>
-                <Typography component="li" variant="body2">
-                  <strong>Documentation:</strong> Maintain proper records of all rental agreements and payments
-                </Typography>
-              </Box>
-            </Paper>
+            ) : (
+              // Card View
+              <Grid container spacing={3}>
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((order, index) => (
+                    <Grid item key={order.id} xs={12} sm={6} md={4} lg={3}>
+                      <FarmCard order={order} index={index} />
+                    </Grid>
+                  ))
+                ) : (
+                  <Grid item xs={12}>
+                    <Paper
+                      sx={{
+                        p: 3,
+                        textAlign: "center",
+                        borderRadius: 3,
+                        boxShadow: 3,
+                      }}
+                    >
+                      <Typography variant="h6" color="text.secondary">
+                        No rental transactions found.
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            )}
           </motion.div>
         </Box>
 
-        {/* Confirmation Dialog for Deletion */}
+        {/* Delete Confirmation Dialog */}
         <Dialog
           open={openDeleteDialog}
           onClose={() => setOpenDeleteDialog(false)}
-          PaperProps={{
-            sx: { borderRadius: 3 },
-          }}
+          aria-labelledby="delete-dialog-title"
+          aria-describedby="delete-dialog-description"
         >
-          <DialogTitle sx={{ pb: 1 }}>
-            <Typography variant="h6" fontWeight="bold">
-              Confirm Deletion
-            </Typography>
-          </DialogTitle>
+          <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
           <DialogContent>
-            <Typography variant="body1" color="text.secondary">
-              Are you sure you want to delete this rental transaction? This action cannot be undone.
+            <Typography id="delete-dialog-description">
+              Are you sure you want to delete this rental transaction? This
+              action cannot be undone.
             </Typography>
           </DialogContent>
-          <DialogActions sx={{ p: 2.5, pt: 1 }}>
+          <DialogActions>
             <Button
               onClick={() => setOpenDeleteDialog(false)}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
+              color="primary"
+              disabled={isDeleting}
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleDelete}
-              variant="contained"
-              color="error"
-              disabled={isDeleting}
-              sx={{ borderRadius: 2, minWidth: 100 }}
-            >
-              {isDeleting ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                "Delete"
-              )}
+            <Button onClick={handleDelete} color="error" disabled={isDeleting}>
+              {isDeleting ? <CircularProgress size={24} /> : "Delete"}
             </Button>
           </DialogActions>
         </Dialog>

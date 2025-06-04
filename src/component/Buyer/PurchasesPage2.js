@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import RegistrationDialog from "../Shared/FeedbackDialog";
+import RegistrationDialog2 from "./FeedbackDialog2";
 import AdvertisementSection from "../Shared/Advertisement";
 import {
   AppBar,
@@ -70,7 +70,7 @@ const Purchases2 = () => {
     const fetchPurchases = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactionsale/"
+          "http://127.0.0.1:8000/api/get-transactionsal/"
         );
         setPurchases(response.data);
       } catch (error) {
@@ -352,7 +352,7 @@ const Purchases2 = () => {
         )}
       </Container>
 
-      <RegistrationDialog
+      <RegistrationDialog2
         open={dialogOpen}
         onClose={handleDialogClose}
         farm={selectedFarm}

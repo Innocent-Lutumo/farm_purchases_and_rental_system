@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from 'react-router-dom'; // Keep Link import
+import { Link } from 'react-router-dom';
 import {
   Button,
   Box,
@@ -17,13 +17,15 @@ import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AssignmentIcon from "@mui/icons-material/Assignment"; 
 
-const RegistrationDialog = ({ open, onClose, farm }) => {
+const RegistrationDialog2 = ({ open, onClose, farm }) => {
   const [imageIndex, setImageIndex] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [transactionId, setTransactionId] = useState("");
   const [showEmail, setShowEmail] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
+  const [showAgreementIcon, setShowAgreementIcon] = useState(false); 
 
   useEffect(() => {
     if (farm?.images?.length > 0) {
@@ -37,6 +39,7 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
       setTransactionId("");
       setShowEmail(false);
       setShowPhone(false);
+      setShowAgreementIcon(false);
     }
   }, [open]);
 
@@ -66,8 +69,10 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
 
     if (entered === expected) {
       setShowContact(true);
+      setShowAgreementIcon(true); 
     } else {
       alert("Invalid transaction ID");
+      setShowAgreementIcon(false);
     }
   };
 
@@ -131,7 +136,7 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
               !showContact ? (
                 <>
                   <Typography sx={{ mb: 1 }}>
-                    Enter your Transaction ID to view contact info:
+                    Enter your Transaction ID to view contact info and agreement:
                   </Typography>
                   <Box sx={{ display: "flex", gap: 1 }}>
                     <TextField
@@ -158,7 +163,6 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
                         },
                       }}
                     />
-
                     <Button
                       variant="contained"
                       onClick={handleTransactionSubmit}
@@ -225,21 +229,24 @@ const RegistrationDialog = ({ open, onClose, farm }) => {
           <Button onClick={onClose} color="error">
             Close
           </Button>
-          {/* Modified Link to pass farm.id in state */}
-          <Button
-            component={Link}
-            to={{
-              pathname: "/RentalAgreement",
-            }}
-            variant="outlined"
-            color="success"
-          >
-            Agreement
-          </Button>
+          {showAgreementIcon && ( 
+            <Button
+              component={Link}
+              to={{
+                pathname: "/PurchaseAgreement",
+                state: { farmId: farm.id } 
+              }}
+              variant="outlined"
+              color="success"
+              startIcon={<AssignmentIcon />} 
+            >
+              Agreement
+            </Button>
+          )}
         </DialogActions>
       </Box>
     </Dialog>
   );
 };
 
-export default RegistrationDialog;
+export default RegistrationDialog2;

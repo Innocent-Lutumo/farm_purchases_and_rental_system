@@ -12,7 +12,6 @@ import {
   DialogActions,
   Box,
   CircularProgress,
-  InputAdornment,
   Alert,
   FormControl,
   InputLabel,
@@ -23,18 +22,33 @@ import {
   Tooltip,
   MenuItem,
   IconButton,
+  Stack,
 } from "@mui/material";
 import {
   CheckCircle,
   XCircle,
   Clock,
   AlertTriangle,
-  Search,
   Edit,
   Trash2,
   Eye,
   PlusCircle,
 } from "lucide-react";
+import {
+  Edit as EditIcon,
+  Close as CloseIcon,
+  Image as ImageIcon,
+  Info as InfoIcon,
+  LocationOn as LocationOnIcon,
+  Agriculture as AgricultureIcon,
+  AttachMoney as AttachMoneyIcon,
+  Star as StarIcon,
+  SquareFoot as SquareFootIcon,
+  Phone as PhoneIcon,
+  Description as DescriptionIcon,
+  Assignment as AssignmentIcon,
+  Feedback as FeedbackIcon,
+} from "@mui/icons-material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion } from "framer-motion";
@@ -129,8 +143,6 @@ const StyledCard = styled(Card)(({ theme }) => ({
 const UploadedFarms = () => {
   const [farms, setFarms] = useState([]);
   const [filteredFarms, setFilteredFarms] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFilter, setSearchFilter] = useState("location");
   const [loading, setLoading] = useState(true);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -142,6 +154,10 @@ const UploadedFarms = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
+
+  // Search functionality states
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
   const theme = useMemo(
@@ -159,6 +175,25 @@ const UploadedFarms = () => {
     }
     fetchFarms();
   }, []);
+
+  // Search effect - filter farms when searchQuery changes
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredFarms(farms);
+    } else {
+      const filtered = farms.filter((farm) => {
+        const query = searchQuery.toLowerCase();
+        return (
+          farm.location?.toLowerCase().includes(query) ||
+          farm.farm_type?.toLowerCase().includes(query) ||
+          farm.quality?.toLowerCase().includes(query) ||
+          farm.description?.toLowerCase().includes(query) ||
+          farm.price?.toString().toLowerCase().includes(query)
+        );
+      });
+      setFilteredFarms(filtered);
+    }
+  }, [searchQuery, farms]);
 
   const fetchFarms = async () => {
     try {
@@ -202,18 +237,14 @@ const UploadedFarms = () => {
     }
   };
 
-  const handleSearch = () => {
-    if (!searchQuery) {
-      setFilteredFarms(farms);
-      return;
-    }
+  // Search handlers
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
 
-    const result = farms.filter((farm) => {
-      const searchValue = farm[searchFilter]?.toLowerCase() || "";
-      return searchValue.includes(searchQuery.toLowerCase());
-    });
+  const handleSearchSubmit = () => {
 
-    setFilteredFarms(result);
+    console.log("Search submitted with query:", searchQuery);
   };
 
   const handleEditClick = (farm) => {
@@ -426,6 +457,11 @@ const UploadedFarms = () => {
           handleMenuOpen={handleMenuOpen}
           handleMenuClose={handleMenuClose}
           handleLogout={handleLogout}
+          showSearchInput={showSearchInput}
+          setShowSearchInput={setShowSearchInput}
+          searchQuery={searchQuery}
+          handleSearchChange={handleSearchChange}
+          handleSearchSubmit={handleSearchSubmit}
         />
 
         <SellerDrawer
@@ -455,6 +491,12 @@ const UploadedFarms = () => {
             <Typography variant="body1" color="text.secondary">
               Manage your farm listings and track their status
             </Typography>
+            {searchQuery && (
+              <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                Showing {filteredFarms.length} result
+                {filteredFarms.length !== 1 ? "s" : ""} for "{searchQuery}"
+              </Typography>
+            )}
           </Box>
 
           {/* Search and Filter Section */}
@@ -466,56 +508,6 @@ const UploadedFarms = () => {
               borderRadius: 3,
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                mb: 2,
-                flexWrap: "wrap",
-                alignItems: "flex-end",
-              }}
-            >
-              <FormControl sx={{ minWidth: 120 }} size="small">
-                <InputLabel id="search-filter-label">Search By</InputLabel>
-                <Select
-                  labelId="search-filter-label"
-                  id="search-filter"
-                  value={searchFilter}
-                  label="Search By"
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                >
-                  <MenuItem value="location">Location</MenuItem>
-                  <MenuItem value="farm_type">Farm Type</MenuItem>
-                  <MenuItem value="quality">Quality</MenuItem>
-                  <MenuItem value="price">Price</MenuItem>
-                </Select>
-              </FormControl>
-
-              <TextField
-                sx={{ flexGrow: 1 }}
-                variant="outlined"
-                size="small"
-                placeholder={`Search by ${searchFilter}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search size={20} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSearch}
-                sx={{ minWidth: { xs: "100%", sm: "auto" } }}
-              >
-                Search
-              </Button>
-            </Box>
-
             {/* Status Summary */}
             <Box>
               <Typography variant="h6" gutterBottom>
@@ -592,16 +584,29 @@ const UploadedFarms = () => {
                       color="text.secondary"
                       gutterBottom
                     >
-                      No farms found
+                      {searchQuery
+                        ? `No farms found for "${searchQuery}"`
+                        : "No farms found"}
                     </Typography>
                     <Typography
                       variant="body1"
                       color="text.secondary"
                       sx={{ mb: 3 }}
                     >
-                      You haven't uploaded any farms yet, or your search
-                      returned no results.
+                      {searchQuery
+                        ? "Try adjusting your search terms or browse all farms."
+                        : "You haven't uploaded any farms yet."}
                     </Typography>
+                    {searchQuery && (
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        sx={{ mt: 1, mr: 2 }}
+                        onClick={() => setSearchQuery("")}
+                      >
+                        Clear Search
+                      </Button>
+                    )}
                     <Button
                       variant="contained"
                       color="primary"
@@ -844,7 +849,7 @@ const UploadedFarms = () => {
           <Dialog
             open={openEditDialog}
             onClose={() => setOpenEditDialog(false)}
-            maxWidth="md"
+            maxWidth="sm"
             fullWidth
           >
             <DialogTitle>Edit Farm Details</DialogTitle>
@@ -995,194 +1000,276 @@ const UploadedFarms = () => {
           <Dialog
             open={openViewDialog}
             onClose={() => setOpenViewDialog(false)}
-            maxWidth="md"
+            maxWidth="sm" 
             fullWidth
           >
             <DialogTitle>
-              Farm Details
-              {selectedFarm && (
-                <Chip
-                  icon={getValidationStatusInfo(selectedFarm).icon}
-                  label={getValidationStatusInfo(selectedFarm).label}
-                  color={getValidationStatusInfo(selectedFarm).chipColor}
-                  size="small"
-                  sx={{ ml: 2 }}
-                />
-              )}
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Typography variant="h6" component="div">
+                  {" "}
+                  {/* Smaller title variant */}
+                  Farm Details
+                </Typography>
+                <Box>
+                  <IconButton
+                    onClick={() => {
+                      setOpenViewDialog(false);
+                      setEditedFarm(selectedFarm);
+                      setOpenEditDialog(true);
+                    }}
+                    color="primary"
+                    title="Edit Farm"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => setOpenViewDialog(false)}
+                    sx={{ color: "grey.500" }}
+                    title="Close"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+              </Box>
             </DialogTitle>
-            <DialogContent>
+
+            <DialogContent dividers>
+              {" "}
+              {/* Add dividers for better visual separation */}
               {selectedFarm && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {/* Image Gallery */}
+                <Stack spacing={3}>
+                  {" "}
                   {selectedFarm.images?.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Images
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 1,
-                          overflowX: "auto",
-                          pb: 1,
-                        }}
-                      >
-                        {selectedFarm.images.map((img, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              minWidth: 150,
-                              height: 100,
-                              borderRadius: 1,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <img
-                              src={`${BASE_URL}${img.image}`}
-                              alt={`Farm ${index + 1}`}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-
-                  {/* Farm Details */}
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Location:</strong> {selectedFarm.location}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Farm Type:</strong> {selectedFarm.farm_type}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Price:</strong> {selectedFarm.price}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Quality:</strong> {selectedFarm.quality}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Size:</strong> {selectedFarm.size} acres
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Contact:</strong> {selectedFarm.phone}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Description:</strong>
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {selectedFarm.description || "No description provided."}
-                      </Typography>
-                    </Grid>
-
-                    {/* Validation Status Details */}
-                    <Grid item xs={12}>
-                      <Box
-                        sx={{
-                          p: 2,
-                          backgroundColor:
-                            getValidationStatusInfo(selectedFarm)
-                              .backgroundColor,
-                          borderRadius: 1,
-                          border: `1px solid ${
-                            getValidationStatusInfo(selectedFarm).color
-                          }`,
-                        }}
-                      >
+                    <Card variant="outlined">
+                      {" "}
+                      {/* Use outlined variant for a lighter look */}
+                      <CardContent>
                         <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: "bold", mb: 1 }}
+                          variant="subtitle1"
+                          gutterBottom
+                          sx={{ display: "flex", alignItems: "center", mb: 1 }}
                         >
-                          Validation Status
+                          {" "}
+                          {/* Smaller heading */}
+                          <ImageIcon sx={{ mr: 1 }} />
+                          Farm Images
                         </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            mb: 1,
-                          }}
-                        >
-                          {getValidationStatusInfo(selectedFarm).icon}
-                          <Typography variant="body2">
-                            {getValidationStatusInfo(selectedFarm).label}
-                          </Typography>
-                        </Box>
-
-                        {selectedFarm.is_rejected &&
-                          selectedFarm.admin_feedback && (
-                            <Box sx={{ mt: 2 }}>
+                        <Grid container spacing={1}>
+                          {" "}
+                          {/* Reduced spacing for images */}
+                          {selectedFarm.images.map((image, index) => (
+                            <Grid item xs={4} sm={3} md={2} key={index}>
+                              {" "}
+                              {/* More images per row */}
+                              <Card elevation={0}>
+                                {" "}
+                                {/* No elevation for images, cleaner */}
+                                <CardMedia
+                                  component="img"
+                                  sx={{
+                                    width: "100%",
+                                    height: 80,
+                                    objectFit: "cover",
+                                    borderRadius: 1,
+                                  }}
+                                  image={`${BASE_URL}${image.image}`}
+                                  alt={`Farm image ${index + 1}`}
+                                />
+                              </Card>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {/* Basic Information Section */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography
+                        variant="subtitle1"
+                        gutterBottom
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <InfoIcon sx={{ mr: 1 }} />
+                        Basic Information
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {" "}
+                        {/* Smaller spacing for info grid */}
+                        {[
+                          {
+                            label: "Location",
+                            value: selectedFarm.location,
+                            icon: <LocationOnIcon />,
+                          },
+                          {
+                            label: "Farm Type",
+                            value: selectedFarm.farm_type,
+                            icon: <AgricultureIcon />,
+                          },
+                          {
+                            label: "Price",
+                            value: selectedFarm.price,
+                            icon: <AttachMoneyIcon />,
+                            color: "primary.main",
+                          },
+                          {
+                            label: "Quality",
+                            value: selectedFarm.quality,
+                            icon: <StarIcon />,
+                          },
+                          {
+                            label: "Size",
+                            value: `${selectedFarm.size} acres`,
+                            icon: <SquareFootIcon />,
+                          },
+                          {
+                            label: "Contact Number",
+                            value: selectedFarm.phone,
+                            icon: <PhoneIcon />,
+                          },
+                        ].map((item, index) => (
+                          <Grid item xs={12} sm={6} key={index}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 0.5,
+                              }}
+                            >
+                              {item.icon && (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    mr: 1,
+                                  }}
+                                >
+                                  {item.icon}
+                                </Typography>
+                              )}
                               <Typography
-                                variant="subtitle2"
-                                sx={{ fontWeight: "bold", color: "#f44336" }}
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mr: 1 }}
                               >
-                                Rejection Reason:
+                                {item.label}:
                               </Typography>
-                              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                {selectedFarm.admin_feedback}
+                              <Typography
+                                variant="body2"
+                                fontWeight="medium"
+                                color={item.color || "text.primary"}
+                              >
+                                {item.value}
                               </Typography>
                             </Box>
-                          )}
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                  {/* Description Section */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography
+                        variant="subtitle1"
+                        gutterBottom
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <DescriptionIcon sx={{ mr: 1 }} />
+                        Description
+                      </Typography>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                        {" "}
+                        {/* Smaller body text and line height */}
+                        {selectedFarm.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  {/* Status Section */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography
+                        variant="subtitle1"
+                        gutterBottom
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <AssignmentIcon sx={{ mr: 1 }} />
+                        Status Information
+                      </Typography>
+                      <Chip
+                        icon={getValidationStatusInfo(selectedFarm).icon}
+                        label={getValidationStatusInfo(selectedFarm).label}
+                        color={getValidationStatusInfo(selectedFarm).chipColor}
+                        size="small"
+                        sx={{ fontWeight: "medium" }}
+                      />
 
-                        {selectedFarm.is_validated && (
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#4caf50", mt: 1 }}
-                          >
-                            This farm has been verified and approved by our
-                            admin team.
-                          </Typography>
-                        )}
-
-                        {!selectedFarm.is_validated &&
-                          !selectedFarm.is_rejected && (
+                      {/* Rejection Feedback Section */}
+                      {selectedFarm.is_rejected &&
+                        selectedFarm.admin_feedback && (
+                          <Box sx={{ mt: 2 }}>
                             <Typography
                               variant="body2"
-                              sx={{ color: "#ff9800", mt: 1 }}
+                              color="text.secondary"
+                              gutterBottom
+                              sx={{ display: "flex", alignItems: "center" }}
                             >
-                              This farm is currently under review by our admin
-                              team.
+                              <FeedbackIcon
+                                sx={{
+                                  fontSize: 16,
+                                  mr: 0.5,
+                                  verticalAlign: "middle",
+                                }}
+                              />
+                              Rejection Reason:
                             </Typography>
-                          )}
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Box>
+                            <Alert
+                              severity="error"
+                              sx={{
+                                mt: 0.5, 
+                                "& .MuiAlert-message": {
+                                  fontSize: "0.85rem",
+                                },
+                              }}
+                            >
+                              {selectedFarm.admin_feedback}
+                            </Alert>
+                          </Box>
+                        )}
+                    </CardContent>
+                  </Card>
+                </Stack>
               )}
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenViewDialog(false)}>Close</Button>
-              {selectedFarm && !selectedFarm.is_rejected && (
-                <Button
-                  onClick={() => {
-                    setOpenViewDialog(false);
-                    handleEditClick(selectedFarm);
-                  }}
-                  variant="outlined"
-                  startIcon={<Edit size={20} />}
-                >
-                  Edit
-                </Button>
-              )}
-            </DialogActions>
+
+            {/* <DialogActions sx={{ px: 3, py: 2 }}>
+              <Button
+                onClick={() => setOpenViewDialog(false)}
+                color="inherit"
+                startIcon={<CloseIcon />}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setOpenViewDialog(false);
+                  setEditedFarm(selectedFarm);
+                  setOpenEditDialog(true);
+                }}
+                variant="contained"
+                color="primary"
+                startIcon={<EditIcon />}
+              >
+                Edit Farm
+              </Button>
+            </DialogActions> */}
           </Dialog>
         </Box>
       </Box>

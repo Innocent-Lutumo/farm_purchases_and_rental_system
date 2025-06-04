@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -11,17 +11,12 @@ import {
   TableHead,
   TableRow,
   Paper,
-  AppBar,
-  Toolbar,
   Avatar,
   Select,
-  Menu,
   MenuItem,
   FormControl,
   IconButton,
-  TextField,
   Button,
-  InputAdornment,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,42 +24,42 @@ import {
   Tooltip,
   CircularProgress,
   Switch,
-  FormControlLabel,
-  Drawer,
-  List,
-  Divider,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Grid,
   Card,
   CardContent,
   CssBaseline,
   ThemeProvider,
+  Tabs,
+  Tab,
+  Chip,
   Badge,
+  ToggleButton,
+  ToggleButtonGroup,
+  CardMedia,
+  CardActions,
 } from "@mui/material";
 import {
   LocationOn as LocationOnIcon,
-  AccountCircle as AccountCircleIcon,
-  Search as SearchIcon,
-  Delete as DeleteIcon,
-  Menu as MenuIcon,
   ShoppingBag as PurchasesIcon,
   Home as RentsIcon,
   CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
   Cancel as SoldoutsIcon,
   AddCircle as UploadNewIcon,
-  LightMode as LightModeIcon,
-  DarkMode as DarkModeIcon,
-  Refresh as RefreshIcon,
-  ExitToApp as ExitToAppIcon,
-  Lightbulb,
+  Delete as DeleteIcon,
+  HourglassEmpty as PendingIcon,
+  MonetizationOn as SoldIcon,
+  ViewList as TableViewIcon,
+  ViewModule as CardViewIcon,
+  Description as AgreementIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { createTheme } from "@mui/material/styles";
-import "../../styles/Animation.css";
+import SellerDrawer from "./SellerDrawer";
+import SellerAppBar from "./SellerAppBar";
 
 // Theme creation
 const getTheme = (mode) =>
@@ -103,7 +98,6 @@ const getTheme = (mode) =>
     },
   });
 
-// Menu items configuration
 const menuItems = [
   {
     text: "Purchases",
@@ -145,62 +139,135 @@ const menuItems = [
 ];
 
 export default function Purchases() {
-  const currentLocation = useLocation();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState(0); // 0 for All Purchases, 1 for Sold Outs
+  const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
   const [stats, setStats] = useState({
-    purchases: 0,
-    rents: 0,
-    uploaded: 0,
-    accepted: 0,
+    totalPurchases: 0,
+    confirmed: 0,
+    pending: 0,
+    soldOuts: 0,
   });
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+
   const navigate = useNavigate();
-  const theme = useMemo(() => getTheme(darkMode ? "dark" : "light"), [darkMode]);
+  const theme = useMemo(
+    () => getTheme(darkMode ? "dark" : "light"),
+    [darkMode]
+  );
   const drawerWidth = 240;
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const token = localStorage.getItem("access");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const { data } = await axios.get(
-          "http://127.0.0.1:8000/api/sale-transactions/",
-          { headers }
+  const filterOrdersByTab = useCallback(
+    (ordersData, tabIndex) => {
+      let filtered = [];
+      if (tabIndex === 0) {
+        // All Purchases
+        filtered = ordersData;
+      } else if (tabIndex === 1) {
+        // Sold Outs - farms with is_sold = true AND status = "Confirmed"
+        filtered = ordersData.filter(
+          (order) => order.farm.is_sold === true && order.status === "Confirmed"
         );
-        setOrders(data);
-        setFilteredOrders(data);
-        setStats({
-          purchases: data.length,
-          rents: data.filter((o) => o.status === "Confirmed").length,
-          uploaded: data.filter((o) => o.farm.is_sold === false).length,
-          accepted: data.filter((o) => o.status === "Confirmed").length,
-        });
-      } catch (error) {
-        console.error("Error fetching orders:", error.response || error);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // Apply search filter if exists
+      if (searchQuery.trim()) {
+        filtered = filtered.filter((order) =>
+          order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      setFilteredOrders(filtered);
+    },
+    [searchQuery]
+  );
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("access");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const { data } = await axios.get(
+        "http://127.0.0.1:8000/api/sale-transactions/",
+        { headers }
+      );
+      setOrders(data);
+
+      // Calculate stats based on fetched data
+      const totalPurchases = data.length;
+      const confirmed = data.filter((o) => o.status === "Confirmed").length;
+      const pending = data.filter((o) => o.status === "Pending").length;
+      const soldOuts = data.filter(
+        (o) => o.farm.is_sold === true && o.status === "Confirmed"
+      ).length;
+
+      setStats({
+        totalPurchases,
+        confirmed,
+        pending,
+        soldOuts,
+      });
+
+      // Filter based on active tab
+      filterOrdersByTab(data, activeTab);
+    } catch (error) {
+      console.error("Error fetching orders:", error.response || error);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, filterOrdersByTab]);
+
+  useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
-  const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
+  useEffect(() => {
+    filterOrdersByTab(orders, activeTab);
+  }, [activeTab, orders, searchQuery, filterOrdersByTab]);
+
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
+  };
+
+  const handleDrawerToggle = () => {
+    setDrawerOpen((prev) => !prev);
+  };
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    filterOrdersByTab(orders, activeTab);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleViewModeChange = (event, newViewMode) => {
+    if (newViewMode !== null) {
+      setViewMode(newViewMode);
+    }
   };
 
   const handleStatusChange = async (id, newStatus) => {
@@ -211,11 +278,8 @@ export default function Purchases() {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const updated = orders.map((order) =>
-        order.id === id ? { ...order, status: newStatus } : order
-      );
-      setOrders(updated);
-      setFilteredOrders(updated);
+      // Refresh data after status change
+      fetchOrders();
     } catch (error) {
       console.error("Failed to update order status:", error);
     }
@@ -230,13 +294,13 @@ export default function Purchases() {
         `http://127.0.0.1:8000/api/sale-transactions/${deleteId}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const updated = orders.filter((order) => order.id !== deleteId);
-      setOrders(updated);
-      setFilteredOrders(updated);
+      // Refresh data after deletion
+      fetchOrders();
     } catch (error) {
       console.error("Failed to delete transaction:", error);
     } finally {
       setIsDeleting(false);
+      setDeleteId(null);
     }
   };
 
@@ -249,29 +313,20 @@ export default function Purchases() {
         { is_sold: newIsSoldStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      const updatedOrders = orders.map((order) =>
-        order.farm.id === farmId
-          ? { ...order, farm: { ...order.farm, is_sold: newIsSoldStatus } }
-          : order
-      );
-      setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
+      // Refresh data after availability toggle
+      fetchOrders();
     } catch (error) {
       console.error("Failed to update farm availability:", error);
     }
   };
 
-  const handleSearch = () => {
-    const filtered = orders.filter((order) =>
-      order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredOrders(filtered);
-  };
-
   const openConfirmationDialog = (id) => {
     setDeleteId(id);
     setOpenDeleteDialog(true);
+  };
+
+  const handleViewAgreement = (order) => {
+    console.log("View agreement for:", order.transaction_id);
   };
 
   const containerVariants = {
@@ -293,6 +348,225 @@ export default function Purchases() {
     },
   };
 
+  const FarmCard = ({ order, index }) => (
+    <motion.div
+      variants={itemVariants}
+      className="fade-in"
+      style={{ animationDelay: `${index * 0.1}s` }}
+    >
+      <Card
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            transform: "translateY(-4px)",
+            boxShadow: theme.shadows[8],
+          },
+          opacity: order.farm.is_sold ? 0.85 : 1,
+        }}
+      >
+        <Box sx={{ position: "relative" }}>
+          <CardMedia
+            component="img"
+            height="140"
+            image={`http://127.0.0.1:8000${order.farm.image}`}
+            alt={order.farm.name}
+            sx={{
+              filter: order.farm.is_sold ? "grayscale(50%)" : "none",
+            }}
+          />
+
+          <Chip
+            label={order.status}
+            color={
+              order.status === "Confirmed"
+                ? "success"
+                : order.status === "Cancelled"
+                ? "error"
+                : "warning"
+            }
+            size="small"
+            sx={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              fontWeight: 600,
+              fontSize: "0.7rem",
+            }}
+          />
+
+          {order.farm.is_sold && (
+            <Chip
+              label="SOLD OUT"
+              color="error"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                fontWeight: 600,
+                fontSize: "0.7rem",
+                bgcolor: "error.main",
+                color: "white",
+              }}
+            />
+          )}
+        </Box>
+
+        <CardContent sx={{ flexGrow: 1, p: 2 }}>
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              fontWeight: 600,
+              mb: 1,
+              fontSize: "1rem",
+              textDecoration: order.farm.is_sold ? "line-through" : "none",
+              color: order.farm.is_sold ? "text.secondary" : "text.primary",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {order.farm.name}
+          </Typography>
+
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <LocationOnIcon
+              sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
+            />
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {order.farm.location}
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              <strong>Size:</strong> {order.farm.size}
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 700,
+                color: order.farm.is_sold ? "text.secondary" : "success.main",
+                fontSize: "0.9rem",
+              }}
+            >
+              {order.farm.price} Tshs
+            </Typography>
+          </Box>
+
+          {(order.contact_info || order.buyer_email) && (
+            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+              {order.contact_info && (
+                <Tooltip title={order.contact_info}>
+                  <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                </Tooltip>
+              )}
+              {order.buyer_email && (
+                <Tooltip title={order.buyer_email}>
+                  <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                </Tooltip>
+              )}
+            </Box>
+          )}
+        </CardContent>
+
+        <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
+            <Select
+              value={order.status || "Pending"}
+              onChange={(e) => handleStatusChange(order.id, e.target.value)}
+              disabled={order.farm.is_sold}
+              sx={{
+                fontSize: "0.8rem",
+                "& .MuiSelect-select": {
+                  py: 0.5,
+                  color:
+                    order.status === "Confirmed"
+                      ? theme.palette.success.main
+                      : order.status === "Cancelled"
+                      ? theme.palette.error.main
+                      : theme.palette.warning.main,
+                },
+              }}
+            >
+              <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
+                Confirmed
+              </MenuItem>
+              <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
+                Cancelled
+              </MenuItem>
+              <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
+                Pending
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          {order.farm.is_sold && activeTab === 1 && (
+            <Tooltip title="View Agreement">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => handleViewAgreement(order)}
+                sx={{
+                  bgcolor: "primary.main",
+                  color: "white",
+                  "&:hover": {
+                    bgcolor: "primary.dark",
+                  },
+                }}
+              >
+                <AgreementIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Tooltip title="Delete Transaction">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => openConfirmationDialog(order.id)}
+            >
+              <DeleteIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip
+            title={order.farm.is_sold ? "Mark as Available" : "Mark as Sold"}
+          >
+            <Switch
+              checked={!order.farm.is_sold}
+              onChange={() =>
+                handleFarmAvailabilityToggle(order.farm.id, order.farm.is_sold)
+              }
+              color={order.farm.is_sold ? "error" : "success"}
+              size="small"
+            />
+          </Tooltip>
+        </CardActions>
+      </Card>
+    </motion.div>
+  );
+
   if (loading) {
     return (
       <ThemeProvider theme={theme}>
@@ -309,237 +583,53 @@ export default function Purchases() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
-        {/* AppBar */}
-        <AppBar
-          position="fixed"
-          sx={{ zIndex: theme.zIndex.drawer + 1, boxShadow: "none" }}
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              Farm Purchases Management
-            </Typography>
+        <SellerAppBar
+          handleDrawerToggle={handleDrawerToggle}
+          darkMode={darkMode}
+          handleThemeToggle={handleThemeToggle}
+          fetchFarms={fetchOrders}
+          anchorEl={anchorEl}
+          handleMenuOpen={handleMenuOpen}
+          handleMenuClose={handleMenuClose}
+          handleLogout={handleLogout}
+          showSearchInput={showSearchInput}
+          setShowSearchInput={setShowSearchInput}
+          searchQuery={searchQuery}
+          handleSearchChange={handleSearchChange}
+          handleSearchSubmit={handleSearchSubmit}
+        />
 
-            {/* Action buttons */}
-            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
-              <IconButton color="inherit" onClick={handleThemeToggle}>
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
+        <SellerDrawer
+          drawerOpen={drawerOpen}
+          drawerWidth={drawerWidth}
+          theme={theme}
+          handleLogout={handleLogout}
+          menuItems={menuItems}
+        />
 
-            <Tooltip title="Refresh">
-              <IconButton color="inherit" onClick={() => window.location.reload()}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-
-            <IconButton
-              edge="end"
-              color="inherit"
-              onClick={handleMenuOpen}
-              sx={{ ml: 1 }}
-            >
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: theme.palette.secondary.main,
-                }}
-              >
-                JF
-              </Avatar>
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { borderRadius: 2, minWidth: 180 },
-              }}
-            >
-              <Box sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}>
-                <Typography variant="subtitle2" fontWeight="bold" color="white">
-                  John Farmer
-                </Typography>
-                <Typography variant="caption" color="rgba(255,255,255,0.7)">
-                  Premium Seller
-                </Typography>
-              </Box>
-              <Divider />
-              <MenuItem
-                component={Link}
-                to="/profile"
-                onClick={handleMenuClose}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <AccountCircleIcon fontSize="small" color="action" />
-                <Typography variant="body2">My Profile</Typography>
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  handleLogout();
-                  handleMenuClose();
-                }}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <ExitToAppIcon fontSize="small" color="error" />
-                <Typography variant="body2" color="error">
-                  Logout
-                </Typography>
-              </MenuItem>
-            </Menu>
-          </Toolbar>
-        </AppBar>
-
-        {/* Side Drawer */}
-        <Drawer
-          variant="permanent"
-          open={drawerOpen}
-          sx={{
-            width: drawerOpen ? drawerWidth : theme.spacing(7),
-            flexShrink: 0,
-            "& .MuiDrawer-paper": {
-              width: drawerOpen ? drawerWidth : theme.spacing(7),
-              boxSizing: "border-box",
-              whiteSpace: "nowrap",
-              overflowX: "hidden",
-              transition: theme.transitions.create("width", {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-            },
-          }}
-        >
-          <Toolbar />
-          <Box sx={{ overflow: "hidden", mt: 2 }}>
-            {drawerOpen && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  mb: 4,
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    mb: 1,
-                    backgroundColor: theme.palette.primary.main,
-                  }}
-                >
-                  JF
-                </Avatar>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  John Farmer
-                </Typography>
-              </Box>
-            )}
-
-            <List>
-              {menuItems.map((item) => (
-                <ListItem
-                  key={item.text}
-                  component={Link}
-                  to={item.path}
-                  button
-                  sx={{
-                    backgroundColor: currentLocation.pathname === item.path
-                      ? theme.palette.action.selected
-                      : "transparent",
-                    borderRadius: drawerOpen ? 1 : 0,
-                    mx: drawerOpen ? 1 : 0,
-                    mb: 0.5,
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      color: currentLocation.pathname === item.path ? theme.palette.primary.main : "inherit",
-                      textAlign: "center",
-                    }}
-                  >
-                    {item.badge ? (
-                      <Badge badgeContent={item.badge} color="error">
-                        {item.icon}
-                      </Badge>
-                    ) : (
-                      item.icon
-                    )}
-                  </ListItemIcon>
-                  {drawerOpen && (
-                    <ListItemText
-                      primary={item.text}
-                      primaryTypographyProps={{
-                        fontWeight: currentLocation.pathname === item.path ? 600 : 400,
-                        color: currentLocation.pathname === item.path ? theme.palette.primary.main : "inherit",
-                      }}
-                    />
-                  )}
-                </ListItem>
-              ))}
-            </List>
-            <Divider sx={{ my: 0 }} />
-            <List>
-              <ListItem
-                button
-                onClick={handleLogout}
-                sx={{
-                  borderRadius: drawerOpen ? 1 : 0,
-                  mx: drawerOpen ? 1 : 0,
-                  mb: 4,
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    minWidth: drawerOpen ? 48 : "100%",
-                    textAlign: "center",
-                  }}
-                >
-                  <ExitToAppIcon />
-                </ListItemIcon>
-                {drawerOpen && <ListItemText primary="Logout" />}
-              </ListItem>
-            </List>
-          </Box>
-        </Drawer>
-
-        {/* Main Content */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
             p: 3,
-            width: `calc(100% - ${
-              drawerOpen ? drawerWidth : theme.spacing(7)
-            }px)`,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
             mt: 8,
           }}
         >
-          {/* Dashboard Title */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Purchased Farms
+              Farm Purchases Management
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Manage your farm sales and transactions
+              Manage your farm sales and track purchase transactions
             </Typography>
           </Box>
 
-          {/* Stats Cards */}
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} sm={6} md={3}>
                 <motion.div variants={itemVariants}>
@@ -556,8 +646,12 @@ export default function Purchases() {
                           <Typography color="text.secondary" variant="body2">
                             Total Purchases
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="primary">
-                            {stats.purchases}
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="primary"
+                          >
+                            {stats.totalPurchases}
                           </Typography>
                         </Box>
                         <Avatar
@@ -588,8 +682,12 @@ export default function Purchases() {
                           <Typography color="text.secondary" variant="body2">
                             Confirmed
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="success.main">
-                            {stats.accepted}
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="success.main"
+                          >
+                            {stats.confirmed}
                           </Typography>
                         </Box>
                         <Avatar
@@ -618,10 +716,14 @@ export default function Purchases() {
                       >
                         <Box>
                           <Typography color="text.secondary" variant="body2">
-                            Available Farms
+                            Pending
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="warning.main">
-                            {stats.uploaded}
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="warning.main"
+                          >
+                            {stats.pending}
                           </Typography>
                         </Box>
                         <Avatar
@@ -630,7 +732,7 @@ export default function Purchases() {
                             p: 1,
                           }}
                         >
-                          <UploadIcon color="warning" />
+                          <PendingIcon color="warning" />
                         </Avatar>
                       </Box>
                     </CardContent>
@@ -650,19 +752,23 @@ export default function Purchases() {
                       >
                         <Box>
                           <Typography color="text.secondary" variant="body2">
-                            Total Rents
+                            Sold Outs
                           </Typography>
-                          <Typography variant="h4" fontWeight="bold" color="info.main">
-                            {stats.rents}
+                          <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            color="error.main"
+                          >
+                            {stats.soldOuts}
                           </Typography>
                         </Box>
                         <Avatar
                           sx={{
-                            backgroundColor: "rgba(41, 121, 255, 0.1)",
+                            backgroundColor: "rgba(244, 67, 54, 0.1)",
                             p: 1,
                           }}
                         >
-                          <RentsIcon color="info" />
+                          <SoldIcon color="error" />
                         </Avatar>
                       </Box>
                     </CardContent>
@@ -672,163 +778,313 @@ export default function Purchases() {
             </Grid>
           </motion.div>
 
-          {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Paper
-              elevation={2}
+          <Paper sx={{ borderRadius: 3, mb: 3 }}>
+            <Box
               sx={{
-                p: 3,
-                mb: 4,
-                borderRadius: 3,
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                gap: 2,
+                p: 2,
+                pb: 0,
               }}
             >
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search Farms by Location"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
+              <Tabs
+                value={activeTab}
+                onChange={handleTabChange}
+                sx={{
+                  "& .MuiTab-root": {
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: "1rem",
+                  },
                 }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleSearch}
-                sx={{ minWidth: 120 }}
               >
-                Search
-              </Button>
-            </Paper>
-          </motion.div>
+                <Tab
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      All
+                      <Chip
+                        label={stats.totalPurchases}
+                        size="small"
+                        color="primary"
+                        sx={{ height: 20, fontSize: "0.75rem" }}
+                      />
+                    </Box>
+                  }
+                />
+                <Tab
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      Sold-Outs
+                      <Chip
+                        label={stats.soldOuts}
+                        size="small"
+                        color="error"
+                        sx={{ height: 20, fontSize: "0.75rem" }}
+                      />
+                    </Box>
+                  }
+                />
+              </Tabs>
 
-          {/* Table */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={handleViewModeChange}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    "&.Mui-selected": {
+                      bgcolor: "primary.main",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="table" aria-label="table view">
+                  <Tooltip title="Table View">
+                    <TableViewIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="cards" aria-label="card view">
+                  <Tooltip title="Card View">
+                    <CardViewIcon />
+                  </Tooltip>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Paper>
+
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <TableContainer
-              component={Paper}
-              sx={{ borderRadius: 3, boxShadow: 3 }}
-            >
-              <Table>
-                <TableHead sx={{ backgroundColor: theme.palette.action.selected }}>
-                  <TableRow>
-                    <TableCell>Farm</TableCell>
-                    <TableCell>Location</TableCell>
-                    <TableCell>Size</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell>Transaction ID</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Edit Status</TableCell>
-                    <TableCell>Delete</TableCell>
-                    <TableCell>Availability</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredOrders.map((order, index) => (
-                    <TableRow
-                      key={order.id}
-                      className="fade-in"
-                      sx={{
-                        animationDelay: `${index * 0.1}s`,
-                        backgroundColor: theme.palette.background.paper,
-                        transition: "0.3s",
-                        "&:hover": { backgroundColor: theme.palette.action.hover },
-                      }}
-                    >
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Avatar
-                            src={`http://127.0.0.1:8000${order.farm.image}`}
-                            variant="rounded"
-                            sx={{ width: 80, height: 80 }}
-                          />
-                          <Typography>{order.farm.name}</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          to={`/farm-location/${order.farm.id}`}
-                          style={{ textDecoration: "none" }}
-                        >
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Tooltip title="View Location">
-                              <LocationOnIcon color="primary" />
-                            </Tooltip>
-                            <Typography color="primary">
-                              {order.farm.location}
-                            </Typography>
+            {viewMode === "table" ? (
+              <TableContainer
+                component={Paper}
+                sx={{ borderRadius: 3, boxShadow: 3 }}
+              >
+                <Table>
+                  <TableHead
+                    sx={{ backgroundColor: theme.palette.action.selected }}
+                  >
+                    <TableRow>
+                      <TableCell>Farm</TableCell>
+                      <TableCell>Location</TableCell>
+                      <TableCell>Size</TableCell>
+                      <TableCell>Price</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Phone</TableCell>
+                      <TableCell>Transaction ID</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Edit Status</TableCell>
+                      <TableCell>Delete</TableCell>
+                      <TableCell>Availability</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredOrders.map((order, index) => (
+                      <TableRow
+                        key={order.id}
+                        className="fade-in"
+                        sx={{
+                          animationDelay: `${index * 0.1}s`,
+                          backgroundColor: theme.palette.background.paper,
+                          transition: "0.3s",
+                          "&:hover": {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                        }}
+                      >
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Badge
+                              badgeContent={order.farm.is_sold ? "SOLD" : ""}
+                              color="error"
+                              sx={{
+                                "& .MuiBadge-badge": {
+                                  fontSize: "0.6rem",
+                                  height: 16,
+                                  minWidth: 16,
+                                },
+                              }}
+                            >
+                              <Avatar
+                                src={`http://127.0.0.1:8000${order.farm.image}`}
+                                variant="rounded"
+                                sx={{
+                                  width: 80,
+                                  height: 80,
+                                  opacity: order.farm.is_sold ? 0.7 : 1,
+                                }}
+                              />
+                            </Badge>
+                            <Box>
+                              <Typography
+                                sx={{
+                                  textDecoration: order.farm.is_sold
+                                    ? "line-through"
+                                    : "none",
+                                  color: order.farm.is_sold
+                                    ? "text.secondary"
+                                    : "text.primary",
+                                }}
+                              >
+                                {order.farm.name}
+                              </Typography>
+                              {order.farm.is_sold && (
+                                <Chip
+                                  label="Sold Out"
+                                  size="small"
+                                  color="error"
+                                  variant="outlined"
+                                  sx={{
+                                    mt: 0.5,
+                                    fontSize: "0.7rem",
+                                    height: 18,
+                                  }}
+                                />
+                              )}
+                            </Box>
                           </Box>
-                        </Link>
-                      </TableCell>
-                      <TableCell>{order.farm.size}</TableCell>
-                      <TableCell>{order.farm.price} Tshs</TableCell>
-                      <TableCell>
-                        <Typography
-                          className={
-                            order.status === "Confirmed"
-                              ? "confirmed"
-                              : order.status === "Cancelled"
-                              ? "cancelled"
-                              : "pending"
-                          }
-                        >
-                          {order.status}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{order.renter_phone || "-"}</TableCell>
-                      <TableCell>{order.transaction_id}</TableCell>
-                      <TableCell>{order.renter_email || "-"}</TableCell>
-                      <TableCell>
-                        <FormControl fullWidth size="small">
-                          <Select
-                            value={order.status || "Pending"}
-                            onChange={(e) =>
-                              handleStatusChange(order.id, e.target.value)
-                            }
-                            sx={{
-                              "& .MuiSelect-select": {
-                                color:
-                                  order.status === "Confirmed"
-                                    ? theme.palette.success.main
-                                    : order.status === "Cancelled"
-                                    ? theme.palette.error.main
-                                    : theme.palette.warning.main,
-                              },
-                            }}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            to={`/farm-location/${order.farm.id}`}
+                            style={{ textDecoration: "none" }}
                           >
-                            <MenuItem value="Confirmed">Confirmed</MenuItem>
-                            <MenuItem value="Cancelled">Cancelled</MenuItem>
-                            <MenuItem value="Pending">Pending</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </TableCell>
-                      <TableCell>
-                        <IconButton
-                          color="error"
-                          onClick={() => openConfirmationDialog(order.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                      <TableCell>
-                        <FormControlLabel
-                          control={
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Tooltip title="View Location">
+                                <LocationOnIcon color="primary" />
+                              </Tooltip>
+                              <Typography color="primary">
+                                {order.farm.location}
+                              </Typography>
+                            </Box>
+                          </Link>
+                        </TableCell>
+                        <TableCell>{order.farm.size}</TableCell>
+                        <TableCell>
+                          <Typography
+                            color={
+                              order.farm.is_sold
+                                ? "text.secondary"
+                                : "success.main"
+                            }
+                            fontWeight="bold"
+                          >
+                            {order.farm.price} Tshs
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={order.status}
+                            color={
+                              order.status === "Confirmed"
+                                ? "success"
+                                : order.status === "Cancelled"
+                                ? "error"
+                                : "warning"
+                            }
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {order.contact_info ? (
+                            <Tooltip title="Call">
+                              <IconButton
+                                color="primary"
+                                href={`tel:${order.contact_info}`}
+                                size="small"
+                              >
+                                <PhoneIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              N/A
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>{order.transaction_id}</TableCell>
+                        <TableCell>
+                          {order.buyer_email ? (
+                            <Tooltip title={order.buyer_email}>
+                              <IconButton
+                                color="primary"
+                                href={`mailto:${order.buyer_email}`}
+                                size="small"
+                              >
+                                <EmailIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              N/A
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <FormControl size="small" sx={{ minWidth: 100 }}>
+                            <Select
+                              value={order.status || "Pending"}
+                              onChange={(e) =>
+                                handleStatusChange(order.id, e.target.value)
+                              }
+                              disabled={order.farm.is_sold}
+                              sx={{
+                                fontSize: "0.8rem",
+                                "& .MuiSelect-select": {
+                                  py: 0.5,
+                                  color:
+                                    order.status === "Confirmed"
+                                      ? theme.palette.success.main
+                                      : order.status === "Cancelled"
+                                      ? theme.palette.error.main
+                                      : theme.palette.warning.main,
+                                },
+                              }}
+                            >
+                              <MenuItem
+                                value="Confirmed"
+                                sx={{ fontSize: "0.8rem" }}
+                              >
+                                Confirmed
+                              </MenuItem>
+                              <MenuItem
+                                value="Pending"
+                                sx={{ fontSize: "0.8rem" }}
+                              >
+                                Pending
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title="Delete Transaction">
+                            <IconButton
+                              color="error"
+                              onClick={() => openConfirmationDialog(order.id)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip
+                            title={
+                              order.farm.is_sold
+                                ? "Mark as Available"
+                                : "Mark as Sold"
+                            }
+                          >
                             <Switch
                               checked={!order.farm.is_sold}
                               onChange={() =>
@@ -837,234 +1093,83 @@ export default function Purchases() {
                                   order.farm.is_sold
                                 )
                               }
-                              color={order.farm.is_sold ? "warning" : "success"}
+                              color={order.farm.is_sold ? "error" : "success"}
                             />
-                          }
-                          label={order.farm.is_sold ? "Sold" : "Available"}
-                          sx={{
-                            color: order.farm.is_sold
-                              ? theme.palette.warning.main
-                              : theme.palette.success.main,
-                          }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </motion.div>
-
-          {/* Tips Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Paper
-              elevation={2}
-              sx={{
-                borderRadius: 3,
-                p: 3,
-                mt: 4,
-                bgcolor: theme.palette.background.paper,
-              }}
-            >
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: "bold",
-                  mb: 3,
-                  color: "text.primary",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <Lightbulb color="warning" />
-                Sales Tips
-              </Typography>
-
-              <Grid container spacing={2}>
-                {[
-                  {
-                    tip: "Respond to inquiries within 2 hours for higher conversion rates",
-                    icon: <AcceptedIcon color="success" />,
-                  },
-                  {
-                    tip: "Update farm status promptly when sold to avoid confusion",
-                    icon: <RefreshIcon color="primary" />,
-                  },
-                  {
-                    tip: "Provide clear photos and accurate descriptions to attract buyers",
-                    icon: <UploadIcon color="secondary" />,
-                  },
-                  {
-                    tip: "Consider seasonal pricing adjustments for better sales",
-                    icon: <Lightbulb color="warning" />,
-                  },
-                ].map((tip, idx) => (
-                  <Grid item xs={12} sm={6} key={idx}>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredOrders.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={11} align="center">
+                          <Typography
+                            variant="h6"
+                            color="text.secondary"
+                            sx={{ py: 3 }}
+                          >
+                            No orders found.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Grid container spacing={3}>
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((order, index) => (
+                    <Grid item key={order.id} xs={12} sm={6} md={4} lg={3}>
+                      <FarmCard order={order} index={index} />
+                    </Grid>
+                  ))
+                ) : (
+                  <Grid item xs={12}>
                     <Paper
-                      elevation={0}
                       sx={{
-                        p: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        borderRadius: 2,
-                        bgcolor: theme.palette.background.default,
-                        transition: "transform 0.2s",
-                        "&:hover": {
-                          transform: "translateX(5px)",
-                        },
+                        p: 3,
+                        textAlign: "center",
+                        borderRadius: 3,
+                        boxShadow: 3,
                       }}
                     >
-                      <Avatar
-                        sx={{
-                          width: 36,
-                          height: 36,
-                          bgcolor: "background.paper",
-                          color: "primary.main",
-                        }}
-                      >
-                        {tip.icon}
-                      </Avatar>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {tip.tip}
+                      <Typography variant="h6" color="text.secondary">
+                        No orders found.
                       </Typography>
                     </Paper>
                   </Grid>
-                ))}
+                )}
               </Grid>
-            </Paper>
+            )}
           </motion.div>
-
-          {/* Delete Confirmation Dialog */}
-          <Dialog
-            open={openDeleteDialog}
-            onClose={() => setOpenDeleteDialog(false)}
-            PaperProps={{ sx: { borderRadius: 3 } }}
-            >
-            <DialogTitle sx={{ fontWeight: "bold", color: "error.main" }}>
-              Delete Transaction
-            </DialogTitle>
-            <DialogContent>
-              <Typography>
-                Are you sure you want to delete this transaction? This action cannot be undone.
-              </Typography>
-            </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-              <Button
-                onClick={() => setOpenDeleteDialog(false)}
-                color="inherit"
-                variant="outlined"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDelete}
-                color="error"
-                variant="contained"
-                disabled={isDeleting}
-                startIcon={isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          {/* Empty State */}
-          {filteredOrders.length === 0 && !loading && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Paper
-                elevation={0}
-                sx={{
-                  textAlign: "center",
-                  py: 8,
-                  px: 4,
-                  borderRadius: 3,
-                  bgcolor: theme.palette.background.default,
-                  border: `2px dashed ${theme.palette.divider}`,
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    mx: "auto",
-                    mb: 3,
-                    bgcolor: theme.palette.action.selected,
-                  }}
-                >
-                  <PurchasesIcon sx={{ fontSize: 40 }} color="action" />
-                </Avatar>
-                <Typography variant="h5" fontWeight="bold" gutterBottom>
-                  No Purchases Found
-                </Typography>
-                <Typography
-                  variant="body1"
-                  color="text.secondary"
-                  sx={{ mb: 3, maxWidth: 400, mx: "auto" }}
-                >
-                  {searchQuery
-                    ? `No farms found matching "${searchQuery}". Try adjusting your search terms.`
-                    : "You haven't made any farm purchases yet. Start exploring available farms to make your first purchase."}
-                </Typography>
-                <Button
-                  variant="contained"
-                  component={Link}
-                  to="/farms"
-                  sx={{ borderRadius: 3, px: 4 }}
-                >
-                  Browse Farms
-                </Button>
-              </Paper>
-            </motion.div>
-          )}
-
-          {/* Loading Overlay */}
-          {isDeleting && (
-            <Box
-              sx={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                bgcolor: "rgba(0,0,0,0.5)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-              }}
-            >
-              <Paper
-                elevation={3}
-                sx={{
-                  p: 4,
-                  borderRadius: 3,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <CircularProgress size={40} color="primary" />
-                <Typography variant="h6" fontWeight="bold">
-                  Deleting Transaction...
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Please wait while we process your request
-                </Typography>
-              </Paper>
-            </Box>
-          )}
         </Box>
+
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+          aria-labelledby="delete-dialog-title"
+          aria-describedby="delete-dialog-description"
+        >
+          <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
+          <DialogContent>
+            <Typography id="delete-dialog-description">
+              Are you sure you want to delete this transaction? This action
+              cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenDeleteDialog(false)}
+              color="primary"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDelete} color="error" disabled={isDeleting}>
+              {isDeleting ? <CircularProgress size={24} /> : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </ThemeProvider>
   );

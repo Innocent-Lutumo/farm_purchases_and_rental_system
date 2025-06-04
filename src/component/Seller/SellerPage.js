@@ -32,7 +32,6 @@ import {
   Home as RentsIcon,
   CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
-  Cancel as SoldoutsIcon,
   AddCircle as UploadNewIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
@@ -42,6 +41,9 @@ import {
   ChevronRight,
   Lightbulb,
   Image as ImageIcon,
+  MonetizationOn as MonetaryIcon, // Added icon for total value
+  HourglassEmpty as PendingIcon, // Added icon for pending
+  People as LeadsIcon, // Added icon for leads
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -111,33 +113,21 @@ const menuItems = [
     description: "Manage your property rentals",
   },
   {
-    text: "Uploaded Farms",
+    text: "All Farms",
     icon: <UploadIcon />,
     path: "/UploadedFarms",
     description: "View your farm listings",
   },
   {
-    text: "Accepted List",
-    icon: <AcceptedIcon />,
-    path: "/accepted",
-    description: "Review approved farm transactions",
-  },
-  {
-    text: "Soldouts",
-    icon: <SoldoutsIcon />,
-    path: "/soldouts",
-    description: "Archive of completed sales",
-  },
-  {
-    text: "Upload New Farm",
+    text: "Add Farm",
     icon: <UploadNewIcon />,
     path: "/UploadFarmForm",
     description: "Create a new farm listing",
   },
 ];
 
-// Stat card component
-const StatCard = ({ title, value, icon, color }) => (
+// New: Farm Listing Overview Card component
+const FarmOverviewCard = ({ title, value, icon, color, subtitle }) => (
   <Card>
     <CardContent>
       <Box
@@ -148,12 +138,17 @@ const StatCard = ({ title, value, icon, color }) => (
         }}
       >
         <Box>
-          <Typography color="text.secondary" variant="body2">
+          <Typography color="text.secondary" variant="body2" >
             {title}
           </Typography>
-          <Typography variant="h4" fontWeight="bold" color={color}>
+          <Typography variant="h5" fontWeight="bold" color={color}>
             {value}
           </Typography>
+          {subtitle && (
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          )}
         </Box>
         <Avatar
           sx={{
@@ -181,12 +176,12 @@ function SellerPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [stats] = useState({
-    purchases: 120, 
-    rents: 75, 
-    uploaded: "12",
-    accepted: "45",
-  });
+  
+  // Dummy data for farm listing overview (replace with actual API calls)
+  const [totalListings, setTotalListings] = useState(15);
+  const [pendingApplications, setPendingApplications] = useState(3); 
+  const [newLeads, setNewLeads] = useState(5);
+  const [totalValueListings] = useState(500000); // Example value
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -209,6 +204,15 @@ function SellerPage() {
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
+  };
+
+  const handleRefresh = () => {
+    // In a real app, this would trigger re-fetching data for the overview cards
+    console.log("Refreshing dashboard data...");
+    // For now, let's just simulate a change or refresh
+    setTotalListings(prev => prev + 1); 
+    setPendingApplications(prev => Math.max(0, prev - 1));
+    setNewLeads(prev => prev + 1);
   };
 
   const handleDrawerToggle = useCallback(
@@ -271,8 +275,8 @@ function SellerPage() {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Refresh">
-              <IconButton color="inherit">
+            <Tooltip title="Refresh Dashboard">
+              <IconButton color="inherit" onClick={handleRefresh}>
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
@@ -474,45 +478,50 @@ function SellerPage() {
               Seller Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Manage your farm listings and transactions
+              Real-time dashboard metrics and farm management tools
             </Typography>
           </Box>
 
-          {/* Stats Cards */}
+          {/* --- */}
+     Farm Listing Overview
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Total Purchases"
-                value={stats.purchases}
-                icon={<PurchasesIcon color="primary" />}
+              <FarmOverviewCard
+                title="Total Listings"
+                value={totalListings}
+                icon={<UploadIcon color="primary" />}
+                color="primary.main"
+                subtitle="Your active and inactive farms"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Active Rents"
-                value={stats.rents}
-                color="success.main"
-                icon={<RentsIcon color="success" />}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Uploaded Farms"
-                value={stats.uploaded}
+              <FarmOverviewCard
+                title="Pending Applications"
+                value={pendingApplications}
                 color="warning.main"
-                icon={<UploadIcon color="warning" />}
+                icon={<PendingIcon color="warning" />}
+                subtitle="Applications awaiting your review"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
-                title="Accepted Offers"
-                value={stats.accepted}
+              <FarmOverviewCard
+                title="Total Listing Value"
+                value={`${totalValueListings.toLocaleString()}/=`}
+                color="success.main"
+                icon={<MonetaryIcon color="success" />}
+                subtitle="Combined value of your farms"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <FarmOverviewCard
+                title="New Leads"
+                value={newLeads}
                 color="info.main"
-                icon={<AcceptedIcon color="info" />}
+                icon={<LeadsIcon color="info" />}
+                subtitle="Recent inquiries about your farms"
               />
             </Grid>
           </Grid>
-
 
           {/* Main Navigation Cards */}
           <motion.div
@@ -536,7 +545,7 @@ function SellerPage() {
 
             <Grid container spacing={3}>
               {menuItems.map((item, index) => (
-                <Grid item xs={12} sm={6} md={4} key={item.text}>
+                <Grid item xs={12} sm={12} md={3} key={item.text}>
                   <motion.div variants={itemVariants}>
                     <StyledCard elevation={2}>
                       <CardActionArea

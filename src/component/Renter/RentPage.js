@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import RentDialog from "./RentDialog";
-import FarmMapModal from "../Buyer/FarmMapModal";
+import FarmMapModal from "../Shared/FarmMapModal";
 
 import {
   AppBar,

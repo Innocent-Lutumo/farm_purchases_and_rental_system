@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -19,7 +19,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-} from "@mui/material";
+} from '@mui/material';
 import {
   Download,
   AttachMoney,
@@ -32,36 +32,31 @@ import {
   Person,
   Home,
   ArrowBack,
-} from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
-const RentalAgreement = () => {
+const PurchaseAgreement = () => {
   const [contractData, setContractData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [farmId, setFarmId] = useState(null);
+  const [modalMessage, setModalMessage] = useState('');
+  const [farmId, setFarmId] = useState(null); 
 
   const navigate = useNavigate();
 
-  const RENTAL_AGREEMENT_DETAILS_API_ENDPOINT =
-    "http://127.0.0.1:8000/api/get-transactions/";
-  const DOWNLOAD_CONTRACT_API_ENDPOINT =
-    "http://127.0.0.1:8000/api/download-contract/";
-  const ADMIN_SELLERS_API_ENDPOINT =
-    "http://127.0.0.1:8000/api/admin-sellers-list/";
+  const RENTAL_AGREEMENT_DETAILS_API_ENDPOINT = 'http://127.0.0.1:8000/api/get-transactionsale/';
+  const DOWNLOAD_CONTRACT_API_ENDPOINT = 'http://127.0.0.1:8000/api/download-contract/';
+  const ADMIN_SELLERS_API_ENDPOINT = 'http://127.0.0.1:8000/api/admin-sellers_list/'; 
 
   useEffect(() => {
-    const storedFarmId = localStorage.getItem("selectedAgreementFarmId");
+    const storedFarmId = localStorage.getItem('selectedAgreementFarmId'); 
     if (storedFarmId) {
       setFarmId(storedFarmId);
       fetchContractData(storedFarmId);
     } else {
       setLoading(false);
-      setError(
-        "No farm ID found for the rental agreement. Please go back and select a farm."
-      );
+      setError("No farm ID found for the rental agreement. Please go back and select a farm.");
     }
   }, []);
 
@@ -74,80 +69,59 @@ const RentalAgreement = () => {
         throw new Error("Missing transaction ID to fetch agreement data.");
       }
 
-      const transactionsResponse = await fetch(
-        RENTAL_AGREEMENT_DETAILS_API_ENDPOINT
-      );
+      const transactionsResponse = await fetch(RENTAL_AGREEMENT_DETAILS_API_ENDPOINT);
 
       if (!transactionsResponse.ok) {
         const errorText = await transactionsResponse.text();
-        throw new Error(
-          `Failed to fetch transactions list. Status: ${
-            transactionsResponse.status
-          }. Response: ${errorText.substring(0, 100)}...`
-        );
+        throw new Error(`Failed to fetch transactions list. Status: ${transactionsResponse.status}. Response: ${errorText.substring(0, 100)}...`);
       }
       const allTransactions = await transactionsResponse.json();
-      console.log("All transactions data:", allTransactions); // Debugging: See all transactions
 
       const foundContract = allTransactions.find(
         (transaction) => String(transaction.id) === String(idToFetch)
       );
 
       if (!foundContract) {
-        throw new Error(
-          `No rental agreement found for transaction ID ${idToFetch}.`
-        );
+        throw new Error(`No rental agreement found for transaction ID ${idToFetch}.`);
       }
-      console.log("Found contract data:", foundContract); // Debugging: See the found contract
 
       const adminSellersResponse = await fetch(ADMIN_SELLERS_API_ENDPOINT);
       if (!adminSellersResponse.ok) {
         const errorText = await adminSellersResponse.text();
-        throw new Error(
-          `Failed to fetch admin sellers data. Status: ${
-            adminSellersResponse.status
-          }. Response: ${errorText.substring(0, 100)}...`
-        );
+        throw new Error(`Failed to fetch admin sellers data. Status: ${adminSellersResponse.status}. Response: ${errorText.substring(0, 100)}...`);
       }
       const adminSellers = await adminSellersResponse.json();
-      console.log("Admin sellers data:", adminSellers); // Debugging: See admin sellers data
 
       const relevantLandlord = adminSellers.find(
         (seller) => seller.username === foundContract.farm.username
       );
-      console.log("Relevant landlord (match by username):", relevantLandlord); // Debugging: See if landlord was found
 
       const restructuredData = {
-        id: foundContract.id,
+        id: foundContract.id, 
         farm_number: foundContract.farm.farm_number,
-        created_at: foundContract.rent_date,
+        created_at: foundContract.rent_date, 
         location: foundContract.farm.location,
         size: foundContract.farm.size,
         quality: foundContract.farm.quality,
         farm_type: foundContract.farm.farm_type,
         description: foundContract.farm.description,
         price: foundContract.farm.price,
-
+        
         // Renter details (using fetched data)
         full_name: foundContract.full_name,
         phone: foundContract.renter_phone,
         email: foundContract.renter_email,
         tenant_residence: foundContract.residence,
-        renter_passport: foundContract.renter_passport || null,
 
         // Landlord/Admin Seller details (using fetched data)
-        landlord_name: relevantLandlord
-          ? relevantLandlord.seller_name
-          : "Jina la Mkodishaji Halipatikani",
+        landlord_name: relevantLandlord ? relevantLandlord.seller_name : "Jina la Mkodishaji Halipatikani",
         landlord_phone: foundContract.farm.phone,
-        landlord_email: foundContract.farm.email,
-        landlord_residence: relevantLandlord
-          ? relevantLandlord.seller_residence
-          : "Makazi ya Mkodishaji Hayapatikani",
-        landlord_passport: foundContract.farm.passport || null,
+        landlord_email: foundContract.farm.email, 
+        landlord_residence: relevantLandlord ? relevantLandlord.seller_residence : "Makazi ya Mkodishaji Hayapatikani",
       };
 
       setContractData(restructuredData);
+
     } catch (err) {
       console.error("Error fetching contract data:", err);
       setError(err.message);
@@ -166,11 +140,7 @@ const RentalAgreement = () => {
       );
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
-          `Failed to download contract. Status: ${
-            response.status
-          }. Response: ${errorText.substring(0, 100)}...`
-        );
+        throw new Error(`Failed to download contract. Status: ${response.status}. Response: ${errorText.substring(0, 100)}...`);
       }
 
       const blob = await response.blob();
@@ -235,7 +205,7 @@ const RentalAgreement = () => {
       >
         <Paper elevation={3} sx={{ p: 4, textAlign: "center" }}>
           <CircularProgress size={48} sx={{ mb: 2 }} />
-          <Typography variant="h6" color="success">
+          <Typography variant="h6" color="text.secondary">
             Inapakia maelezo ya mkataba...
           </Typography>
         </Paper>
@@ -260,7 +230,7 @@ const RentalAgreement = () => {
           </Alert>
           <Button
             variant="contained"
-            onClick={() => fetchContractData(farmId)}
+            onClick={() => fetchContractData(farmId)} 
             sx={{ mt: 2 }}
           >
             Jaribu Tena
@@ -295,23 +265,20 @@ const RentalAgreement = () => {
     );
   }
 
-  // Default passport image if none is provided by the API
-  const defaultPassportImage = "https://via.placeholder.com/100x120?text=Picha";
-
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "grey.100", py: 2 }}>
       <Container maxWidth="md">
         <Paper elevation={3} sx={{ p: 3, pt: 2, pb: 2, overflow: "hidden" }}>
           {/* Header */}
-          <Box sx={{ textAlign: "center", mb: 2, position: "relative" }}>
+          <Box sx={{ textAlign: "center", mb: 2, position: 'relative' }}>
             {/* Back Button */}
             <IconButton
               onClick={handleGoBack}
               sx={{
-                position: "absolute",
+                position: 'absolute',
                 left: 0,
                 top: 0,
-                color: "text.secondary",
+                color: 'text.secondary',
               }}
             >
               <ArrowBack />
@@ -337,7 +304,7 @@ const RentalAgreement = () => {
               (Farm Rental Agreement)
             </Typography>
             <Chip
-              label={`Namba ya Shamba: ${
+              label={`Namba ya Mkataba: ${
                 contractData.farm_number || `MKS-${contractData.id}`
               }`}
               color="success"
@@ -367,39 +334,6 @@ const RentalAgreement = () => {
                   MKODISHAJI (LANDLORD):
                 </Typography>
                 <List dense disablePadding>
-                  {/* Landlord Passport Picture */}
-                  <ListItem
-                    disableGutters
-                    sx={{ py: 0, justifyContent: "center" }}
-                  >
-                    <Box
-                      sx={{
-                        width: 100,
-                        height: 120,
-                        border: "1px solid #ccc",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <img
-                        src={
-                          contractData.landlord_passport || defaultPassportImage
-                        }
-                        alt="Picha ya Mkodishaji"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = defaultPassportImage;
-                        }}
-                      />
-                    </Box>
-                  </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Person fontSize="small" color="success" />
@@ -431,39 +365,6 @@ const RentalAgreement = () => {
                   MKODISHWA (TENANT):
                 </Typography>
                 <List dense disablePadding>
-                  {/* Renter Passport Picture */}
-                  <ListItem
-                    disableGutters
-                    sx={{ py: 0, justifyContent: "center" }}
-                  >
-                    <Box
-                      sx={{
-                        width: 100,
-                        height: 120,
-                        border: "1px solid #ccc",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <img
-                        src={
-                          contractData.renter_passport || defaultPassportImage
-                        }
-                        alt="Picha ya Mkodishwa"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = defaultPassportImage;
-                        }}
-                      />
-                    </Box>
-                  </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Person fontSize="small" color="success" />
@@ -767,4 +668,4 @@ const RentalAgreement = () => {
   );
 };
 
-export default RentalAgreement;
+export default PurchaseAgreement;

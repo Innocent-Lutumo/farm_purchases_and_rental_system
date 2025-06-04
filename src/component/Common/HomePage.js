@@ -18,20 +18,22 @@ const Home = () => {
     {
       icon: <ShoppingCartIcon sx={{ fontSize: 60, color: "#4caf50" }} />,
       title: "Buy Farm",
-      description: "Find the perfect farmland to purchase with ease and confidence.",
-      link: "/trial"
+      description:
+        "Find the perfect farmland to purchase with ease and confidence.",
+      link: "/trial",
     },
     {
       icon: <HomeIcon sx={{ fontSize: 60, color: "#ff9800" }} />,
       title: "Rent Farm",
       description: "Explore rental options for profitable land utilization.",
-      link: "/RentPage"
+      link: "/RentPage",
     },
     {
       icon: <SellIcon sx={{ fontSize: 60, color: "#f44336" }} />,
       title: "Sell Farm",
-      description: "Learn how to sell your farmland efficiently and profitably.",
-      link: "/LoginPage"
+      description:
+        "Learn how to sell your farmland efficiently and profitably.",
+      link: "/LoginPage",
     },
   ];
 
@@ -45,11 +47,11 @@ const Home = () => {
           </Typography>
           <Typography
             variant="h4"
-            sx={{ 
-              fontWeight: "bold", 
-              color: "white", 
+            sx={{
+              fontWeight: "bold",
+              color: "white",
               textAlign: "center",
-              width: "100%"
+              width: "100%",
             }}
           >
             Farm Purchase and Rental System
@@ -62,43 +64,50 @@ const Home = () => {
         {/* About Section with Navigation Links */}
         <Typography
           variant="h6"
-          sx={{ maxWidth: "800px", margin: "auto", color: "#333", mb: 4, lineHeight: 1.8 }}
+          sx={{
+            maxWidth: "800px",
+            margin: "auto",
+            color: "#333",
+            mb: 4,
+            lineHeight: 1.8,
+          }}
         >
-          Welcome to our comprehensive farm management platform. Whether you're looking to{" "}
-          <Typography 
-            component={Link} 
+          Welcome to our comprehensive farm management platform. Whether you're
+          looking to{" "}
+          <Typography
+            component={Link}
             to="/trial"
-            sx={{ 
-              color: "#4caf50", 
+            sx={{
+              color: "#4caf50",
               fontWeight: "bold",
               textDecoration: "none",
-              "&:hover": { textDecoration: "underline" }
+              "&:hover": { textDecoration: "underline" },
             }}
           >
             buy your dream farmland
-          </Typography>, 
-          find{" "}
-          <Typography 
-            component={Link} 
+          </Typography>
+          , find{" "}
+          <Typography
+            component={Link}
             to="/RentPage"
-            sx={{ 
-              color: "#ff9800", 
+            sx={{
+              color: "#ff9800",
               fontWeight: "bold",
               textDecoration: "none",
-              "&:hover": { textDecoration: "underline" }
+              "&:hover": { textDecoration: "underline" },
             }}
           >
             rental opportunities
           </Typography>{" "}
           for profitable agriculture, or{" "}
-          <Typography 
-            component={Link} 
+          <Typography
+            component={Link}
             to="/LoginPage"
-            sx={{ 
-              color: "#f44336", 
+            sx={{
+              color: "#f44336",
               fontWeight: "bold",
               textDecoration: "none",
-              "&:hover": { textDecoration: "underline" }
+              "&:hover": { textDecoration: "underline" },
             }}
           >
             sell your farmland
@@ -110,8 +119,9 @@ const Home = () => {
           variant="body1"
           sx={{ maxWidth: "700px", margin: "auto", color: "#666", mb: 5 }}
         >
-          Our system provides detailed land information, competitive pricing, direct seller contacts, 
-          and precise Google Map locations for seamless navigation and decision-making.
+          Our system provides detailed land information, competitive pricing,
+          direct seller contacts, and precise Google Map locations for seamless
+          navigation and decision-making.
         </Typography>
 
         {/* Service Cards */}
@@ -121,7 +131,7 @@ const Home = () => {
             gap: 3,
             justifyContent: "center",
             flexWrap: "wrap",
-            mt: 4
+            mt: 4,
           }}
         >
           {farmOptions.map((option, index) => (
@@ -140,19 +150,17 @@ const Home = () => {
                 justifyContent: "center",
                 alignItems: "center",
                 transition: "all 0.3s ease-in-out",
-                "&:hover": { 
-                  transform: "translateY(-8px)", 
+                "&:hover": {
+                  transform: "translateY(-8px)",
                   boxShadow: 6,
-                  backgroundColor: "#f8f9fa"
+                  backgroundColor: "#f8f9fa",
                 },
                 cursor: "pointer",
-                backgroundColor: "white"
+                backgroundColor: "white",
               }}
             >
               <CardContent sx={{ textAlign: "center", p: 3 }}>
-                <Box sx={{ mb: 2 }}>
-                  {option.icon}
-                </Box>
+                <Box sx={{ mb: 2 }}>{option.icon}</Box>
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: "bold", color: "#333", mb: 1 }}

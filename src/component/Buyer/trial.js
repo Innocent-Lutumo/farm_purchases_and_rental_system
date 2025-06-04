@@ -35,7 +35,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import axios from "axios";
 import PurchaseDialog from "./PurchaseDialog";
-import FarmMapModal from "./FarmMapModal";
+import FarmMapModal from "../Shared/FarmMapModal";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
@@ -165,7 +165,7 @@ const Trial = () => {
           </IconButton>
 
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6">Farm Finder</Typography>
+            <Typography variant="h6" sx={{ color:"white", }}>Farm Finder</Typography>
             <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
               Find your ideal farmland for purchase.
             </Typography>
