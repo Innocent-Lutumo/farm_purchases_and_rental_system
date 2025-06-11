@@ -167,15 +167,15 @@ const SellerList = () => {
   // Menu items configuration
   const menuItems = useMemo(
     () => [
-      { text: "Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
-      { text: "Sellers", icon: <PeopleIcon />, path: "/SellerList" },
+      { text: "Admin Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
+      { text: "Registered Sellers", icon: <PeopleIcon />, path: "/SellerList" },
     ],
     []
   );
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("access");
-    localStorage.removeItem("refresh"); // Also remove refresh token on logout
+    localStorage.removeItem("refresh"); 
     navigate("/AdminLogin");
   }, [navigate]);
 

@@ -24,13 +24,13 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 // Menu items configuration (kept as is, it's well-defined)
 const menuItems = [
   {
-    text: "Purchases",
+    text: "Purchased farms",
     icon: <PurchasesIcon />,
     path: "/Purchases",
     description: "Track all farm purchase",
   },
   {
-    text: "Rents",
+    text: "Rented farms",
     icon: <RentsIcon />,
     path: "/Rents",
     description: "Manage your property rentals",

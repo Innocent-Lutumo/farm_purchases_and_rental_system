@@ -41,9 +41,9 @@ import {
   ChevronRight,
   Lightbulb,
   Image as ImageIcon,
-  MonetizationOn as MonetaryIcon, // Added icon for total value
-  HourglassEmpty as PendingIcon, // Added icon for pending
-  People as LeadsIcon, // Added icon for leads
+  MonetizationOn as MonetaryIcon, 
+  HourglassEmpty as PendingIcon, 
+  People as LeadsIcon, 
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -101,25 +101,25 @@ const StyledCard = styled(Card)(({ theme }) => ({
 // Menu items configuration
 const menuItems = [
   {
-    text: "Purchases",
+    text: "Purchases Requests",
     icon: <PurchasesIcon />,
     path: "/Purchases",
     description: "Track all farm purchase",
   },
   {
-    text: "Rents",
+    text: "Rental Requests",
     icon: <RentsIcon />,
     path: "/Rents",
     description: "Manage your property rentals",
   },
   {
-    text: "All Farms",
+    text: "Uploaded Farms",
     icon: <UploadIcon />,
     path: "/UploadedFarms",
     description: "View your farm listings",
   },
   {
-    text: "Add Farm",
+    text: "Upload New Farm",
     icon: <UploadNewIcon />,
     path: "/UploadFarmForm",
     description: "Create a new farm listing",
@@ -177,11 +177,11 @@ function SellerPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   
-  // Dummy data for farm listing overview (replace with actual API calls)
+  // Dummy data for farm listing overview 
   const [totalListings, setTotalListings] = useState(15);
   const [pendingApplications, setPendingApplications] = useState(3); 
   const [newLeads, setNewLeads] = useState(5);
-  const [totalValueListings] = useState(500000); // Example value
+  const [totalValueListings] = useState(500000);
 
   const navigate = useNavigate();
   const location = useLocation();

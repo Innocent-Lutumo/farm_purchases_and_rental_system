@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -134,8 +134,8 @@ export default function Rents() {
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState(0); // 0 for All Rents, 1 for Rented
-  const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
+  const [activeTab, setActiveTab] = useState(0); 
+  const [viewMode, setViewMode] = useState("table"); 
   const [stats, setStats] = useState({
     totalRents: 0,
     confirmed: 0,
@@ -160,8 +160,8 @@ export default function Rents() {
     (ordersData, tabIndex) => {
       let filtered = [];
       if (tabIndex === 0) {
-        // All Rents
-        filtered = ordersData;
+        // All Rents - Only show farms that are rented (is_rented = true)
+        filtered = ordersData.filter(order => order.farm.is_rented === true);
       } else if (tabIndex === 1) {
         // Rented - farms with is_rented = true AND status = confirmed
         filtered = ordersData.filter(
@@ -193,9 +193,9 @@ export default function Rents() {
       setOrders(data);
 
       // Calculate stats based on fetched data
-      const totalRents = data.length;
-      const confirmed = data.filter((o) => o.status === "Confirmed").length;
-      const pending = data.filter((o) => o.status === "Pending").length;
+      const totalRents = data.filter(order => order.farm.is_rented === true).length;
+      const confirmed = data.filter((o) => o.status === "Confirmed" && o.farm.is_rented === true).length;
+      const pending = data.filter((o) => o.status === "Pending" && o.farm.is_rented === true).length;
       const rented = data.filter(
         (o) => o.farm.is_rented === true && o.status === "Confirmed"
       ).length;
@@ -498,12 +498,11 @@ export default function Rents() {
         </CardContent>
 
         <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
-          {/* Status Change Select */}
+          {/* Status Change Select - Always Active */}
           <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
             <Select
               value={order.status || "Pending"}
               onChange={(e) => handleStatusChange(order.id, e.target.value)}
-              disabled={order.farm.is_rented}
               sx={{
                 fontSize: "0.8rem",
                 "& .MuiSelect-select": {
@@ -929,7 +928,7 @@ export default function Rents() {
                         }}
                       >
                         <TableCell>
-                          <Box display="flex" alignItems="center" gap={2}>
+                          <Box display="flex" alignItems="center" gap={2}></Box>
                             <Badge
                               badgeContent={
                                 order.farm.is_rented ? "RENTED" : ""
@@ -972,249 +971,206 @@ export default function Rents() {
                                   size="small"
                                   color="error"
                                   variant="outlined"
-                                  sx={{
-                                    mt: 0.5,
+                                  sx={{mt: 0.5,
                                     fontSize: "0.7rem",
-                                    height: 18,
                                   }}
                                 />
                               )}
                             </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            to={`/farm-location/${order.farm.id}`}
-                            style={{ textDecoration: "none" }}
-                          >
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Tooltip title="View Location">
-                                <LocationOnIcon color="primary" />
-                              </Tooltip>
-                              <Typography color="primary">
-                                {order.farm.location}
-                              </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box display="flex" alignItems="center">
+                              <LocationOnIcon
+                                sx={{ mr: 1, color: "primary.main" }}
+                              />
+                              {order.farm.location}
                             </Box>
-                          </Link>
-                        </TableCell>
-                        <TableCell>{order.farm.size}</TableCell>
-                        <TableCell>
-                          <Typography
-                            color={
-                              order.farm.is_rented
-                                ? "text.secondary"
-                                : "success.main"
-                            }
-                            fontWeight="bold"
-                          >
-                            {order.farm.price} Tshs
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {order.farm.rent_duration || "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={order.status}
-                            color={
-                              order.status === "Confirmed"
-                                ? "success"
-                                : order.status === "Cancelled"
-                                ? "error"
-                                : "warning"
-                            }
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {order.renter_phone ? (
-                            <Tooltip title="Call">
-                              <IconButton
-                                color="primary"
-                                href={`tel:${order.renter_phone}`}
-                                size="small"
-                              >
-                                <PhoneIcon />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {order.rent_date
-                            ? new Date(order.rent_date).toLocaleDateString()
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell>{order.transaction_id}</TableCell>
-                        <TableCell>
-                          {order.renter_email ? (
-                            <Tooltip title={order.renter_email}>
-                              <IconButton
-                                color="primary"
-                                href={`mailto:${order.renter_email}`}
-                                size="small"
-                              >
-                                <EmailIcon />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <FormControl size="small" sx={{ minWidth: 100 }}>
-                            <Select
-                              value={order.status || "Pending"}
-                              onChange={(e) =>
-                                handleStatusChange(order.id, e.target.value)
-                              }
-                              disabled={order.farm.is_rented}
+                          </TableCell>
+                          <TableCell>{order.farm.size}</TableCell>
+                          <TableCell>
+                            <Typography
                               sx={{
-                                fontSize: "0.8rem",
-                                "& .MuiSelect-select": {
-                                  py: 0.5,
-                                  color:
-                                    order.status === "Confirmed"
-                                      ? theme.palette.success.main
-                                      : order.status === "Cancelled"
-                                      ? theme.palette.error.main
-                                      : theme.palette.warning.main,
-                                },
+                                fontWeight: 600,
+                                color: order.farm.is_rented
+                                  ? "text.secondary"
+                                  : "success.main",
                               }}
                             >
-                              <MenuItem
-                                value="Confirmed"
-                                sx={{ fontSize: "0.8rem" }}
-                              >
-                                Confirmed
-                              </MenuItem>
-                              <MenuItem
-                                value="Cancelled"
-                                sx={{ fontSize: "0.8rem" }}
-                              >
-                                Cancelled
-                              </MenuItem>
-                              <MenuItem
-                                value="Pending"
-                                sx={{ fontSize: "0.8rem" }}
-                              >
-                                Pending
-                              </MenuItem>
-                            </Select>
-                          </FormControl>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip title="Delete Transaction">
-                            <IconButton
-                              color="error"
-                              onClick={() => openConfirmationDialog(order.id)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip
-                            title={
-                              order.farm.is_rented
-                                ? "Mark as Available"
-                                : "Mark as Rented"
-                            }
-                          >
-                            <Switch
-                              checked={!order.farm.is_rented}
-                              onChange={() =>
-                                handleFarmAvailabilityToggle(
-                                  order.farm.id,
-                                  order.farm.is_rented
-                                )
+                              {order.farm.price} Tshs
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{order.farm.rent_duration || "N/A"}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={order.status}
+                              color={
+                                order.status === "Confirmed"
+                                  ? "success"
+                                  : order.status === "Cancelled"
+                                  ? "error"
+                                  : "warning"
                               }
-                              color={order.farm.is_rented ? "error" : "success"}
+                              size="small"
+                              sx={{ fontWeight: 600 }}
                             />
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredOrders.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={13} align="center">
-                          <Typography
-                            variant="h6"
-                            color="text.secondary"
-                            sx={{ py: 3 }}
-                          >
-                            No rental transactions found.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              // Card View
-              <Grid container spacing={3}>
-                {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order, index) => (
-                    <Grid item key={order.id} xs={12} sm={6} md={4} lg={3}>
-                      <FarmCard order={order} index={index} />
-                    </Grid>
-                  ))
-                ) : (
-                  <Grid item xs={12}>
-                    <Paper
-                      sx={{
-                        p: 3,
-                        textAlign: "center",
-                        borderRadius: 3,
-                        boxShadow: 3,
-                      }}
-                    >
-                      <Typography variant="h6" color="text.secondary">
+                          </TableCell>
+                          <TableCell>{order.renter_phone || "N/A"}</TableCell>
+                          <TableCell>
+                            {new Date(order.rent_date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontFamily: "monospace",
+                                backgroundColor: "action.selected",
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1,
+                              }}
+                            >
+                              {order.transaction_id}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{order.renter_email || "N/A"}</TableCell>
+                          <TableCell>
+                            <FormControl size="small" sx={{ minWidth: 120 }}>
+                              <Select
+                                value={order.status || "Pending"}
+                                onChange={(e) =>
+                                  handleStatusChange(order.id, e.target.value)
+                                }
+                                sx={{
+                                  "& .MuiSelect-select": {
+                                    color:
+                                      order.status === "Confirmed"
+                                        ? theme.palette.success.main
+                                        : order.status === "Cancelled"
+                                        ? theme.palette.error.main
+                                        : theme.palette.warning.main,
+                                  },
+                                }}
+                              >
+                                <MenuItem value="Confirmed">Confirmed</MenuItem>
+                                <MenuItem value="Cancelled">Cancelled</MenuItem>
+                                <MenuItem value="Pending">Pending</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </TableCell>
+                          <TableCell>
+                            <Tooltip title="Delete Transaction">
+                              <IconButton
+                                color="error"
+                                onClick={() => openConfirmationDialog(order.id)}
+                                disabled={isDeleting}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell>
+                            <Tooltip
+                              title={
+                                order.farm.is_rented
+                                  ? "Mark as Available"
+                                  : "Mark as Rented"
+                              }
+                            >
+                              <Switch
+                                checked={!order.farm.is_rented}
+                                onChange={() =>
+                                  handleFarmAvailabilityToggle(
+                                    order.farm.id,
+                                    order.farm.is_rented
+                                  )
+                                }
+                                color={order.farm.is_rented ? "error" : "success"}
+                              />
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {filteredOrders.length === 0 && (
+                    <Box sx={{ textAlign: "center", py: 4 }}>
+                      <Typography color="text.secondary">
                         No rental transactions found.
                       </Typography>
-                    </Paper>
-                  </Grid>
-                )}
-              </Grid>
-            )}
-          </motion.div>
+                    </Box>
+                  )}
+                </TableContainer>
+              ) : (
+                // Card View
+                <Grid container spacing={3}>
+                  {filteredOrders.map((order, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={order.id}>
+                      <FarmCard order={order} index={index} />
+                    </Grid>
+                  ))}
+                  {filteredOrders.length === 0 && (
+                    <Grid item xs={12}>
+                      <Box sx={{ textAlign: "center", py: 8 }}>
+                        <Typography
+                          variant="h6"
+                          color="text.secondary"
+                          gutterBottom
+                        >
+                          No rental transactions found
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {activeTab === 0
+                            ? "No rented farms available."
+                            : "No confirmed rental transactions found."}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </motion.div>
+          </Box>
+  
+          {/* Delete Confirmation Dialog */}
+          <Dialog
+            open={openDeleteDialog}
+            onClose={() => setOpenDeleteDialog(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              <Typography variant="h6" fontWeight="bold">
+                Confirm Deletion
+              </Typography>
+            </DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this rental transaction? This
+                action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 3, pt: 1 }}>
+              <Button
+                onClick={() => setOpenDeleteDialog(false)}
+                color="primary"
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                color="error"
+                variant="contained"
+                disabled={isDeleting}
+                startIcon={
+                  isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />
+                }
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-          aria-labelledby="delete-dialog-title"
-          aria-describedby="delete-dialog-description"
-        >
-          <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
-          <DialogContent>
-            <Typography id="delete-dialog-description">
-              Are you sure you want to delete this rental transaction? This
-              action cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => setOpenDeleteDialog(false)}
-              color="primary"
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleDelete} color="error" disabled={isDeleting}>
-              {isDeleting ? <CircularProgress size={24} /> : "Delete"}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </ThemeProvider>
-  );
-}
+      </ThemeProvider>
+    );
+  }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -72,6 +72,9 @@ const getTheme = (mode) =>
         default: mode === "light" ? "#f5f5f5" : "#121212",
         paper: mode === "light" ? "#ffffff" : "#1e1e1e",
       },
+      statusConfirmed: { main: "#4caf50" },
+      statusPending: { main: "#ffc107" },
+      statusCancelled: { main: "#f44336" },
     },
     shape: { borderRadius: 12 },
     components: {
@@ -91,13 +94,22 @@ const getTheme = (mode) =>
           },
         },
       },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            fontWeight: 600,
+          },
+        },
+      },
     },
     typography: {
       fontFamily: '"Inter", "Roboto", "Arial", sans-serif',
+      h4: { fontWeight: 700 },
       h6: { fontWeight: 600 },
     },
   });
 
+// Menu items for SellerDrawer
 const menuItems = [
   {
     text: "Purchases",
@@ -139,6 +151,7 @@ const menuItems = [
 ];
 
 export default function Purchases() {
+  // State variables
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,8 +160,8 @@ export default function Purchases() {
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState(0); // 0 for All Purchases, 1 for Sold Outs
-  const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
+  const [activeTab, setActiveTab] = useState(0);
+  const [viewMode, setViewMode] = useState("table");
   const [stats, setStats] = useState({
     totalPurchases: 0,
     confirmed: 0,
@@ -167,12 +180,15 @@ export default function Purchases() {
   );
   const drawerWidth = 240;
 
+  // Memoized function to filter orders based on active tab and search query
   const filterOrdersByTab = useCallback(
     (ordersData, tabIndex) => {
       let filtered = [];
       if (tabIndex === 0) {
-        // All Purchases
-        filtered = ordersData;
+
+        filtered = ordersData.filter(
+          (order) => order.farm.is_sold === true || order.status === "Pending"
+        );
       } else if (tabIndex === 1) {
         // Sold Outs - farms with is_sold = true AND status = "Confirmed"
         filtered = ordersData.filter(
@@ -192,7 +208,9 @@ export default function Purchases() {
     [searchQuery]
   );
 
+  // Function to fetch orders from the API
   const fetchOrders = useCallback(async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("access");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -217,14 +235,17 @@ export default function Purchases() {
         soldOuts,
       });
 
-      // Filter based on active tab
       filterOrdersByTab(data, activeTab);
     } catch (error) {
       console.error("Error fetching orders:", error.response || error);
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem("access");
+        navigate("/LoginPage");
+      }
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filterOrdersByTab]);
+  }, [activeTab, filterOrdersByTab, navigate]);
 
   useEffect(() => {
     fetchOrders();
@@ -234,16 +255,21 @@ export default function Purchases() {
     filterOrdersByTab(orders, activeTab);
   }, [activeTab, orders, searchQuery, filterOrdersByTab]);
 
+  // Handler for theme toggle
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
+  
+  // Handler for logout
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
   };
 
+  // Handler for drawer toggle (mobile)
   const handleDrawerToggle = () => {
     setDrawerOpen((prev) => !prev);
   };
 
+  // Handlers for AppBar menu
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -252,24 +278,29 @@ export default function Purchases() {
     setAnchorEl(null);
   };
 
+  // Search input change handler
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
 
+  // Search submission handler
   const handleSearchSubmit = () => {
     filterOrdersByTab(orders, activeTab);
   };
 
+  // Tab change handler
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  // View mode toggle handler
   const handleViewModeChange = (event, newViewMode) => {
     if (newViewMode !== null) {
       setViewMode(newViewMode);
     }
   };
 
+  // Handler to update transaction status - ALWAYS ACTIVE
   const handleStatusChange = async (id, newStatus) => {
     try {
       const token = localStorage.getItem("access");
@@ -278,32 +309,13 @@ export default function Purchases() {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Refresh data after status change
-      fetchOrders();
+      fetchOrders(); // Refresh data after status change
     } catch (error) {
-      console.error("Failed to update order status:", error);
+      console.error("Failed to update order status:", error.response || error);
     }
   };
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    setOpenDeleteDialog(false);
-    try {
-      const token = localStorage.getItem("access");
-      await axios.delete(
-        `http://127.0.0.1:8000/api/sale-transactions/${deleteId}/`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Refresh data after deletion
-      fetchOrders();
-    } catch (error) {
-      console.error("Failed to delete transaction:", error);
-    } finally {
-      setIsDeleting(false);
-      setDeleteId(null);
-    }
-  };
-
+  // Handler for farm availability toggle - automatically removes from page when marked as available
   const handleFarmAvailabilityToggle = async (farmId, currentIsSold) => {
     try {
       const token = localStorage.getItem("access");
@@ -313,22 +325,52 @@ export default function Purchases() {
         { is_sold: newIsSoldStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       // Refresh data after availability toggle
+      // The filtering logic will automatically remove items where is_sold = false
       fetchOrders();
     } catch (error) {
-      console.error("Failed to update farm availability:", error);
+      console.error(
+        "Failed to update farm availability:",
+        error.response || error
+      );
     }
   };
 
+  // Handler for confirming and performing deletion
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setOpenDeleteDialog(false);
+    try {
+      const token = localStorage.getItem("access");
+      await axios.delete(
+        `http://127.0.0.1:8000/api/sale-transactions/${deleteId}/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchOrders();
+    } catch (error) {
+      console.error(
+        "Failed to delete transaction:",
+        error.response || error
+      );
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
+    }
+  };
+
+  // Opens the delete confirmation dialog
   const openConfirmationDialog = (id) => {
     setDeleteId(id);
     setOpenDeleteDialog(true);
   };
 
+  // Handles viewing the agreement
   const handleViewAgreement = (order) => {
     console.log("View agreement for:", order.transaction_id);
   };
 
+  // Framer Motion variants for animations
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -348,6 +390,7 @@ export default function Purchases() {
     },
   };
 
+  // FarmCard component for card view
   const FarmCard = ({ order, index }) => (
     <motion.div
       variants={itemVariants}
@@ -470,19 +513,19 @@ export default function Purchases() {
                 fontSize: "0.9rem",
               }}
             >
-              {order.farm.price} Tshs
+              {order.farm.price} TZS
             </Typography>
           </Box>
 
           {(order.contact_info || order.buyer_email) && (
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               {order.contact_info && (
-                <Tooltip title={order.contact_info}>
+                <Tooltip title={`Buyer Phone: ${order.contact_info}`}>
                   <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
                 </Tooltip>
               )}
               {order.buyer_email && (
-                <Tooltip title={order.buyer_email}>
+                <Tooltip title={`Buyer Email: ${order.buyer_email}`}>
                   <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
                 </Tooltip>
               )}
@@ -491,11 +534,11 @@ export default function Purchases() {
         </CardContent>
 
         <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+          {/* Status Change Dropdown - Always Active */}
           <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
             <Select
               value={order.status || "Pending"}
               onChange={(e) => handleStatusChange(order.id, e.target.value)}
-              disabled={order.farm.is_sold}
               sx={{
                 fontSize: "0.8rem",
                 "& .MuiSelect-select": {
@@ -545,6 +588,7 @@ export default function Purchases() {
               size="small"
               color="error"
               onClick={() => openConfirmationDialog(order.id)}
+              disabled={isDeleting}
             >
               <DeleteIcon sx={{ fontSize: 18 }} />
             </IconButton>
@@ -587,7 +631,6 @@ export default function Purchases() {
           handleDrawerToggle={handleDrawerToggle}
           darkMode={darkMode}
           handleThemeToggle={handleThemeToggle}
-          fetchFarms={fetchOrders}
           anchorEl={anchorEl}
           handleMenuOpen={handleMenuOpen}
           handleMenuClose={handleMenuClose}
@@ -786,6 +829,7 @@ export default function Purchases() {
                 alignItems: "center",
                 p: 2,
                 pb: 0,
+                flexWrap: "wrap",
               }}
             >
               <Tabs
@@ -833,6 +877,8 @@ export default function Purchases() {
                 onChange={handleViewModeChange}
                 size="small"
                 sx={{
+                  ml: { xs: 0, sm: 2 },
+                  mt: { xs: 2, sm: 0 },
                   "& .MuiToggleButton-root": {
                     border: "1px solid",
                     borderColor: "divider",
@@ -865,7 +911,20 @@ export default function Purchases() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            {viewMode === "table" ? (
+            {filteredOrders.length === 0 ? (
+              <Paper
+                sx={{
+                  p: 3,
+                  textAlign: "center",
+                  borderRadius: 3,
+                  boxShadow: 3,
+                }}
+              >
+                <Typography variant="h6" color="text.secondary">
+                  No purchase transactions found for this view.
+                </Typography>
+              </Paper>
+            ) : viewMode === "table" ? (
               <TableContainer
                 component={Paper}
                 sx={{ borderRadius: 3, boxShadow: 3 }}
@@ -878,14 +937,15 @@ export default function Purchases() {
                       <TableCell>Farm</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Size</TableCell>
-                      <TableCell>Price</TableCell>
+                      <TableCell>Price(TZS)</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Phone</TableCell>
+                      <TableCell>Buyer Phone</TableCell>
                       <TableCell>Transaction ID</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Edit Status</TableCell>
+                      <TableCell>Buyer Email</TableCell>
+                      <TableCell>Update Status</TableCell>
                       <TableCell>Delete</TableCell>
                       <TableCell>Availability</TableCell>
+                      {activeTab === 1 && <TableCell>Agreement</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -917,69 +977,48 @@ export default function Purchases() {
                             >
                               <Avatar
                                 src={`http://127.0.0.1:8000${order.farm.image}`}
-                                variant="rounded"
+                                alt={order.farm.name}
                                 sx={{
-                                  width: 80,
-                                  height: 80,
-                                  opacity: order.farm.is_sold ? 0.7 : 1,
+                                  width: 40,
+                                  height: 40,
+                                  filter: order.farm.is_sold ? "grayscale(50%)" : "none",
                                 }}
                               />
                             </Badge>
                             <Box>
                               <Typography
+                                variant="body2"
+                                fontWeight={600}
                                 sx={{
-                                  textDecoration: order.farm.is_sold
-                                    ? "line-through"
-                                    : "none",
-                                  color: order.farm.is_sold
-                                    ? "text.secondary"
-                                    : "text.primary",
+                                  textDecoration: order.farm.is_sold ? "line-through" : "none",
+                                  color: order.farm.is_sold ? "text.secondary" : "text.primary",
                                 }}
                               >
                                 {order.farm.name}
                               </Typography>
-                              {order.farm.is_sold && (
-                                <Chip
-                                  label="Sold Out"
-                                  size="small"
-                                  color="error"
-                                  variant="outlined"
-                                  sx={{
-                                    mt: 0.5,
-                                    fontSize: "0.7rem",
-                                    height: 18,
-                                  }}
-                                />
-                              )}
                             </Box>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Link
-                            to={`/farm-location/${order.farm.id}`}
-                            style={{ textDecoration: "none" }}
-                          >
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Tooltip title="View Location">
-                                <LocationOnIcon color="primary" />
-                              </Tooltip>
-                              <Typography color="primary">
-                                {order.farm.location}
-                              </Typography>
-                            </Box>
-                          </Link>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <LocationOnIcon
+                              sx={{ fontSize: 16, color: "primary.main" }}
+                            />
+                            <Typography variant="body2">
+                              {order.farm.location}
+                            </Typography>
+                          </Box>
                         </TableCell>
-                        <TableCell>{order.farm.size}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{order.farm.size}</Typography>
+                        </TableCell>
                         <TableCell>
                           <Typography
-                            color={
-                              order.farm.is_sold
-                                ? "text.secondary"
-                                : "success.main"
-                            }
-                            fontWeight="bold"
+                            variant="body2"
+                            fontWeight={600}
+                            color={order.farm.is_sold ? "text.secondary" : "success.main"}
                           >
-                            {order.farm.price} Tshs
+                            {order.farm.price} 
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -997,52 +1036,27 @@ export default function Purchases() {
                           />
                         </TableCell>
                         <TableCell>
-                          {order.contact_info ? (
-                            <Tooltip title="Call">
-                              <IconButton
-                                color="primary"
-                                href={`tel:${order.contact_info}`}
-                                size="small"
-                              >
-                                <PhoneIcon />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>{order.transaction_id}</TableCell>
-                        <TableCell>
-                          {order.buyer_email ? (
-                            <Tooltip title={order.buyer_email}>
-                              <IconButton
-                                color="primary"
-                                href={`mailto:${order.buyer_email}`}
-                                size="small"
-                              >
-                                <EmailIcon />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          )}
+                          <Typography variant="body2">
+                            {order.contact_info || "N/A"}
+                          </Typography>
                         </TableCell>
                         <TableCell>
-                          <FormControl size="small" sx={{ minWidth: 100 }}>
+                          <Typography variant="body2" fontFamily="monospace">
+                            {order.transaction_id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {order.buyer_email || "N/A"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <FormControl size="small" sx={{ minWidth: 120 }}>
                             <Select
                               value={order.status || "Pending"}
-                              onChange={(e) =>
-                                handleStatusChange(order.id, e.target.value)
-                              }
-                              disabled={order.farm.is_sold}
+                              onChange={(e) => handleStatusChange(order.id, e.target.value)}
                               sx={{
-                                fontSize: "0.8rem",
                                 "& .MuiSelect-select": {
-                                  py: 0.5,
                                   color:
                                     order.status === "Confirmed"
                                       ? theme.palette.success.main
@@ -1052,18 +1066,9 @@ export default function Purchases() {
                                 },
                               }}
                             >
-                              <MenuItem
-                                value="Confirmed"
-                                sx={{ fontSize: "0.8rem" }}
-                              >
-                                Confirmed
-                              </MenuItem>
-                              <MenuItem
-                                value="Pending"
-                                sx={{ fontSize: "0.8rem" }}
-                              >
-                                Pending
-                              </MenuItem>
+                              <MenuItem value="Confirmed">Confirmed</MenuItem>
+                              <MenuItem value="Cancelled">Cancelled</MenuItem>
+                              <MenuItem value="Pending">Pending</MenuItem>
                             </Select>
                           </FormControl>
                         </TableCell>
@@ -1072,6 +1077,8 @@ export default function Purchases() {
                             <IconButton
                               color="error"
                               onClick={() => openConfirmationDialog(order.id)}
+                              disabled={isDeleting}
+                              size="small"
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -1079,98 +1086,134 @@ export default function Purchases() {
                         </TableCell>
                         <TableCell>
                           <Tooltip
-                            title={
-                              order.farm.is_sold
-                                ? "Mark as Available"
-                                : "Mark as Sold"
-                            }
+                            title={order.farm.is_sold ? "Mark as Available" : "Mark as Sold"}
                           >
                             <Switch
                               checked={!order.farm.is_sold}
                               onChange={() =>
-                                handleFarmAvailabilityToggle(
-                                  order.farm.id,
-                                  order.farm.is_sold
-                                )
+                                handleFarmAvailabilityToggle(order.farm.id, order.farm.is_sold)
                               }
                               color={order.farm.is_sold ? "error" : "success"}
+                              size="small"
                             />
                           </Tooltip>
                         </TableCell>
+                        {activeTab === 1 && (
+                          <TableCell>
+                            <Tooltip title="View Agreement">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleViewAgreement(order)}
+                                size="small"
+                              >
+                                <AgreementIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
-                    {filteredOrders.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={11} align="center">
-                          <Typography
-                            variant="h6"
-                            color="text.secondary"
-                            sx={{ py: 3 }}
-                          >
-                            No orders found.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
             ) : (
               <Grid container spacing={3}>
-                {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order, index) => (
-                    <Grid item key={order.id} xs={12} sm={6} md={4} lg={3}>
-                      <FarmCard order={order} index={index} />
-                    </Grid>
-                  ))
-                ) : (
-                  <Grid item xs={12}>
-                    <Paper
-                      sx={{
-                        p: 3,
-                        textAlign: "center",
-                        borderRadius: 3,
-                        boxShadow: 3,
-                      }}
-                    >
-                      <Typography variant="h6" color="text.secondary">
-                        No orders found.
-                      </Typography>
-                    </Paper>
+                {filteredOrders.map((order, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={order.id}>
+                    <FarmCard order={order} index={index} />
                   </Grid>
-                )}
+                ))}
               </Grid>
             )}
           </motion.div>
         </Box>
-
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-          aria-labelledby="delete-dialog-title"
-          aria-describedby="delete-dialog-description"
-        >
-          <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
-          <DialogContent>
-            <Typography id="delete-dialog-description">
-              Are you sure you want to delete this transaction? This action
-              cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => setOpenDeleteDialog(false)}
-              color="primary"
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleDelete} color="error" disabled={isDeleting}>
-              {isDeleting ? <CircularProgress size={24} /> : "Delete"}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        PaperProps={{
+          sx: { borderRadius: 3 },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={600}>
+            Confirm Deletion
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this transaction? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button
+            onClick={() => setOpenDeleteDialog(false)}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            sx={{ textTransform: "none" }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Loading overlay for deletion */}
+      {isDeleting && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <Box
+            sx={{
+              backgroundColor: theme.palette.background.paper,
+              p: 3,
+              borderRadius: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <CircularProgress size={24} />
+            <Typography>Deleting transaction...</Typography>
+          </Box>
+        </Box>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
+          opacity: 0;
+        }
+      `}</style>
     </ThemeProvider>
   );
 }

@@ -289,8 +289,8 @@ function AdminDashboard() {
   // Menu items configuration
   const menuItems = useMemo(
     () => [
-      { text: "Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
-      { text: "Sellers", icon: <PeopleIcon />, path: "/SellerList" },
+      { text: "Admin Dashboard", icon: <DashboardIcon />, path: "/Dashboard" },
+      { text: "Registered Sellers", icon: <PeopleIcon />, path: "/SellerList" },
     ],
     []
   );

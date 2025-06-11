@@ -17,8 +17,6 @@ import AdminProtectedRoute from "./component/Admin/AdminProtectedRoutes";
 import RentalAgreement from "./component/Renter/RentalAgreement";
 import AdminDashboard from "./component/Admin/Dashboard";
 import AdminLogin from "./component/Admin/AdminLogin";
-import FarmRentals from "./component/Admin/FarmRentals";
-import FarmSales from "./component/Admin/FarmSales";
 import SellerList from "./component/Admin/SellerList";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
@@ -84,23 +82,7 @@ function App() {
             <AdminDashboard />
           </AdminProtectedRoute>
         }
-      />
-      <Route
-        path="/FarmRentals"
-        element={
-          <AdminProtectedRoute>
-            <FarmRentals />
-          </AdminProtectedRoute>
-        }
-      />
-      <Route
-        path="/FarmSales"
-        element={
-          <AdminProtectedRoute>
-            <FarmSales />
-          </AdminProtectedRoute>
-        }
-      />  
+      /> 
       <Route
         path="/SellerList"
         element={

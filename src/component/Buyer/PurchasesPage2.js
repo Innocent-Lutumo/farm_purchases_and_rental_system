@@ -70,7 +70,7 @@ const Purchases2 = () => {
     const fetchPurchases = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transactionsal/"
+          "http://127.0.0.1:8000/api/get-transactionsale/"
         );
         setPurchases(response.data);
       } catch (error) {

@@ -71,7 +71,7 @@ const Purchase = () => {
     const fetchPurchases = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/api/get-transaction/"
+          "http://127.0.0.1:8000/api/get-transactions/"
         );
         setPurchases(response.data);
       } catch (error) {
@@ -319,7 +319,7 @@ const Purchase = () => {
                         <strong>Price:</strong> {farm.price}/= Tshs
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Status:</strong>{" "}
+                        <strong>Seller's Status:</strong>{" "}
                         <span
                           style={{
                             color: ["Completed", "Confirmed"].includes(
