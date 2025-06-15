@@ -57,12 +57,12 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme, handleLogout }) => {
 
   // Function to get user initials from name
   const getUserInitials = (name) => {
-    if (!name) return "U"; // Default to "U" for User
+    if (!name) return "U"; 
     return name
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase())
       .join("")
-      .substring(0, 2); // Take first 2 initials
+      .substring(0, 2); 
   };
 
   // Fetch user data from API
@@ -78,7 +78,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme, handleLogout }) => {
           throw new Error('No authentication token found');
         }
 
-        const response = await fetch('http://127.0.0.1:8000/api/admin-sellers-list/', { // Adjust this endpoint to match your API
+        const response = await fetch('http://127.0.0.1:8000/api/admin-sellers-list/', { 
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -93,7 +93,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme, handleLogout }) => {
         const data = await response.json();
         // Extract user data from the farm data response
         if (data && data.length > 0) {
-          const farmData = data[0]; // Get first farm entry to extract user info
+          const farmData = data[0]; 
           setUserData({
             username: farmData.username,
             email: farmData.email,

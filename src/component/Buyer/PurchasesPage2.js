@@ -28,6 +28,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import axios from "axios";
 
 const Purchases2 = () => {
@@ -313,6 +314,25 @@ const Purchases2 = () => {
                         gap: 0.5,
                       }}
                     >
+                       {/* Seller Username Display */}
+                       <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <AccountCircleIcon
+                          sx={{ fontSize: "16px", color: "green", mr: 0.5 }}
+                        />
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: "12px",
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          <strong>Seller:</strong>{" "}
+                          {farm.username || farm.seller || "Unknown"}
+                        </Typography>
+                      </Box>
                       <Typography variant="body2" fontWeight="bold">
                         {farm.name || "Farm"}
                       </Typography>
@@ -329,7 +349,7 @@ const Purchases2 = () => {
                         <strong>Price:</strong> {farm.price}/= Tshs
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Status:</strong>{" "}
+                        <strong>Seller status:</strong>{" "}
                         <span
                           style={{
                             color: ["Completed", "Confirmed"].includes(

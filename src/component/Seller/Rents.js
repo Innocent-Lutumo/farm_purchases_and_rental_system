@@ -32,7 +32,6 @@ import {
   Tabs,
   Tab,
   Chip,
-  Badge,
   ToggleButton,
   ToggleButtonGroup,
   CardMedia,
@@ -42,17 +41,20 @@ import {
   LocationOn as LocationOnIcon,
   ShoppingBag as PurchasesIcon,
   Home as RentsIcon,
-  CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
-  AddCircle as UploadNewIcon,
   Delete as DeleteIcon,
   HourglassEmpty as PendingIcon,
   MonetizationOn as SoldIcon,
   ViewList as TableViewIcon,
-  ViewModule as CardViewIcon,
   Description as AgreementIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
+  PhotoLibrary as GalleryIcon,
+  Close as CloseIcon,
+  NavigateBefore as PrevIcon,
+  NavigateNext as NextIcon,
+  ViewModule,
+  BrokenImage as BrokenImageIcon,
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -71,6 +73,9 @@ const getTheme = (mode) =>
         default: mode === "light" ? "#f5f5f5" : "#121212",
         paper: mode === "light" ? "#ffffff" : "#1e1e1e",
       },
+      statusConfirmed: { main: "#4caf50" },
+      statusPending: { main: "#ffc107" },
+      statusCancelled: { main: "#f44336" },
     },
     shape: { borderRadius: 12 },
     components: {
@@ -90,9 +95,24 @@ const getTheme = (mode) =>
           },
         },
       },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            fontWeight: 600,
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            padding: "8px",
+          },
+        },
+      },
     },
     typography: {
       fontFamily: '"Inter", "Roboto", "Arial", sans-serif',
+      h4: { fontWeight: 700 },
       h6: { fontWeight: 600 },
     },
   });
@@ -113,19 +133,20 @@ const menuItems = [
   },
   {
     text: "Uploaded Farms",
-    icon: <UploadIcon />,
+    icon: <PurchasesIcon />,
     path: "/UploadedFarms",
     description: "View your farm listings",
   },
   {
     text: "Upload New Farm",
-    icon: <UploadNewIcon />,
+    icon: <PurchasesIcon />,
     path: "/UploadFarmForm",
     description: "Create a new farm listing",
   },
 ];
 
 export default function Rents() {
+  // State variables
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,17 +155,22 @@ export default function Rents() {
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState(0); 
-  const [viewMode, setViewMode] = useState("table"); 
+  const [activeTab, setActiveTab] = useState(0);
+  const [viewMode, setViewMode] = useState("table");
   const [stats, setStats] = useState({
     totalRents: 0,
     confirmed: 0,
     pending: 0,
     rented: 0,
   });
+  const [imageErrors, setImageErrors] = useState({});
 
-  // Missing states for AppBar and Drawer
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Image gallery states
+  const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showSearchInput, setShowSearchInput] = useState(false);
 
@@ -155,22 +181,80 @@ export default function Rents() {
   );
   const drawerWidth = 240;
 
-  // Updated filter function to include both is_rented and status conditions
+  // Helper function to safely get farm images
+  const getFarmImages = (farm) => {
+    try {
+      if (!farm) return [];
+      
+      // Check for images array first
+      if (Array.isArray(farm?.images) && farm.images.length > 0) {
+        return farm.images.map(img => {
+          // Handle both full URLs and relative paths
+          if (img?.image?.startsWith('http')) return img.image;
+          return `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}${img.image}`;
+        }).filter(Boolean);
+      }
+      
+      // Fallback to single image
+      if (farm?.image) {
+        if (farm.image.startsWith('http')) return [farm.image];
+        return [`${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}${farm.image}`];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error processing farm images:", error);
+      return [];
+    }
+  };
+
+  // Handle image loading errors
+  const handleImageError = (orderId, imageIndex) => {
+    setImageErrors(prev => ({
+      ...prev,
+      [`${orderId}-${imageIndex}`]: true
+    }));
+  };
+
+  // Image gallery handlers
+  const handleOpenImageGallery = (images, startIndex = 0) => {
+    if (!images || images.length === 0) return;
+    setSelectedImages(images);
+    setCurrentImageIndex(startIndex);
+    setImageGalleryOpen(true);
+  };
+
+  const handleCloseImageGallery = () => {
+    setImageGalleryOpen(false);
+    setSelectedImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex(prev =>
+      prev === selectedImages.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex(prev =>
+      prev === 0 ? selectedImages.length - 1 : prev - 1
+    );
+  };
+
+  // Memoized function to filter orders based on active tab and search query
   const filterOrdersByTab = useCallback(
     (ordersData, tabIndex) => {
       let filtered = [];
       if (tabIndex === 0) {
-        // All Rents - Only show farms that are rented (is_rented = true)
-        filtered = ordersData.filter(order => order.farm.is_rented === true);
+        filtered = ordersData.filter((order) => order.farm.is_rented === true);
       } else if (tabIndex === 1) {
-        // Rented - farms with is_rented = true AND status = confirmed
         filtered = ordersData.filter(
           (order) =>
             order.farm.is_rented === true && order.status === "Confirmed"
         );
       }
 
-      // Apply search filter if exists
       if (searchQuery.trim()) {
         filtered = filtered.filter((order) =>
           order.farm.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -182,20 +266,27 @@ export default function Rents() {
     [searchQuery]
   );
 
+  // Function to fetch orders from the API
   const fetchOrders = useCallback(async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("access");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const { data } = await axios.get(
-        "http://127.0.0.1:8000/api/rent-transactions/",
+        `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/rent-transactions/`,
         { headers }
       );
       setOrders(data);
 
-      // Calculate stats based on fetched data
-      const totalRents = data.filter(order => order.farm.is_rented === true).length;
-      const confirmed = data.filter((o) => o.status === "Confirmed" && o.farm.is_rented === true).length;
-      const pending = data.filter((o) => o.status === "Pending" && o.farm.is_rented === true).length;
+      const totalRents = data.filter(
+        (order) => order.farm.is_rented === true
+      ).length;
+      const confirmed = data.filter(
+        (o) => o.status === "Confirmed" && o.farm.is_rented === true
+      ).length;
+      const pending = data.filter(
+        (o) => o.status === "Pending" && o.farm.is_rented === true
+      ).length;
       const rented = data.filter(
         (o) => o.farm.is_rented === true && o.status === "Confirmed"
       ).length;
@@ -207,14 +298,17 @@ export default function Rents() {
         rented,
       });
 
-      // Filter based on active tab
       filterOrdersByTab(data, activeTab);
     } catch (error) {
       console.error("Error fetching orders:", error.response || error);
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem("access");
+        navigate("/LoginPage");
+      }
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filterOrdersByTab]);
+  }, [activeTab, filterOrdersByTab, navigate]);
 
   useEffect(() => {
     fetchOrders();
@@ -224,16 +318,21 @@ export default function Rents() {
     filterOrdersByTab(orders, activeTab);
   }, [activeTab, orders, searchQuery, filterOrdersByTab]);
 
+  // Handler for theme toggle
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
+
+  // Handler for logout
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
   };
 
+  // Handler for drawer toggle (mobile)
   const handleDrawerToggle = () => {
     setDrawerOpen((prev) => !prev);
   };
 
+  // Handlers for AppBar menu
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -242,85 +341,90 @@ export default function Rents() {
     setAnchorEl(null);
   };
 
+  // Search input change handler
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
 
+  // Search submission handler
   const handleSearchSubmit = () => {
     filterOrdersByTab(orders, activeTab);
   };
 
+  // Tab change handler
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  // View mode toggle handler
   const handleViewModeChange = (event, newViewMode) => {
     if (newViewMode !== null) {
       setViewMode(newViewMode);
     }
   };
 
+  // Handler to update transaction status
   const handleStatusChange = async (id, newStatus) => {
     try {
       const token = localStorage.getItem("access");
       await axios.patch(
-        `http://127.0.0.1:8000/api/rent-transactions/${id}/`,
+        `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/rent-transactions/${id}/`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Refresh data after status change
       fetchOrders();
     } catch (error) {
-      console.error("Failed to update order status:", error);
+      console.error("Failed to update order status:", error.response || error);
     }
   };
 
+  // Handler for farm availability toggle
+  const handleFarmAvailabilityToggle = async (farmId, currentIsRented) => {
+    try {
+      const token = localStorage.getItem("access");
+      const newIsRentedStatus = !currentIsRented;
+      await axios.patch(
+        `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/farmsrent/${farmId}/`,
+        { is_rented: newIsRentedStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchOrders();
+    } catch (error) {
+      console.error("Failed to update farm availability:", error.response || error);
+    }
+  };
+
+  // Handler for confirming and performing deletion
   const handleDelete = async () => {
     setIsDeleting(true);
     setOpenDeleteDialog(false);
     try {
       const token = localStorage.getItem("access");
       await axios.delete(
-        `http://127.0.0.1:8000/api/rent-transactions/${deleteId}/`,
+        `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/rent-transactions/${deleteId}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Refresh data after deletion
       fetchOrders();
     } catch (error) {
-      console.error("Failed to delete transaction:", error);
+      console.error("Failed to delete transaction:", error.response || error);
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
     }
   };
 
-  const handleFarmAvailabilityToggle = async (farmId, currentIsRented) => {
-    try {
-      const token = localStorage.getItem("access");
-      const newIsRentedStatus = !currentIsRented;
-      await axios.patch(
-        `http://127.0.0.1:8000/api/farmsrent/${farmId}/`,
-        { is_rented: newIsRentedStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Refresh data after availability toggle
-      fetchOrders();
-    } catch (error) {
-      console.error("Failed to update farm availability:", error);
-    }
-  };
-
+  // Opens the delete confirmation dialog
   const openConfirmationDialog = (id) => {
     setDeleteId(id);
     setOpenDeleteDialog(true);
   };
 
+  // Handles viewing the agreement
   const handleViewAgreement = (order) => {
-    // Handle view agreement logic here
     console.log("View agreement for:", order.transaction_id);
-    // You can implement modal or navigation to agreement page
   };
 
+  // Framer Motion variants for animations
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -340,247 +444,289 @@ export default function Rents() {
     },
   };
 
-  // Card Component
-  const FarmCard = ({ order, index }) => (
-    <motion.div
-      variants={itemVariants}
-      className="fade-in"
-      style={{ animationDelay: `${index * 0.1}s` }}
-    >
-      <Card
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: theme.shadows[8],
-          },
-          opacity: order.farm.is_rented ? 0.85 : 1,
-        }}
+  // FarmCard component for card view
+  const FarmCard = ({ order, index }) => {
+    const farmImages = getFarmImages(order.farm);
+    const hasMultipleImages = farmImages.length > 1;
+    const mainImageErrorKey = `${order.id}-0`;
+
+    return (
+      <motion.div
+        variants={itemVariants}
+        className="fade-in"
+        style={{ animationDelay: `${index * 0.1}s` }}
       >
-        {/* Farm Image */}
-        <Box sx={{ position: "relative" }}>
-          <CardMedia
-            component="img"
-            height="140"
-            image={`http://127.0.0.1:8000${order.farm.image}`}
-            alt={order.farm.name}
-            sx={{
-              filter: order.farm.is_rented ? "grayscale(50%)" : "none",
-            }}
-          />
+        <Card
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateY(-4px)",
+              boxShadow: theme.shadows[8],
+            },
+            opacity: order.farm.is_rented ? 0.85 : 1,
+          }}
+        >
+          <Box sx={{ position: "relative", height: 140 }}>
+            {imageErrors[mainImageErrorKey] || farmImages.length === 0 ? (
+              <Box
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : '#2a2a2a',
+                  color: theme.palette.text.secondary,
+                }}
+              >
+                <BrokenImageIcon sx={{ fontSize: 48 }} />
+                <Typography variant="caption">Image not available</Typography>
+              </Box>
+            ) : (
+              <CardMedia
+                component="img"
+                height="140"
+                image={farmImages[0]}
+                alt={order.farm.farm_number}
+                onError={() => handleImageError(order.id, 0)}
+                sx={{
+                  filter: order.farm.is_rented ? "grayscale(50%)" : "none",
+                  cursor: farmImages.length > 0 ? "pointer" : "default",
+                  objectFit: "cover",
+                  width: "100%",
+                }}
+                onClick={() => handleOpenImageGallery(farmImages, 0)}
+              />
+            )}
 
-          {/* Status Badge */}
-          <Chip
-            label={order.status}
-            color={
-              order.status === "Confirmed"
-                ? "success"
-                : order.status === "Cancelled"
-                ? "error"
-                : "warning"
-            }
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 8,
-              left: 8,
-              fontWeight: 600,
-              fontSize: "0.7rem",
-            }}
-          />
+            {hasMultipleImages && !imageErrors[mainImageErrorKey] && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  color: "white",
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenImageGallery(farmImages, 0);
+                }}
+              >
+                <GalleryIcon sx={{ fontSize: 14 }} />
+                {farmImages.length}
+              </Box>
+            )}
 
-          {/* Rented Badge */}
-          {order.farm.is_rented && (
             <Chip
-              label="RENTED"
-              color="error"
+              label={order.status}
+              color={
+                order.status === "Confirmed"
+                  ? "success"
+                  : order.status === "Cancelled"
+                  ? "error"
+                  : "warning"
+              }
               size="small"
               sx={{
                 position: "absolute",
                 top: 8,
-                right: 8,
+                left: 8,
                 fontWeight: 600,
                 fontSize: "0.7rem",
-                bgcolor: "error.main",
-                color: "white",
               }}
             />
-          )}
-        </Box>
 
-        <CardContent sx={{ flexGrow: 1, p: 2 }}>
-          {/* Farm Name */}
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{
-              fontWeight: 600,
-              mb: 1,
-              fontSize: "1rem",
-              textDecoration: order.farm.is_rented ? "line-through" : "none",
-              color: order.farm.is_rented ? "text.secondary" : "text.primary",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {order.farm.name}
-          </Typography>
+            {order.farm.is_rented && (
+              <Chip
+                label="RENTED"
+                color="error"
+                size="small"
+                sx={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                  bgcolor: "error.main",
+                  color: "white",
+                }}
+              />
+            )}
+          </Box>
 
-          {/* Location */}
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            <LocationOnIcon
-              sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
-            />
+          <CardContent sx={{ flexGrow: 1, p: 2 }}>
             <Typography
-              variant="body2"
-              color="text.secondary"
+              variant="h6"
+              component="div"
               sx={{
+                fontWeight: 600,
+                mb: 1,
+                fontSize: "1rem",
+                textDecoration: order.farm.is_rented ? "line-through" : "none",
+                color: order.farm.is_rented ? "text.secondary" : "text.primary",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}
             >
-              {order.farm.location}
+              {order.farm.farm_number}
             </Typography>
-          </Box>
 
-          {/* Size and Price */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 1,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              <strong>Size:</strong> {order.farm.size}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: 700,
-                color: order.farm.is_rented ? "text.secondary" : "success.main",
-                fontSize: "0.9rem",
-              }}
-            >
-              {order.farm.price} Tshs
-            </Typography>
-          </Box>
-
-          {/* Rental Duration */}
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Duration:</strong> {order.farm.rent_duration || "N/A"}
-            </Typography>
-          </Box>
-
-          {/* Contact Info (Compact) */}
-          {(order.renter_phone || order.renter_email) && (
-            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-              {order.renter_phone && (
-                <Tooltip title={order.renter_phone}>
-                  <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                </Tooltip>
-              )}
-              {order.renter_email && (
-                <Tooltip title={order.renter_email}>
-                  <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                </Tooltip>
-              )}
-            </Box>
-          )}
-        </CardContent>
-
-        <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
-          {/* Status Change Select - Always Active */}
-          <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
-            <Select
-              value={order.status || "Pending"}
-              onChange={(e) => handleStatusChange(order.id, e.target.value)}
-              sx={{
-                fontSize: "0.8rem",
-                "& .MuiSelect-select": {
-                  py: 0.5,
-                  color:
-                    order.status === "Confirmed"
-                      ? theme.palette.success.main
-                      : order.status === "Cancelled"
-                      ? theme.palette.error.main
-                      : theme.palette.warning.main,
-                },
-              }}
-            >
-              <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
-                Confirmed
-              </MenuItem>
-              <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
-                Cancelled
-              </MenuItem>
-              <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
-                Pending
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Agreement Icon (Only for Rented in Card View) */}
-          {order.farm.is_rented && activeTab === 1 && (
-            <Tooltip title="View Agreement">
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={() => handleViewAgreement(order)}
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <LocationOnIcon
+                sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
+              />
+              <Typography
+                variant="body2"
+                color="text.secondary"
                 sx={{
-                  bgcolor: "primary.main",
-                  color: "white",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {order.farm.location}
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                <strong>Size:</strong> {order.farm.size}
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  fontWeight: 700,
+                  color: order.farm.is_rented ? "text.secondary" : "success.main",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {order.farm.price} TZS
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Duration:</strong> {order.farm.rent_duration || "N/A"}
+              </Typography>
+            </Box>
+
+            {(order.renter_phone || order.renter_email) && (
+              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+                {order.renter_phone && (
+                  <Tooltip title={`Renter Phone: ${order.renter_phone}`}>
+                    <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  </Tooltip>
+                )}
+                {order.renter_email && (
+                  <Tooltip title={`Renter Email: ${order.renter_email}`}>
+                    <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  </Tooltip>
+                )}
+              </Box>
+            )}
+          </CardContent>
+
+          <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+            <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
+              <Select
+                value={order.status || "Pending"}
+                onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                sx={{
+                  fontSize: "0.8rem",
+                  "& .MuiSelect-select": {
+                    py: 0.5,
+                    color:
+                      order.status === "Confirmed"
+                        ? theme.palette.success.main
+                        : order.status === "Cancelled"
+                        ? theme.palette.error.main
+                        : theme.palette.warning.main,
                   },
                 }}
               >
-                <AgreementIcon sx={{ fontSize: 18 }} />
+                <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
+                  Confirmed
+                </MenuItem>
+                <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
+                  Cancelled
+                </MenuItem>
+                <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
+                  Pending
+                </MenuItem>
+              </Select>
+            </FormControl>
+
+            {order.farm.is_rented && activeTab === 1 && (
+              <Tooltip title="View Agreement">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => handleViewAgreement(order)}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "white",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
+                  }}
+                >
+                  <AgreementIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            <Tooltip title="Delete Transaction">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => openConfirmationDialog(order.id)}
+                disabled={isDeleting}
+              >
+                <DeleteIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
-          )}
 
-          {/* Delete Button */}
-          <Tooltip title="Delete Transaction">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => openConfirmationDialog(order.id)}
+            <Tooltip
+              title={order.farm.is_rented ? "Mark as Available" : "Mark as Rented"}
             >
-              <DeleteIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-
-          {/* Availability Toggle */}
-          <Tooltip
-            title={
-              order.farm.is_rented ? "Mark as Available" : "Mark as Rented"
-            }
-          >
-            <Switch
-              checked={!order.farm.is_rented}
-              onChange={() =>
-                handleFarmAvailabilityToggle(
-                  order.farm.id,
-                  order.farm.is_rented
-                )
-              }
-              color={order.farm.is_rented ? "error" : "success"}
-              size="small"
-            />
-          </Tooltip>
-        </CardActions>
-      </Card>
-    </motion.div>
-  );
+              <Switch
+                checked={!order.farm.is_rented}
+                onChange={() =>
+                  handleFarmAvailabilityToggle(
+                    order.farm.id,
+                    order.farm.is_rented
+                  )
+                }
+                color={order.farm.is_rented ? "error" : "success"}
+                size="small"
+              />
+            </Tooltip>
+          </CardActions>
+        </Card>
+      </motion.div>
+    );
+  };
 
   if (loading) {
     return (
@@ -598,12 +744,10 @@ export default function Rents() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
-        {/* AppBar */}
         <SellerAppBar
           handleDrawerToggle={handleDrawerToggle}
           darkMode={darkMode}
           handleThemeToggle={handleThemeToggle}
-          fetchFarms={fetchOrders}
           anchorEl={anchorEl}
           handleMenuOpen={handleMenuOpen}
           handleMenuClose={handleMenuClose}
@@ -623,7 +767,6 @@ export default function Rents() {
           menuItems={menuItems}
         />
 
-        {/* Main Content */}
         <Box
           component="main"
           sx={{
@@ -633,7 +776,6 @@ export default function Rents() {
             mt: 8,
           }}
         >
-          {/* Dashboard Title */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
               Farm Rentals Management
@@ -643,7 +785,6 @@ export default function Rents() {
             </Typography>
           </Box>
 
-          {/* Stats Cards */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -797,7 +938,6 @@ export default function Rents() {
             </Grid>
           </motion.div>
 
-          {/* Tabs and View Toggle Section */}
           <Paper sx={{ borderRadius: 3, mb: 3 }}>
             <Box
               sx={{
@@ -806,6 +946,7 @@ export default function Rents() {
                 alignItems: "center",
                 p: 2,
                 pb: 0,
+                flexWrap: "wrap",
               }}
             >
               <Tabs
@@ -822,7 +963,7 @@ export default function Rents() {
                 <Tab
                   label={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      All Rents
+                      All
                       <Chip
                         label={stats.totalRents}
                         size="small"
@@ -847,13 +988,14 @@ export default function Rents() {
                 />
               </Tabs>
 
-              {/* View Toggle */}
               <ToggleButtonGroup
                 value={viewMode}
                 exclusive
                 onChange={handleViewModeChange}
                 size="small"
                 sx={{
+                  ml: { xs: 0, sm: 2 },
+                  mt: { xs: 2, sm: 0 },
                   "& .MuiToggleButton-root": {
                     border: "1px solid",
                     borderColor: "divider",
@@ -872,284 +1014,335 @@ export default function Rents() {
                     <TableViewIcon />
                   </Tooltip>
                 </ToggleButton>
-                <ToggleButton value="cards" aria-label="card view">
+                <ToggleButton value="card" aria-label="card view">
                   <Tooltip title="Card View">
-                    <CardViewIcon />
+                    <ViewModule />
                   </Tooltip>
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
-          </Paper>
 
-          {/* Content - Table or Cards */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            {viewMode === "table" ? (
-              // Table View
-              <TableContainer
-                component={Paper}
-                sx={{ borderRadius: 3, boxShadow: 3 }}
-              >
-                <Table>
-                  <TableHead
-                    sx={{ backgroundColor: theme.palette.action.selected }}
-                  >
-                    <TableRow>
-                      <TableCell>Farm</TableCell>
-                      <TableCell>Location</TableCell>
-                      <TableCell>Size</TableCell>
-                      <TableCell>Price</TableCell>
-                      <TableCell>Rental Duration</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Phone</TableCell>
-                      <TableCell>Rent Date</TableCell>
-                      <TableCell>Transaction ID</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Edit Status</TableCell>
-                      <TableCell>Delete</TableCell>
-                      <TableCell>Availability</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredOrders.map((order, index) => (
-                      <TableRow
-                        key={order.id}
-                        className="fade-in"
-                        sx={{
-                          animationDelay: `${index * 0.1}s`,
-                          backgroundColor: theme.palette.background.paper,
-                          transition: "0.3s",
-                          "&:hover": {
-                            backgroundColor: theme.palette.action.hover,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={2}></Box>
-                            <Badge
-                              badgeContent={
-                                order.farm.is_rented ? "RENTED" : ""
-                              }
-                              color="error"
-                              sx={{
-                                "& .MuiBadge-badge": {
-                                  fontSize: "0.6rem",
-                                  height: 16,
-                                  minWidth: 16,
-                                },
-                              }}
-                            >
-                              <Avatar
-                                src={`http://127.0.0.1:8000${order.farm.image}`}
-                                variant="rounded"
+            <Box sx={{ p: 2 }}>
+              {filteredOrders.length === 0 ? (
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    py: 8,
+                    color: "text.secondary",
+                  }}
+                >
+                  <RentsIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+                  <Typography variant="h6" gutterBottom>
+                    No rentals found
+                  </Typography>
+                  <Typography variant="body2">
+                    {activeTab === 0
+                      ? "You haven't made any farm rentals yet."
+                      : "No rented farms found."}
+                  </Typography>
+                </Box>
+              ) : viewMode === "table" ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Farm</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>Size(Acres)</TableCell>
+                        <TableCell>Rental time</TableCell>
+                        <TableCell>Price(TZS)</TableCell>
+                        <TableCell>TransactionID</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Contact</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredOrders.map((order, index) => {
+                        const farmImages = getFarmImages(order.farm);
+                        const avatarErrorKey = `${order.id}-avatar`;
+                        
+                        return (
+                          <TableRow
+                            key={order.id}
+                            sx={{
+                              opacity: order.farm.is_rented ? 0.7 : 1,
+                              backgroundColor: order.farm.is_rented
+                                ? "rgba(244, 67, 54, 0.05)"
+                                : "inherit",
+                              "&:hover": {
+                                backgroundColor: order.farm.is_rented
+                                  ? "rgba(244, 67, 54, 0.1)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                              },
+                            }}
+                          >
+                            <TableCell>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                {imageErrors[avatarErrorKey] || farmImages.length === 0 ? (
+                                  <Avatar sx={{ width: 40, height: 40 }}>
+                                    <BrokenImageIcon />
+                                  </Avatar>
+                                ) : (
+                                  <Avatar
+                                    src={farmImages[0]}
+                                    alt={order.farm.farm_number}
+                                    onError={() => handleImageError(order.id, 'avatar')}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      cursor: farmImages.length > 0 ? "pointer" : "default",
+                                      filter: order.farm.is_rented ? "grayscale(50%)" : "none",
+                                    }}
+                                    onClick={() => handleOpenImageGallery(farmImages, 0)}
+                                  />
+                                )}
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    sx={{
+                                      textDecoration: order.farm.is_rented ? "line-through" : "none",
+                                      color: order.farm.is_rented ? "text.secondary" : "text.primary",
+                                    }}
+                                  >
+                                    {order.farm.farm_number}
+                                  </Typography>
+                                  {order.farm.is_rented && (
+                                    <Chip
+                                      label="RENTED"
+                                      size="small"
+                                      color="error"
+                                      sx={{ fontSize: "0.6rem", height: 16 }}
+                                    />
+                                  )}
+                                  {farmImages.length > 1 && (
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                        mt: 0.5,
+                                        cursor: "pointer",
+                                        color: "primary.main",
+                                        fontSize: "0.7rem",
+                                      }}
+                                      onClick={() =>
+                                        handleOpenImageGallery(farmImages, 0)
+                                      }
+                                    >
+                                      <GalleryIcon sx={{ fontSize: 12 }} />
+                                      {farmImages.length} photos
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box
                                 sx={{
-                                  width: 80,
-                                  height: 80,
-                                  opacity: order.farm.is_rented ? 0.7 : 1,
-                                }}
-                              />
-                            </Badge>
-                            <Box>
-                              <Typography
-                                sx={{
-                                  textDecoration: order.farm.is_rented
-                                    ? "line-through"
-                                    : "none",
-                                  color: order.farm.is_rented
-                                    ? "text.secondary"
-                                    : "text.primary",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
                                 }}
                               >
-                                {order.farm.name}
-                              </Typography>
-                              {order.farm.is_rented && (
-                                <Chip
-                                  label="Rented"
-                                  size="small"
-                                  color="error"
-                                  variant="outlined"
-                                  sx={{mt: 0.5,
-                                    fontSize: "0.7rem",
-                                  }}
+                                <LocationOnIcon
+                                  sx={{ fontSize: 16, color: "primary.main" }}
                                 />
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Box display="flex" alignItems="center">
-                              <LocationOnIcon
-                                sx={{ mr: 1, color: "primary.main" }}
-                              />
-                              {order.farm.location}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{order.farm.size}</TableCell>
-                          <TableCell>
-                            <Typography
-                              sx={{
-                                fontWeight: 600,
-                                color: order.farm.is_rented
-                                  ? "text.secondary"
-                                  : "success.main",
-                              }}
-                            >
-                              {order.farm.price} Tshs
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{order.farm.rent_duration || "N/A"}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={order.status}
-                              color={
-                                order.status === "Confirmed"
-                                  ? "success"
-                                  : order.status === "Cancelled"
-                                  ? "error"
-                                  : "warning"
-                              }
-                              size="small"
-                              sx={{ fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell>{order.renter_phone || "N/A"}</TableCell>
-                          <TableCell>
-                            {new Date(order.rent_date).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontFamily: "monospace",
-                                backgroundColor: "action.selected",
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1,
-                              }}
-                            >
-                              {order.transaction_id}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{order.renter_email || "N/A"}</TableCell>
-                          <TableCell>
-                            <FormControl size="small" sx={{ minWidth: 120 }}>
-                              <Select
-                                value={order.status || "Pending"}
-                                onChange={(e) =>
-                                  handleStatusChange(order.id, e.target.value)
+                                <Typography variant="body2">
+                                  {order.farm.location}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {order.farm.size}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {order.farm.rent_duration || "N/A"}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                fontWeight={600}
+                                color={
+                                  order.farm.is_rented
+                                    ? "text.secondary"
+                                    : "success.main"
                                 }
-                                sx={{
-                                  "& .MuiSelect-select": {
-                                    color:
-                                      order.status === "Confirmed"
-                                        ? theme.palette.success.main
-                                        : order.status === "Cancelled"
-                                        ? theme.palette.error.main
-                                        : theme.palette.warning.main,
-                                  },
-                                }}
                               >
-                                <MenuItem value="Confirmed">Confirmed</MenuItem>
-                                <MenuItem value="Cancelled">Cancelled</MenuItem>
-                                <MenuItem value="Pending">Pending</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell>
-                            <Tooltip title="Delete Transaction">
-                              <IconButton
-                                color="error"
-                                onClick={() => openConfirmationDialog(order.id)}
-                                disabled={isDeleting}
+                                {order.farm.price} 
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                fontWeight={600}
+                                color={
+                                  order.farm.is_rented
+                                    ? "text.secondary"
+                                    : "success.main"
+                                }
                               >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell>
-                            <Tooltip
-                              title={
-                                order.farm.is_rented
-                                  ? "Mark as Available"
-                                  : "Mark as Rented"
-                              }
-                            >
-                              <Switch
-                                checked={!order.farm.is_rented}
-                                onChange={() =>
-                                  handleFarmAvailabilityToggle(
-                                    order.farm.id,
+                                {order.transaction_id || "N/A"} 
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={order.status}
+                                color={
+                                  order.status === "Confirmed"
+                                    ? "success"
+                                    : order.status === "Cancelled"
+                                    ? "error"
+                                    : "warning"
+                                }
+                                size="small"
+                                sx={{ fontWeight: 600 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: "flex", gap: 1 }}>
+                                {order.renter_phone && (
+                                  <Tooltip
+                                    title={`Phone: ${order.renter_phone}`}
+                                  >
+                                    <PhoneIcon
+                                      sx={{
+                                        fontSize: 16,
+                                        color: "text.secondary",
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                                {order.renter_email && (
+                                  <Tooltip
+                                    title={`Email: ${order.renter_email}`}
+                                  >
+                                    <EmailIcon
+                                      sx={{
+                                        fontSize: 16,
+                                        color: "text.secondary",
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                                <FormControl size="small" sx={{ minWidth: 100 }}>
+                                  <Select
+                                    value={order.status || "Pending"}
+                                    onChange={(e) =>
+                                      handleStatusChange(order.id, e.target.value)
+                                    }
+                                    sx={{
+                                      fontSize: "0.8rem",
+                                      "& .MuiSelect-select": {
+                                        py: 0.5,
+                                        color:
+                                          order.status === "Confirmed"
+                                            ? theme.palette.success.main
+                                            : order.status === "Cancelled"
+                                            ? theme.palette.error.main
+                                            : theme.palette.warning.main,
+                                      },
+                                    }}
+                                  >
+                                    <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
+                                      Confirmed
+                                    </MenuItem>
+                                    <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
+                                      Cancelled
+                                    </MenuItem>
+                                    <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
+                                      Pending
+                                    </MenuItem>
+                                  </Select>
+                                </FormControl>
+
+                                {order.farm.is_rented && activeTab === 1 && (
+                                  <Tooltip title="View Agreement">
+                                    <IconButton
+                                      size="small"
+                                      color="primary"
+                                      onClick={() => handleViewAgreement(order)}
+                                    >
+                                      <AgreementIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+
+                                <Tooltip title="Delete Transaction">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => openConfirmationDialog(order.id)}
+                                    disabled={isDeleting}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+
+                                <Tooltip
+                                  title={
                                     order.farm.is_rented
-                                  )
-                                }
-                                color={order.farm.is_rented ? "error" : "success"}
-                              />
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                      ? "Mark as Available"
+                                      : "Mark as Rented"
+                                  }
+                                >
+                                  <Switch
+                                    checked={!order.farm.is_rented}
+                                    onChange={() =>
+                                      handleFarmAvailabilityToggle(
+                                        order.farm.id,
+                                        order.farm.is_rented
+                                      )
+                                    }
+                                    color={order.farm.is_rented ? "error" : "success"}
+                                    size="small"
+                                  />
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
-                  {filteredOrders.length === 0 && (
-                    <Box sx={{ textAlign: "center", py: 4 }}>
-                      <Typography color="text.secondary">
-                        No rental transactions found.
-                      </Typography>
-                    </Box>
-                  )}
                 </TableContainer>
               ) : (
-                // Card View
                 <Grid container spacing={3}>
                   {filteredOrders.map((order, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={order.id}>
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={order.id}>
                       <FarmCard order={order} index={index} />
                     </Grid>
                   ))}
-                  {filteredOrders.length === 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: "center", py: 8 }}>
-                        <Typography
-                          variant="h6"
-                          color="text.secondary"
-                          gutterBottom
-                        >
-                          No rental transactions found
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {activeTab === 0
-                            ? "No rented farms available."
-                            : "No confirmed rental transactions found."}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
                 </Grid>
               )}
-            </motion.div>
-          </Box>
-  
+            </Box>
+          </Paper>
+
           {/* Delete Confirmation Dialog */}
           <Dialog
             open={openDeleteDialog}
             onClose={() => setOpenDeleteDialog(false)}
-            maxWidth="sm"
-            fullWidth
+            aria-labelledby="delete-dialog-title"
+            aria-describedby="delete-dialog-description"
           >
-            <DialogTitle>
-              <Typography variant="h6" fontWeight="bold">
-                Confirm Deletion
-              </Typography>
+            <DialogTitle id="delete-dialog-title">
+              Confirm Deletion
             </DialogTitle>
             <DialogContent>
               <Typography>
-                Are you sure you want to delete this rental transaction? This
-                action cannot be undone.
+                Are you sure you want to delete this rental transaction? This action cannot be undone.
               </Typography>
             </DialogContent>
-            <DialogActions sx={{ p: 3, pt: 1 }}>
+            <DialogActions>
               <Button
                 onClick={() => setOpenDeleteDialog(false)}
                 color="primary"
@@ -1162,15 +1355,154 @@ export default function Rents() {
                 color="error"
                 variant="contained"
                 disabled={isDeleting}
-                startIcon={
-                  isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />
-                }
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                {isDeleting ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </Button>
             </DialogActions>
           </Dialog>
+
+          {/* Image Gallery Dialog */}
+          <Dialog
+            open={imageGalleryOpen}
+            onClose={handleCloseImageGallery}
+            maxWidth="md"
+            fullWidth
+            sx={{
+              "& .MuiDialog-paper": {
+                maxHeight: "90vh",
+                m: 2,
+              },
+            }}
+          >
+            <DialogTitle
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                pb: 1,
+              }}
+            >
+              <Typography variant="h6">
+                Farm Images ({currentImageIndex + 1} of {selectedImages.length})
+              </Typography>
+              <IconButton
+                onClick={handleCloseImageGallery}
+                size="small"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ p: 0, position: "relative" }}>
+              {selectedImages.length > 0 && (
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                    height: "60vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "black",
+                  }}
+                >
+                  <img
+                    src={selectedImages[currentImageIndex]}
+                    alt={`Farm ${currentImageIndex + 1}`}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                  
+                  {selectedImages.length > 1 && (
+                    <>
+                      <IconButton
+                        onClick={handlePreviousImage}
+                        sx={{
+                          position: "absolute",
+                          left: 16,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          bgcolor: "rgba(0, 0, 0, 0.5)",
+                          color: "white",
+                          "&:hover": {
+                            bgcolor: "rgba(0, 0, 0, 0.7)",
+                          },
+                        }}
+                      >
+                        <PrevIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={handleNextImage}
+                        sx={{
+                          position: "absolute",
+                          right: 16,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          bgcolor: "rgba(0, 0, 0, 0.5)",
+                          color: "white",
+                          "&:hover": {
+                            bgcolor: "rgba(0, 0, 0, 0.7)",
+                          },
+                        }}
+                      >
+                        <NextIcon />
+                      </IconButton>
+                    </>
+                  )}
+                </Box>
+              )}
+            </DialogContent>
+            {selectedImages.length > 1 && (
+              <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  {selectedImages.map((image, index) => (
+                    <Box
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        border: index === currentImageIndex ? 2 : 1,
+                        borderColor: index === currentImageIndex ? "primary.main" : "divider",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        "&:hover": {
+                          borderColor: "primary.main",
+                        },
+                      }}
+                    >
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </DialogActions>
+            )}
+          </Dialog>
         </Box>
-      </ThemeProvider>
-    );
-  }
+      </Box>
+    </ThemeProvider>
+  );
+}
+                             

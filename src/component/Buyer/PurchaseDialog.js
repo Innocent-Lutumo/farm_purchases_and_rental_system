@@ -168,14 +168,12 @@ const PurchaseDialog = ({ open, onClose, farm, onFarmSold }) => {
         <DialogContent>
           <DialogContentText>
             Your purchase request has been recorded, and a transaction ID has
-            been sent to your email.
+            been sent to your email. {""} {userEmail} {""} <br />
+            Keep the transaction ID safe for future history tracking.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSuccessDialogOpen(false)}>Close</Button>
-          <Button href="/payment" color="success">
-            Proceed to Payment
-          </Button>
         </DialogActions>
       </Dialog>
     </>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import RentDialog from "./RentDialog";
 import FarmMapModal from "../Shared/FarmMapModal";
+// import AppFooter from "../Shared/AppFooter";
 
 import {
   AppBar,
@@ -39,6 +40,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import axios from "axios";
 
 const RentPage = () => {
@@ -375,9 +377,25 @@ const RentPage = () => {
                       </Box>
                     )}
                     <CardContent sx={{ width: "60%", padding: 1 }}>
-                      <Typography variant="h6" fontWeight="bold">
-                        {farm.name}
-                      </Typography>
+                      {/* Seller Username Display */}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <AccountCircleIcon
+                          sx={{ fontSize: "16px", color: "green", mr: 0.5 }}
+                        />
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: "12px",
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          <strong>Seller:</strong>{" "}
+                          {farm.username || farm.seller || "Unknown"}
+                        </Typography>
+                      </Box>
                       <Typography>
                         <strong>Price:</strong> {farm.price}/= Tshs
                       </Typography>
@@ -553,6 +571,8 @@ const RentPage = () => {
         farm={selectedFarm}
         onRentSuccess={handleRentSuccess}
       />
+
+      {/* <AppFooter /> */}
     </Box>
   );
 };

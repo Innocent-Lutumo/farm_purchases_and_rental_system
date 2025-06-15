@@ -19,6 +19,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  Snackbar,
 } from "@mui/material";
 import {
   Download,
@@ -32,6 +33,7 @@ import {
   Person,
   Home,
   ArrowBack,
+  Save,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -42,15 +44,24 @@ const RentalAgreement = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [farmId, setFarmId] = useState(null);
+  const [agreementCreated, setAgreementCreated] = useState(false);
+  const [agreementId, setAgreementId] = useState(null);
+  const [creatingAgreement, setCreatingAgreement] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
 
   const navigate = useNavigate();
 
+  // API Endpoints
   const RENTAL_AGREEMENT_DETAILS_API_ENDPOINT =
     "http://127.0.0.1:8000/api/get-transactions/";
-  const DOWNLOAD_CONTRACT_API_ENDPOINT =
-    "http://127.0.0.1:8000/api/download-contract/";
   const ADMIN_SELLERS_API_ENDPOINT =
     "http://127.0.0.1:8000/api/admin-sellers-list/";
+  const CREATE_RENTAL_AGREEMENT_API_ENDPOINT =
+    "http://127.0.0.1:8000/api/create-rental-agreement/";
+  const DOWNLOAD_RENTAL_AGREEMENT_API_ENDPOINT =
+    "http://127.0.0.1:8000/api/download-rental-agreement/";
 
   useEffect(() => {
     const storedFarmId = localStorage.getItem("selectedAgreementFarmId");
@@ -71,7 +82,7 @@ const RentalAgreement = () => {
       setError(null);
 
       if (!idToFetch) {
-        throw new Error("Missing transaction ID to fetch agreement data.");
+        throw new Error("Missing farm ID to fetch agreement data.");
       }
 
       const transactionsResponse = await fetch(
@@ -87,18 +98,17 @@ const RentalAgreement = () => {
         );
       }
       const allTransactions = await transactionsResponse.json();
-      console.log("All transactions data:", allTransactions); // Debugging: See all transactions
+      console.log("All transactions data:", allTransactions);
 
+      // FIXED: Search by farm.id instead of transaction.id
       const foundContract = allTransactions.find(
-        (transaction) => String(transaction.id) === String(idToFetch)
+        (transaction) => String(transaction.farm.id) === String(idToFetch)
       );
 
       if (!foundContract) {
-        throw new Error(
-          `No rental agreement found for transaction ID ${idToFetch}.`
-        );
+        throw new Error(`No rental agreement found for farm ID ${idToFetch}.`);
       }
-      console.log("Found contract data:", foundContract); // Debugging: See the found contract
+      console.log("Found contract data:", foundContract);
 
       const adminSellersResponse = await fetch(ADMIN_SELLERS_API_ENDPOINT);
       if (!adminSellersResponse.ok) {
@@ -110,15 +120,16 @@ const RentalAgreement = () => {
         );
       }
       const adminSellers = await adminSellersResponse.json();
-      console.log("Admin sellers data:", adminSellers); // Debugging: See admin sellers data
+      console.log("Admin sellers data:", adminSellers);
 
       const relevantLandlord = adminSellers.find(
         (seller) => seller.username === foundContract.farm.username
       );
-      console.log("Relevant landlord (match by username):", relevantLandlord); // Debugging: See if landlord was found
+      console.log("Relevant landlord (match by username):", relevantLandlord);
 
       const restructuredData = {
-        id: foundContract.id,
+        id: foundContract.id, // This is the transaction ID (20 in your example)
+        farm_id: foundContract.farm.id, // This is the farm ID (8 in your example)
         farm_number: foundContract.farm.farm_number,
         created_at: foundContract.rent_date,
         location: foundContract.farm.location,
@@ -156,18 +167,94 @@ const RentalAgreement = () => {
     }
   };
 
-  const downloadContract = async () => {
+  const createRentalAgreement = async () => {
     try {
-      if (!contractData || !contractData.id) {
-        throw new Error("No contract data or ID available for download.");
+      setCreatingAgreement(true);
+      setError(null);
+
+      if (!contractData) {
+        throw new Error("No contract data available to create agreement.");
       }
+
+      const agreementPayload = {
+        farm_id: contractData.farm_id, 
+        transaction_id: contractData.id, 
+        landlord_name: contractData.landlord_name,
+        landlord_phone: contractData.landlord_phone,
+        landlord_email: contractData.landlord_email,
+        landlord_residence: contractData.landlord_residence,
+        landlord_passport: contractData.landlord_passport,
+        tenant_name: contractData.full_name,
+        tenant_phone: contractData.phone,
+        tenant_email: contractData.email,
+        tenant_residence: contractData.tenant_residence,
+        tenant_passport: contractData.renter_passport,
+        farm_location: contractData.location,
+        farm_size: parseFloat(contractData.size),
+        farm_quality: contractData.quality,
+        farm_type: contractData.farm_type,
+        farm_description: contractData.description || "",
+        monthly_rent: parseFloat(contractData.price),
+        agreement_date: contractData.created_at,
+        duration_months: 12,
+      };
+
+      console.log("Creating agreement with payload:", agreementPayload);
+
+      const response = await fetch(CREATE_RENTAL_AGREEMENT_API_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(agreementPayload),
+      });
+
+      const result = await response.json();
+      console.log("Create agreement response:", result);
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create rental agreement");
+      }
+
+      if (result.success) {
+        setAgreementCreated(true);
+        setAgreementId(result.agreement_id);
+        setSuccessMessage("Mkataba umejumuishwa kikamilifu!");
+        setShowSuccessSnackbar(true);
+        console.log("Agreement created successfully:", result.agreement_id);
+      } else {
+        throw new Error(result.error || "Unknown error occurred");
+      }
+    } catch (err) {
+      console.error("Error creating rental agreement:", err);
+      setModalMessage("Imeshindwa kuunda mkataba: " + err.message);
+      setShowErrorModal(true);
+    } finally {
+      setCreatingAgreement(false);
+    }
+  };
+
+  const downloadAgreementPdf = async (agreementIdToDownload = null) => {
+    try {
+      setDownloadingPdf(true);
+      setError(null);
+
+      const downloadId = agreementIdToDownload || agreementId;
+
+      if (!downloadId) {
+        throw new Error("No agreement ID available for download.");
+      }
+
+      console.log("Downloading PDF for agreement:", downloadId);
+
       const response = await fetch(
-        `${DOWNLOAD_CONTRACT_API_ENDPOINT}${contractData.id}/`
+        `${DOWNLOAD_RENTAL_AGREEMENT_API_ENDPOINT}${downloadId}/`
       );
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
-          `Failed to download contract. Status: ${
+          `Failed to download agreement PDF. Status: ${
             response.status
           }. Response: ${errorText.substring(0, 100)}...`
         );
@@ -177,15 +264,37 @@ const RentalAgreement = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Mkataba_wa_Kukodisha_Shamba_${
-        contractData.farm_number || contractData.id
-      }.pdf`;
+      a.download = `Mkataba_wa_Kukodisha_Shamba_${downloadId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      setSuccessMessage("Mkataba umepakuwa kikamilifu!");
+      setShowSuccessSnackbar(true);
     } catch (err) {
+      console.error("Error downloading PDF:", err);
       setModalMessage("Imeshindwa kupakua mkataba: " + err.message);
+      setShowErrorModal(true);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const createAndDownloadAgreement = async () => {
+    try {
+      // First create the agreement
+      await createRentalAgreement();
+
+      // Wait a moment for the agreement to be fully created
+      setTimeout(async () => {
+        if (agreementId) {
+          await downloadAgreementPdf(agreementId);
+        }
+      }, 1000);
+    } catch (err) {
+      console.error("Error in create and download flow:", err);
+      setModalMessage("Imeshindwa kuunda na kupakua mkataba: " + err.message);
       setShowErrorModal(true);
     }
   };
@@ -216,6 +325,11 @@ const RentalAgreement = () => {
   const handleCloseErrorModal = () => {
     setShowErrorModal(false);
     setModalMessage("");
+  };
+
+  const handleCloseSuccessSnackbar = () => {
+    setShowSuccessSnackbar(false);
+    setSuccessMessage("");
   };
 
   const handleGoBack = () => {
@@ -338,7 +452,7 @@ const RentalAgreement = () => {
             </Typography>
             <Chip
               label={`Namba ya Shamba: ${
-                contractData.farm_number || `MKS-${contractData.id}`
+                contractData.farm_number || `MKS-${contractData.farm_id}`
               }`}
               color="success"
               variant="outlined"
@@ -348,6 +462,19 @@ const RentalAgreement = () => {
             <Typography variant="body2" color="text.secondary">
               Tarehe: {formatDate(contractData.created_at)}
             </Typography>
+
+            {/* Agreement Status Indicator */}
+            {agreementCreated && (
+              <Box sx={{ mt: 2 }}>
+                <Chip
+                  label={`Mkataba Umejumuishwa: ${agreementId}`}
+                  color="success"
+                  variant="filled"
+                  size="small"
+                  icon={<CheckCircle />}
+                />
+              </Box>
+            )}
           </Box>
 
           <Divider sx={{ mb: 2 }} />
@@ -713,7 +840,7 @@ const RentalAgreement = () => {
             </Grid>
           </Box>
 
-          {/* Footer & Download Button */}
+          {/* Footer & Action Buttons */}
           <Box
             sx={{
               textAlign: "center",
@@ -722,47 +849,115 @@ const RentalAgreement = () => {
               borderColor: "grey.300",
             }}
           >
-            <Button
-              color="success"
-              variant="contained"
-              size="medium"
-              startIcon={<Download />}
-              onClick={downloadContract}
-              disabled={!contractData || loading}
-              sx={{ mb: 1 }}
-            >
-              Pakua Mkataba Kamili (PDF)
-            </Button>
+            <Grid container spacing={2} justifyContent="center">
+              {!agreementCreated ? (
+                <>
+                  <Grid item>
+                    <Button
+                      color="primary"
+                      variant="outlined"
+                      size="medium"
+                      startIcon={<Save />}
+                      onClick={createRentalAgreement}
+                      disabled={!contractData || loading || creatingAgreement}
+                      sx={{ mb: 1 }}
+                    >
+                      {creatingAgreement ? (
+                        <>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Inaunda Mkataba...
+                        </>
+                      ) : (
+                        "Unda Mkataba"
+                      )}
+                    </Button>
+                  </Grid>
+                  <Grid item>
+                    <Button
+                      color="success"
+                      variant="contained"
+                      size="medium"
+                      startIcon={<Download />}
+                      onClick={createAndDownloadAgreement}
+                      disabled={!contractData || loading || creatingAgreement}
+                      sx={{ mb: 1 }}
+                    >
+                      {creatingAgreement ? (
+                        <>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Inaunda na Kupakua...
+                        </>
+                      ) : (
+                        "Unda na Pakua PDF"
+                      )}
+                    </Button>
+                  </Grid>
+                </>
+              ) : (
+                <Grid item>
+                  <Button
+                    color="success"
+                    variant="contained"
+                    size="medium"
+                    startIcon={<Download />}
+                    onClick={() => downloadAgreementPdf()}
+                    disabled={downloadingPdf}
+                    sx={{ mb: 1 }}
+                  >
+                    {downloadingPdf ? (
+                      <>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Inapakua...
+                      </>
+                    ) : (
+                      "Pakua PDF"
+                    )}
+                  </Button>
+                </Grid>
+              )}
+            </Grid>
+
             <Typography
               variant="caption"
               color="text.secondary"
-              display="block"
+              sx={{ mt: 2, display: "block" }}
             >
-              Mkataba huu umesajiliwa chini ya sheria za Tanzania.
+              Mkataba huu umejumuishwa kikamilifu chini ya sheria za Tanzania.
+              <br />
+              Kwa maswali, wasiliana nasi kupitia mfumo wetu wa msaada.
             </Typography>
           </Box>
         </Paper>
       </Container>
 
-      {/* Custom Error Modal */}
-      <Dialog
-        open={showErrorModal}
-        onClose={handleCloseErrorModal}
-        aria-labelledby="error-dialog-title"
-        aria-describedby="error-dialog-description"
-      >
-        <DialogTitle id="error-dialog-title">
-          {"Kosa la Kupakua Mkataba"}
-        </DialogTitle>
+      {/* Error Modal */}
+      <Dialog open={showErrorModal} onClose={handleCloseErrorModal}>
+        <DialogTitle>Kosa</DialogTitle>
         <DialogContent>
-          <Typography id="error-dialog-description">{modalMessage}</Typography>
+          <Typography>{modalMessage}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseErrorModal} autoFocus>
-            Funga
+          <Button onClick={handleCloseErrorModal} color="primary">
+            Sawa
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={showSuccessSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseSuccessSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSuccessSnackbar}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

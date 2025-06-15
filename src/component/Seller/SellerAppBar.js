@@ -139,7 +139,7 @@ const SellerAppBar = ({
               backgroundColor: (theme) => theme.palette.secondary.main,
             }}
           >
-            JF
+            U
           </Avatar>
         </IconButton>
 
@@ -154,7 +154,7 @@ const SellerAppBar = ({
         >
           <Box sx={{ px: 2, py: 1.5, bgcolor: "primary.light" }}>
             <Typography variant="subtitle2" fontWeight="bold" color="white">
-              John Farmer
+              User
             </Typography>
             <Typography variant="caption" color="rgba(255,255,255,0.7)">
               Premium Seller

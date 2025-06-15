@@ -744,11 +744,12 @@ function AdminDashboard() {
                   sx={{
                     minWidth: drawerOpen ? 48 : "100%",
                     textAlign: "center",
+                    color: "red"
                   }}
                 >
                   <ExitToAppIcon />
                 </ListItemIcon>
-                {drawerOpen && <ListItemText primary="Logout" />}
+                {drawerOpen && <ListItemText primary="Logout" sx={{ color: "red"}}/>}
               </ListItem>
             </List>
           </Box>
@@ -1248,7 +1249,9 @@ function AdminDashboard() {
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircleIcon />}
-                        onClick={() => handleValidate(expandedFarm, "approve")}
+                        onClick={() =>{ handleValidate(expandedFarm, "approve");
+                          handleCloseExpanded();
+                        }}
                       >
                         Approve
                       </Button>
@@ -1256,7 +1259,9 @@ function AdminDashboard() {
                         variant="outlined"
                         color="error"
                         startIcon={<CancelIcon />}
-                        onClick={() => handleValidate(expandedFarm, "reject")}
+                        onClick={() => { handleValidate(expandedFarm, "reject");
+                          handleCloseExpanded();
+                        }}
                       >
                         Reject
                       </Button>

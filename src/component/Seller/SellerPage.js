@@ -41,9 +41,9 @@ import {
   ChevronRight,
   Lightbulb,
   Image as ImageIcon,
-  MonetizationOn as MonetaryIcon, 
-  HourglassEmpty as PendingIcon, 
-  People as LeadsIcon, 
+  MonetizationOn as MonetaryIcon,
+  HourglassEmpty as PendingIcon,
+  People as LeadsIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -138,7 +138,7 @@ const FarmOverviewCard = ({ title, value, icon, color, subtitle }) => (
         }}
       >
         <Box>
-          <Typography color="text.secondary" variant="body2" >
+          <Typography color="text.secondary" variant="body2">
             {title}
           </Typography>
           <Typography variant="h5" fontWeight="bold" color={color}>
@@ -176,12 +176,12 @@ function SellerPage() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  
-  // Dummy data for farm listing overview 
+
+  // Dummy data for farm listing overview
   const [totalListings, setTotalListings] = useState(15);
-  const [pendingApplications, setPendingApplications] = useState(3); 
+  const [pendingApplications, setPendingApplications] = useState(6);
   const [newLeads, setNewLeads] = useState(5);
-  const [totalValueListings] = useState(500000);
+  const [totalValueListings] = useState(4);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -210,9 +210,9 @@ function SellerPage() {
     // In a real app, this would trigger re-fetching data for the overview cards
     console.log("Refreshing dashboard data...");
     // For now, let's just simulate a change or refresh
-    setTotalListings(prev => prev + 1); 
-    setPendingApplications(prev => Math.max(0, prev - 1));
-    setNewLeads(prev => prev + 1);
+    setTotalListings((prev) => prev + 1);
+    setPendingApplications((prev) => Math.max(0, prev - 1));
+    setNewLeads((prev) => prev + 1);
   };
 
   const handleDrawerToggle = useCallback(
@@ -294,7 +294,7 @@ function SellerPage() {
                   backgroundColor: theme.palette.secondary.main,
                 }}
               >
-                JF
+                U
               </Avatar>
             </IconButton>
 
@@ -307,9 +307,11 @@ function SellerPage() {
                 sx: { borderRadius: 2, minWidth: 180 },
               }}
             >
-              <Box sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}>
+              <Box
+                sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}
+              >
                 <Typography variant="subtitle2" fontWeight="bold" color="white">
-                  John Farmer
+                  User
                 </Typography>
                 <Typography variant="caption" color="rgba(255,255,255,0.7)">
                   Premium Seller
@@ -380,10 +382,10 @@ function SellerPage() {
                     backgroundColor: theme.palette.primary.main,
                   }}
                 >
-                  JF
+                  U
                 </Avatar>
                 <Typography variant="subtitle1" fontWeight="bold">
-                  John Farmer
+                  User
                 </Typography>
               </Box>
             )}
@@ -481,9 +483,8 @@ function SellerPage() {
               Real-time dashboard metrics and farm management tools
             </Typography>
           </Box>
-
           {/* --- */}
-     Farm Listing Overview
+          Farm Listing Overview
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <FarmOverviewCard
@@ -496,33 +497,32 @@ function SellerPage() {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FarmOverviewCard
-                title="Pending Applications"
+                title="Purchases requests"
                 value={pendingApplications}
                 color="warning.main"
                 icon={<PendingIcon color="warning" />}
-                subtitle="Applications awaiting your review"
+                subtitle="Total purchase inquiries for your farms"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FarmOverviewCard
-                title="Total Listing Value"
-                value={`${totalValueListings.toLocaleString()}/=`}
+                title="Rental requests"
+                value={`${totalValueListings.toLocaleString()}`}
                 color="success.main"
                 icon={<MonetaryIcon color="success" />}
-                subtitle="Combined value of your farms"
+                subtitle="Total rental requests for your farms"
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FarmOverviewCard
-                title="New Leads"
+                title="Farms uploaded"
                 value={newLeads}
                 color="info.main"
                 icon={<LeadsIcon color="info" />}
-                subtitle="Recent inquiries about your farms"
+                subtitle="Recent uploaded farms"
               />
             </Grid>
           </Grid>
-
           {/* Main Navigation Cards */}
           <motion.div
             variants={containerVariants}
@@ -624,7 +624,6 @@ function SellerPage() {
               ))}
             </Grid>
           </motion.div>
-
           {/* Tips Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -709,7 +708,6 @@ function SellerPage() {
               </Grid>
             </Paper>
           </motion.div>
-
           {/* Call to Action */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

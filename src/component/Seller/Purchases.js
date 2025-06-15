@@ -32,7 +32,6 @@ import {
   Tabs,
   Tab,
   Chip,
-  Badge,
   ToggleButton,
   ToggleButtonGroup,
   CardMedia,
@@ -41,19 +40,20 @@ import {
 import {
   LocationOn as LocationOnIcon,
   ShoppingBag as PurchasesIcon,
-  Home as RentsIcon,
-  CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
-  Cancel as SoldoutsIcon,
-  AddCircle as UploadNewIcon,
   Delete as DeleteIcon,
   HourglassEmpty as PendingIcon,
   MonetizationOn as SoldIcon,
   ViewList as TableViewIcon,
-  ViewModule as CardViewIcon,
   Description as AgreementIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
+  PhotoLibrary as GalleryIcon,
+  Close as CloseIcon,
+  NavigateBefore as PrevIcon,
+  NavigateNext as NextIcon,
+  ViewModule,
+  BrokenImage as BrokenImageIcon,
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -109,47 +109,6 @@ const getTheme = (mode) =>
     },
   });
 
-// Menu items for SellerDrawer
-const menuItems = [
-  {
-    text: "Purchases",
-    icon: <PurchasesIcon />,
-    path: "/Purchases",
-    description: "Track all farm purchases",
-    badge: 0,
-  },
-  {
-    text: "Rents",
-    icon: <RentsIcon />,
-    path: "/Rents",
-    description: "Manage your property rentals",
-  },
-  {
-    text: "Uploaded Farms",
-    icon: <UploadIcon />,
-    path: "/UploadedFarms",
-    description: "View your farm listings",
-  },
-  {
-    text: "Accepted List",
-    icon: <AcceptedIcon />,
-    path: "/accepted",
-    description: "Review approved farm transactions",
-  },
-  {
-    text: "Soldouts",
-    icon: <SoldoutsIcon />,
-    path: "/soldouts",
-    description: "Archive of completed sales",
-  },
-  {
-    text: "Upload New Farm",
-    icon: <UploadNewIcon />,
-    path: "/UploadFarmForm",
-    description: "Create a new farm listing",
-  },
-];
-
 export default function Purchases() {
   // State variables
   const [orders, setOrders] = useState([]);
@@ -168,8 +127,14 @@ export default function Purchases() {
     pending: 0,
     soldOuts: 0,
   });
+  const [imageErrors, setImageErrors] = useState({});
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Image gallery states
+  const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showSearchInput, setShowSearchInput] = useState(false);
 
@@ -180,17 +145,84 @@ export default function Purchases() {
   );
   const drawerWidth = 240;
 
+  // Helper function to safely get farm images
+  const getFarmImages = (farm) => {
+    try {
+      if (!farm) return [];
+
+      // Check for images array first
+      if (Array.isArray(farm?.images) && farm.images.length > 0) {
+        return farm.images
+          .map((img) => {
+            // Handle both full URLs and relative paths
+            if (img?.image?.startsWith("http")) return img.image;
+            return `${
+              process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+            }${img.image}`;
+          })
+          .filter(Boolean);
+      }
+
+      // Fallback to single image
+      if (farm?.image) {
+        if (farm.image.startsWith("http")) return [farm.image];
+        return [
+          `${process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"}${
+            farm.image
+          }`,
+        ];
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error processing farm images:", error);
+      return [];
+    }
+  };
+
+  // Handle image loading errors
+  const handleImageError = (orderId, imageIndex) => {
+    setImageErrors((prev) => ({
+      ...prev,
+      [`${orderId}-${imageIndex}`]: true,
+    }));
+  };
+
+  // Image gallery handlers
+  const handleOpenImageGallery = (images, startIndex = 0) => {
+    if (!images || images.length === 0) return;
+    setSelectedImages(images);
+    setCurrentImageIndex(startIndex);
+    setImageGalleryOpen(true);
+  };
+
+  const handleCloseImageGallery = () => {
+    setImageGalleryOpen(false);
+    setSelectedImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === selectedImages.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? selectedImages.length - 1 : prev - 1
+    );
+  };
+
   // Memoized function to filter orders based on active tab and search query
   const filterOrdersByTab = useCallback(
     (ordersData, tabIndex) => {
       let filtered = [];
       if (tabIndex === 0) {
-
         filtered = ordersData.filter(
           (order) => order.farm.is_sold === true || order.status === "Pending"
         );
       } else if (tabIndex === 1) {
-        // Sold Outs - farms with is_sold = true AND status = "Confirmed"
         filtered = ordersData.filter(
           (order) => order.farm.is_sold === true && order.status === "Confirmed"
         );
@@ -215,7 +247,9 @@ export default function Purchases() {
       const token = localStorage.getItem("access");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const { data } = await axios.get(
-        "http://127.0.0.1:8000/api/sale-transactions/",
+        `${
+          process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+        }/api/sale-transactions/`,
         { headers }
       );
       setOrders(data);
@@ -257,7 +291,7 @@ export default function Purchases() {
 
   // Handler for theme toggle
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
-  
+
   // Handler for logout
   const handleLogout = () => {
     localStorage.removeItem("access");
@@ -300,34 +334,35 @@ export default function Purchases() {
     }
   };
 
-  // Handler to update transaction status - ALWAYS ACTIVE
+  // Handler to update transaction status
   const handleStatusChange = async (id, newStatus) => {
     try {
       const token = localStorage.getItem("access");
       await axios.patch(
-        `http://127.0.0.1:8000/api/sale-transactions/${id}/`,
+        `${
+          process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+        }/api/sale-transactions/${id}/`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchOrders(); // Refresh data after status change
+      fetchOrders();
     } catch (error) {
       console.error("Failed to update order status:", error.response || error);
     }
   };
 
-  // Handler for farm availability toggle - automatically removes from page when marked as available
+  // Handler for farm availability toggle
   const handleFarmAvailabilityToggle = async (farmId, currentIsSold) => {
     try {
       const token = localStorage.getItem("access");
       const newIsSoldStatus = !currentIsSold;
       await axios.patch(
-        `http://127.0.0.1:8000/api/farmsale/${farmId}/`,
+        `${
+          process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+        }/api/farmsale/${farmId}/`,
         { is_sold: newIsSoldStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Refresh data after availability toggle
-      // The filtering logic will automatically remove items where is_sold = false
       fetchOrders();
     } catch (error) {
       console.error(
@@ -344,15 +379,14 @@ export default function Purchases() {
     try {
       const token = localStorage.getItem("access");
       await axios.delete(
-        `http://127.0.0.1:8000/api/sale-transactions/${deleteId}/`,
+        `${
+          process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+        }/api/sale-transactions/${deleteId}/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchOrders();
     } catch (error) {
-      console.error(
-        "Failed to delete transaction:",
-        error.response || error
-      );
+      console.error("Failed to delete transaction:", error.response || error);
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
@@ -368,6 +402,7 @@ export default function Purchases() {
   // Handles viewing the agreement
   const handleViewAgreement = (order) => {
     console.log("View agreement for:", order.transaction_id);
+    // Implement actual agreement viewing logic here
   };
 
   // Framer Motion variants for animations
@@ -391,225 +426,283 @@ export default function Purchases() {
   };
 
   // FarmCard component for card view
-  const FarmCard = ({ order, index }) => (
-    <motion.div
-      variants={itemVariants}
-      className="fade-in"
-      style={{ animationDelay: `${index * 0.1}s` }}
-    >
-      <Card
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: theme.shadows[8],
-          },
-          opacity: order.farm.is_sold ? 0.85 : 1,
-        }}
+  const FarmCard = ({ order, index }) => {
+    const farmImages = getFarmImages(order.farm);
+    const hasMultipleImages = farmImages.length > 1;
+    const mainImageErrorKey = `${order.id}-0`;
+
+    return (
+      <motion.div
+        variants={itemVariants}
+        className="fade-in"
+        style={{ animationDelay: `${index * 0.1}s` }}
       >
-        <Box sx={{ position: "relative" }}>
-          <CardMedia
-            component="img"
-            height="140"
-            image={`http://127.0.0.1:8000${order.farm.image}`}
-            alt={order.farm.name}
-            sx={{
-              filter: order.farm.is_sold ? "grayscale(50%)" : "none",
-            }}
-          />
+        <Card
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateY(-4px)",
+              boxShadow: theme.shadows[8],
+            },
+            opacity: order.farm.is_sold ? 0.85 : 1,
+          }}
+        >
+          <Box sx={{ position: "relative", height: 140 }}>
+            {imageErrors[mainImageErrorKey] || farmImages.length === 0 ? (
+              <Box
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    theme.palette.mode === "light" ? "#f5f5f5" : "#2a2a2a",
+                  color: theme.palette.text.secondary,
+                }}
+              >
+                <BrokenImageIcon sx={{ fontSize: 48 }} />
+                <Typography variant="caption">Image not available</Typography>
+              </Box>
+            ) : (
+              <CardMedia
+                component="img"
+                height="140"
+                image={farmImages[0]}
+                alt={order.farm.name}
+                onError={() => handleImageError(order.id, 0)}
+                sx={{
+                  filter: order.farm.is_sold ? "grayscale(50%)" : "none",
+                  cursor: farmImages.length > 0 ? "pointer" : "default",
+                  objectFit: "cover",
+                  width: "100%",
+                }}
+                onClick={() => handleOpenImageGallery(farmImages, 0)}
+              />
+            )}
 
-          <Chip
-            label={order.status}
-            color={
-              order.status === "Confirmed"
-                ? "success"
-                : order.status === "Cancelled"
-                ? "error"
-                : "warning"
-            }
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 8,
-              left: 8,
-              fontWeight: 600,
-              fontSize: "0.7rem",
-            }}
-          />
+            {hasMultipleImages && !imageErrors[mainImageErrorKey] && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  color: "white",
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenImageGallery(farmImages, 0);
+                }}
+              >
+                <GalleryIcon sx={{ fontSize: 14 }} />
+                {farmImages.length}
+              </Box>
+            )}
 
-          {order.farm.is_sold && (
             <Chip
-              label="SOLD OUT"
-              color="error"
+              label={order.status}
+              color={
+                order.status === "Confirmed"
+                  ? "success"
+                  : order.status === "Cancelled"
+                  ? "error"
+                  : "warning"
+              }
               size="small"
               sx={{
                 position: "absolute",
                 top: 8,
-                right: 8,
+                left: 8,
                 fontWeight: 600,
                 fontSize: "0.7rem",
-                bgcolor: "error.main",
-                color: "white",
               }}
             />
-          )}
-        </Box>
 
-        <CardContent sx={{ flexGrow: 1, p: 2 }}>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{
-              fontWeight: 600,
-              mb: 1,
-              fontSize: "1rem",
-              textDecoration: order.farm.is_sold ? "line-through" : "none",
-              color: order.farm.is_sold ? "text.secondary" : "text.primary",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {order.farm.name}
-          </Typography>
+            {order.farm.is_sold && (
+              <Chip
+                label="SOLD"
+                color="error"
+                size="small"
+                sx={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                  bgcolor: "error.main",
+                  color: "white",
+                }}
+              />
+            )}
+          </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            <LocationOnIcon
-              sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
-            />
+          <CardContent sx={{ flexGrow: 1, p: 2 }}>
             <Typography
-              variant="body2"
-              color="text.secondary"
+              variant="h6"
+              component="div"
               sx={{
+                fontWeight: 600,
+                mb: 1,
+                fontSize: "1rem",
+                textDecoration: order.farm.is_sold ? "line-through" : "none",
+                color: order.farm.is_sold ? "text.secondary" : "text.primary",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}
             >
-              {order.farm.location}
+              {order.farm.name}
             </Typography>
-          </Box>
 
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 1,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              <strong>Size:</strong> {order.farm.size}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: 700,
-                color: order.farm.is_sold ? "text.secondary" : "success.main",
-                fontSize: "0.9rem",
-              }}
-            >
-              {order.farm.price} TZS
-            </Typography>
-          </Box>
-
-          {(order.contact_info || order.buyer_email) && (
-            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-              {order.contact_info && (
-                <Tooltip title={`Buyer Phone: ${order.contact_info}`}>
-                  <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                </Tooltip>
-              )}
-              {order.buyer_email && (
-                <Tooltip title={`Buyer Email: ${order.buyer_email}`}>
-                  <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                </Tooltip>
-              )}
-            </Box>
-          )}
-        </CardContent>
-
-        <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
-          {/* Status Change Dropdown - Always Active */}
-          <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
-            <Select
-              value={order.status || "Pending"}
-              onChange={(e) => handleStatusChange(order.id, e.target.value)}
-              sx={{
-                fontSize: "0.8rem",
-                "& .MuiSelect-select": {
-                  py: 0.5,
-                  color:
-                    order.status === "Confirmed"
-                      ? theme.palette.success.main
-                      : order.status === "Cancelled"
-                      ? theme.palette.error.main
-                      : theme.palette.warning.main,
-                },
-              }}
-            >
-              <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
-                Confirmed
-              </MenuItem>
-              <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
-                Cancelled
-              </MenuItem>
-              <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
-                Pending
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {order.farm.is_sold && activeTab === 1 && (
-            <Tooltip title="View Agreement">
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={() => handleViewAgreement(order)}
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <LocationOnIcon
+                sx={{ fontSize: 16, color: "primary.main", mr: 0.5 }}
+              />
+              <Typography
+                variant="body2"
+                color="text.secondary"
                 sx={{
-                  bgcolor: "primary.main",
-                  color: "white",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {order.farm.location}
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                <strong>Size:</strong> {order.farm.size}
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  fontWeight: 700,
+                  color: order.farm.is_sold ? "text.secondary" : "success.main",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {order.farm.price} TZS
+              </Typography>
+            </Box>
+
+            {(order.contact_info || order.buyer_email) && (
+              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+                {order.contact_info && (
+                  <Tooltip title={`Buyer Phone: ${order.contact_info}`}>
+                    <PhoneIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  </Tooltip>
+                )}
+                {order.buyer_email && (
+                  <Tooltip title={`Buyer Email: ${order.buyer_email}`}>
+                    <EmailIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  </Tooltip>
+                )}
+              </Box>
+            )}
+          </CardContent>
+
+          <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+            <FormControl size="small" sx={{ minWidth: 100, flex: 1 }}>
+              <Select
+                value={order.status || "Pending"}
+                onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                sx={{
+                  fontSize: "0.8rem",
+                  "& .MuiSelect-select": {
+                    py: 0.5,
+                    color:
+                      order.status === "Confirmed"
+                        ? theme.palette.success.main
+                        : order.status === "Cancelled"
+                        ? theme.palette.error.main
+                        : theme.palette.warning.main,
                   },
                 }}
               >
-                <AgreementIcon sx={{ fontSize: 18 }} />
+                <MenuItem value="Confirmed" sx={{ fontSize: "0.8rem" }}>
+                  Confirmed
+                </MenuItem>
+                <MenuItem value="Cancelled" sx={{ fontSize: "0.8rem" }}>
+                  Cancelled
+                </MenuItem>
+                <MenuItem value="Pending" sx={{ fontSize: "0.8rem" }}>
+                  Pending
+                </MenuItem>
+              </Select>
+            </FormControl>
+
+            {order.farm.is_sold && activeTab === 1 && (
+              <Tooltip title="View Agreement">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => handleViewAgreement(order)}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "white",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
+                  }}
+                >
+                  <AgreementIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            <Tooltip title="Delete Transaction">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => openConfirmationDialog(order.id)}
+                disabled={isDeleting}
+              >
+                <DeleteIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
-          )}
 
-          <Tooltip title="Delete Transaction">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => openConfirmationDialog(order.id)}
-              disabled={isDeleting}
+            <Tooltip
+              title={order.farm.is_sold ? "Mark as Available" : "Mark as Sold"}
             >
-              <DeleteIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip
-            title={order.farm.is_sold ? "Mark as Available" : "Mark as Sold"}
-          >
-            <Switch
-              checked={!order.farm.is_sold}
-              onChange={() =>
-                handleFarmAvailabilityToggle(order.farm.id, order.farm.is_sold)
-              }
-              color={order.farm.is_sold ? "error" : "success"}
-              size="small"
-            />
-          </Tooltip>
-        </CardActions>
-      </Card>
-    </motion.div>
-  );
+              <Switch
+                checked={!order.farm.is_sold}
+                onChange={() =>
+                  handleFarmAvailabilityToggle(
+                    order.farm.id,
+                    order.farm.is_sold
+                  )
+                }
+                color={order.farm.is_sold ? "error" : "success"}
+                size="small"
+              />
+            </Tooltip>
+          </CardActions>
+        </Card>
+      </motion.div>
+    );
+  };
 
   if (loading) {
     return (
@@ -647,7 +740,6 @@ export default function Purchases() {
           drawerWidth={drawerWidth}
           theme={theme}
           handleLogout={handleLogout}
-          menuItems={menuItems}
         />
 
         <Box
@@ -795,7 +887,7 @@ export default function Purchases() {
                       >
                         <Box>
                           <Typography color="text.secondary" variant="body2">
-                            Sold Outs
+                            Sold 
                           </Typography>
                           <Typography
                             variant="h4"
@@ -859,7 +951,7 @@ export default function Purchases() {
                 <Tab
                   label={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      Sold-Outs
+                      Sold
                       <Chip
                         label={stats.soldOuts}
                         size="small"
@@ -897,323 +989,557 @@ export default function Purchases() {
                     <TableViewIcon />
                   </Tooltip>
                 </ToggleButton>
-                <ToggleButton value="cards" aria-label="card view">
+                <ToggleButton value="card" aria-label="card view">
                   <Tooltip title="Card View">
-                    <CardViewIcon />
+                    <ViewModule />
                   </Tooltip>
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
-          </Paper>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            {filteredOrders.length === 0 ? (
-              <Paper
-                sx={{
-                  p: 3,
-                  textAlign: "center",
-                  borderRadius: 3,
-                  boxShadow: 3,
-                }}
-              >
-                <Typography variant="h6" color="text.secondary">
-                  No purchase transactions found for this view.
-                </Typography>
-              </Paper>
-            ) : viewMode === "table" ? (
-              <TableContainer
-                component={Paper}
-                sx={{ borderRadius: 3, boxShadow: 3 }}
-              >
-                <Table>
-                  <TableHead
-                    sx={{ backgroundColor: theme.palette.action.selected }}
-                  >
-                    <TableRow>
-                      <TableCell>Farm</TableCell>
-                      <TableCell>Location</TableCell>
-                      <TableCell>Size</TableCell>
-                      <TableCell>Price(TZS)</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Buyer Phone</TableCell>
-                      <TableCell>Transaction ID</TableCell>
-                      <TableCell>Buyer Email</TableCell>
-                      <TableCell>Update Status</TableCell>
-                      <TableCell>Delete</TableCell>
-                      <TableCell>Availability</TableCell>
-                      {activeTab === 1 && <TableCell>Agreement</TableCell>}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredOrders.map((order, index) => (
-                      <TableRow
-                        key={order.id}
-                        className="fade-in"
-                        sx={{
-                          animationDelay: `${index * 0.1}s`,
-                          backgroundColor: theme.palette.background.paper,
-                          transition: "0.3s",
-                          "&:hover": {
-                            backgroundColor: theme.palette.action.hover,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={2}>
-                            <Badge
-                              badgeContent={order.farm.is_sold ? "SOLD" : ""}
-                              color="error"
-                              sx={{
-                                "& .MuiBadge-badge": {
-                                  fontSize: "0.6rem",
-                                  height: 16,
-                                  minWidth: 16,
-                                },
-                              }}
-                            >
-                              <Avatar
-                                src={`http://127.0.0.1:8000${order.farm.image}`}
-                                alt={order.farm.name}
+            <Box sx={{ p: 2 }}>
+              {filteredOrders.length === 0 ? (
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    py: 8,
+                    color: "text.secondary",
+                  }}
+                >
+                  <PurchasesIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+                  <Typography variant="h6" gutterBottom>
+                    No purchases found
+                  </Typography>
+                  <Typography variant="body2">
+                    {activeTab === 0
+                      ? "You haven't made any farm purchases yet."
+                      : "No sold-out farms found."}
+                  </Typography>
+                </Box>
+              ) : viewMode === "table" ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Farm</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>Size(Acres)</TableCell>
+                        <TableCell>Price(TZS)</TableCell>
+                        <TableCell>TransactionID</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Contact</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredOrders.map((order) => {
+                        const farmImages = getFarmImages(order.farm);
+                        const avatarErrorKey = `${order.id}-avatar`;
+
+                        return (
+                          <TableRow
+                            key={order.id}
+                            sx={{
+                              opacity: order.farm.is_sold ? 0.7 : 1,
+                              backgroundColor: order.farm.is_sold
+                                ? "rgba(244, 67, 54, 0.05)"
+                                : "inherit",
+                              "&:hover": {
+                                backgroundColor: order.farm.is_sold
+                                  ? "rgba(244, 67, 54, 0.1)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                              },
+                            }}
+                          >
+                            <TableCell>
+                              <Box
                                 sx={{
-                                  width: 40,
-                                  height: 40,
-                                  filter: order.farm.is_sold ? "grayscale(50%)" : "none",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
                                 }}
-                              />
-                            </Badge>
-                            <Box>
+                              >
+                                {imageErrors[avatarErrorKey] ||
+                                farmImages.length === 0 ? (
+                                  <Avatar sx={{ width: 40, height: 40 }}>
+                                    <BrokenImageIcon />
+                                  </Avatar>
+                                ) : (
+                                  <Avatar
+                                    src={farmImages[0]}
+                                    alt={order.farm.name}
+                                    onError={() =>
+                                      handleImageError(order.id, "avatar")
+                                    }
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      cursor:
+                                        farmImages.length > 0
+                                          ? "pointer"
+                                          : "default",
+                                      filter: order.farm.is_sold
+                                        ? "grayscale(50%)"
+                                        : "none",
+                                    }}
+                                    onClick={() =>
+                                      handleOpenImageGallery(farmImages, 0)
+                                    }
+                                  />
+                                )}
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    sx={{
+                                      textDecoration: order.farm.is_sold
+                                        ? "line-through"
+                                        : "none",
+                                      color: order.farm.is_sold
+                                        ? "text.secondary"
+                                        : "text.primary",
+                                    }}
+                                  >
+                                    {order.farm.name}
+                                  </Typography>
+                                  {order.farm.is_sold && (
+                                    <Chip
+                                      label="SOLD"
+                                      size="small"
+                                      color="error"
+                                      sx={{ fontSize: "0.6rem", height: 16 }}
+                                    />
+                                  )}
+                                  {farmImages.length > 1 && (
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                        mt: 0.5,
+                                        cursor: "pointer",
+                                        color: "primary.main",
+                                        fontSize: "0.7rem",
+                                      }}
+                                      onClick={() =>
+                                        handleOpenImageGallery(farmImages, 0)
+                                      }
+                                    >
+                                      <GalleryIcon sx={{ fontSize: 12 }} />
+                                      {farmImages.length} photos
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <LocationOnIcon
+                                  sx={{ fontSize: 16, color: "primary.main" }}
+                                />
+                                <Typography variant="body2">
+                                  {order.farm.location}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {order.farm.size}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
                               <Typography
                                 variant="body2"
                                 fontWeight={600}
+                                color={
+                                  order.farm.is_sold
+                                    ? "text.secondary"
+                                    : "success.main"
+                                }
+                              >
+                                {order.farm.price} 
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                fontWeight={600}
+                                color={
+                                  order.farm.is_sold
+                                    ? "text.secondary"
+                                    : "success.main"
+                                }
+                              >
+                                {order.transaction_id || "N/A"} 
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={order.status}
+                                color={
+                                  order.status === "Confirmed"
+                                    ? "success"
+                                    : order.status === "Cancelled"
+                                    ? "error"
+                                    : "warning"
+                                }
+                                size="small"
+                                sx={{ fontWeight: 600 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: "flex", gap: 1 }}>
+                                {order.contact_info && (
+                                  <Tooltip
+                                    title={`Phone: ${order.contact_info}`}
+                                  >
+                                    <PhoneIcon
+                                      sx={{
+                                        fontSize: 16,
+                                        color: "text.secondary",
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                                {order.buyer_email && (
+                                  <Tooltip
+                                    title={`Email: ${order.buyer_email}`}
+                                  >
+                                    <EmailIcon
+                                      sx={{
+                                        fontSize: 16,
+                                        color: "text.secondary",
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box
                                 sx={{
-                                  textDecoration: order.farm.is_sold ? "line-through" : "none",
-                                  color: order.farm.is_sold ? "text.secondary" : "text.primary",
+                                  display: "flex",
+                                  gap: 1,
+                                  alignItems: "center",
                                 }}
                               >
-                                {order.farm.name}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <LocationOnIcon
-                              sx={{ fontSize: 16, color: "primary.main" }}
-                            />
-                            <Typography variant="body2">
-                              {order.farm.location}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{order.farm.size}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography
-                            variant="body2"
-                            fontWeight={600}
-                            color={order.farm.is_sold ? "text.secondary" : "success.main"}
-                          >
-                            {order.farm.price} 
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={order.status}
-                            color={
-                              order.status === "Confirmed"
-                                ? "success"
-                                : order.status === "Cancelled"
-                                ? "error"
-                                : "warning"
-                            }
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {order.contact_info || "N/A"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {order.transaction_id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {order.buyer_email || "N/A"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <FormControl size="small" sx={{ minWidth: 120 }}>
-                            <Select
-                              value={order.status || "Pending"}
-                              onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                              sx={{
-                                "& .MuiSelect-select": {
-                                  color:
-                                    order.status === "Confirmed"
-                                      ? theme.palette.success.main
-                                      : order.status === "Cancelled"
-                                      ? theme.palette.error.main
-                                      : theme.palette.warning.main,
-                                },
-                              }}
-                            >
-                              <MenuItem value="Confirmed">Confirmed</MenuItem>
-                              <MenuItem value="Cancelled">Cancelled</MenuItem>
-                              <MenuItem value="Pending">Pending</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip title="Delete Transaction">
-                            <IconButton
-                              color="error"
-                              onClick={() => openConfirmationDialog(order.id)}
-                              disabled={isDeleting}
-                              size="small"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip
-                            title={order.farm.is_sold ? "Mark as Available" : "Mark as Sold"}
-                          >
-                            <Switch
-                              checked={!order.farm.is_sold}
-                              onChange={() =>
-                                handleFarmAvailabilityToggle(order.farm.id, order.farm.is_sold)
-                              }
-                              color={order.farm.is_sold ? "error" : "success"}
-                              size="small"
-                            />
-                          </Tooltip>
-                        </TableCell>
-                        {activeTab === 1 && (
-                          <TableCell>
-                            <Tooltip title="View Agreement">
-                              <IconButton
-                                color="primary"
-                                onClick={() => handleViewAgreement(order)}
-                                size="small"
-                              >
-                                <AgreementIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              <Grid container spacing={3}>
-                {filteredOrders.map((order, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={order.id}>
-                    <FarmCard order={order} index={index} />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </motion.div>
-        </Box>
-      </Box>
+                                <FormControl
+                                  size="small"
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  <Select
+                                    value={order.status || "Pending"}
+                                    onChange={(e) =>
+                                      handleStatusChange(
+                                        order.id,
+                                        e.target.value
+                                      )
+                                    }
+                                    sx={{
+                                      fontSize: "0.8rem",
+                                      "& .MuiSelect-select": {
+                                        py: 0.5,
+                                        color:
+                                          order.status === "Confirmed"
+                                            ? theme.palette.success.main
+                                            : order.status === "Cancelled"
+                                            ? theme.palette.error.main
+                                            : theme.palette.warning.main,
+                                      },
+                                    }}
+                                  >
+                                    <MenuItem
+                                      value="Confirmed"
+                                      sx={{ fontSize: "0.8rem" }}
+                                    >
+                                      Confirmed
+                                    </MenuItem>
+                                    <MenuItem
+                                      value="Cancelled"
+                                      sx={{ fontSize: "0.8rem" }}
+                                    >
+                                      Cancelled
+                                    </MenuItem>
+                                    <MenuItem
+                                      value="Pending"
+                                      sx={{ fontSize: "0.8rem" }}
+                                    >
+                                      Pending
+                                    </MenuItem>
+                                  </Select>
+                                </FormControl>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-        PaperProps={{
-          sx: { borderRadius: 3 },
-        }}
-      >
-        <DialogTitle>
-          <Typography variant="h6" fontWeight={600}>
-            Confirm Deletion
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this transaction? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button
-            onClick={() => setOpenDeleteDialog(false)}
-            sx={{ textTransform: "none" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDelete}
-            color="error"
-            variant="contained"
-            sx={{ textTransform: "none" }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+                                {order.farm.is_sold && activeTab === 1 && (
+                                  <Tooltip title="View Agreement">
+                                    <IconButton
+                                      size="small"
+                                      color="primary"
+                                      onClick={() => handleViewAgreement(order)}
+                                    >
+                                      <AgreementIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
 
-      {/* Loading overlay for deletion */}
-      {isDeleting && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-          }}
-        >
-          <Box
+                                <Tooltip title="Delete Transaction">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() =>
+                                      openConfirmationDialog(order.id)
+                                    }
+                                    disabled={isDeleting}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+
+                                <Tooltip
+                                  title={
+                                    order.farm.is_sold
+                                      ? "Mark as Available"
+                                      : "Mark as Sold"
+                                  }
+                                >
+                                  <Switch
+                                    checked={!order.farm.is_sold}
+                                    onChange={() =>
+                                      handleFarmAvailabilityToggle(
+                                        order.farm.id,
+                                        order.farm.is_sold
+                                      )
+                                    }
+                                    color={
+                                      order.farm.is_sold ? "error" : "success"
+                                    }
+                                    size="small"
+                                  />
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Grid container spacing={2}>
+                  {filteredOrders.map((order, index) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={order.id}>
+                      <FarmCard order={order} index={index} />
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Box>
+          </Paper>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog
+            open={openDeleteDialog}
+            onClose={() => setOpenDeleteDialog(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this transaction? This action
+                cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setOpenDeleteDialog(false)}
+                color="primary"
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                color="error"
+                variant="contained"
+                disabled={isDeleting}
+                startIcon={
+                  isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />
+                }
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Image Gallery Dialog */}
+          <Dialog
+            open={imageGalleryOpen}
+            onClose={handleCloseImageGallery}
+            maxWidth="md"
+            fullWidth
             sx={{
-              backgroundColor: theme.palette.background.paper,
-              p: 3,
-              borderRadius: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
+              "& .MuiDialog-paper": {
+                bgcolor: "background.paper",
+                borderRadius: 2,
+              },
             }}
           >
-            <CircularProgress size={24} />
-            <Typography>Deleting transaction...</Typography>
-          </Box>
+            <DialogTitle>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="h6">
+                  Farm Images ({currentImageIndex + 1} of{" "}
+                  {selectedImages.length})
+                </Typography>
+                <IconButton onClick={handleCloseImageGallery}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              {selectedImages.length > 0 ? (
+                <>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 400,
+                    }}
+                  >
+                    <img
+                      src={selectedImages[currentImageIndex]}
+                      alt={`Farm ${currentImageIndex + 1}`}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "70vh",
+                        objectFit: "contain",
+                        borderRadius: 8,
+                      }}
+                      onError={(e) => {
+                        e.target.src =
+                          "https://via.placeholder.com/500x300?text=Image+Not+Available";
+                      }}
+                    />
+
+                    {selectedImages.length > 1 && (
+                      <>
+                        <IconButton
+                          onClick={handlePreviousImage}
+                          sx={{
+                            position: "absolute",
+                            left: 16,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            bgcolor: "rgba(0, 0, 0, 0.5)",
+                            color: "white",
+                            "&:hover": {
+                              bgcolor: "rgba(0, 0, 0, 0.7)",
+                            },
+                          }}
+                        >
+                          <PrevIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={handleNextImage}
+                          sx={{
+                            position: "absolute",
+                            right: 16,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            bgcolor: "rgba(0, 0, 0, 0.5)",
+                            color: "white",
+                            "&:hover": {
+                              bgcolor: "rgba(0, 0, 0, 0.7)",
+                            },
+                          }}
+                        >
+                          <NextIcon />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
+
+                  {selectedImages.length > 1 && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        gap: 1,
+                        mt: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {selectedImages.map((image, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 1,
+                            overflow: "hidden",
+                            cursor: "pointer",
+                            border: index === currentImageIndex ? 2 : 1,
+                            borderColor:
+                              index === currentImageIndex
+                                ? "primary.main"
+                                : "divider",
+                            opacity: index === currentImageIndex ? 1 : 0.7,
+                            "&:hover": {
+                              opacity: 1,
+                            },
+                          }}
+                          onClick={() => setCurrentImageIndex(index)}
+                        >
+                          <img
+                            src={image}
+                            alt={`Thumbnail ${index + 1}`}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                            onError={(e) => {
+                              e.target.src =
+                                "https://via.placeholder.com/60x60?text=Image";
+                            }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </>
+              ) : (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 300,
+                    color: "text.secondary",
+                  }}
+                >
+                  <BrokenImageIcon sx={{ fontSize: 64, mb: 2 }} />
+                  <Typography variant="h6">No images available</Typography>
+                </Box>
+              )}
+            </DialogContent>
+          </Dialog>
         </Box>
-      )}
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .fade-in {
-          animation: fadeIn 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
+      </Box>
     </ThemeProvider>
   );
 }

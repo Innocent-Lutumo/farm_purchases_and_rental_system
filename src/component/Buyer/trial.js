@@ -33,12 +33,14 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import axios from "axios";
-import PurchaseDialog from "./PurchaseDialog";
-import FarmMapModal from "../Shared/FarmMapModal";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import axios from "axios";
+import PurchaseDialog from "./PurchaseDialog";
+import FarmMapModal from "../Shared/FarmMapModal";
+// import AppFooter from "../Shared/AppFooter";
 
 const Trial = () => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -140,7 +142,9 @@ const Trial = () => {
           .toString()
           .toLowerCase()
           .includes(searchTerm.toLowerCase())) ||
-      farm.size.toLowerCase().includes(searchTerm.toLowerCase())
+      farm.size.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (farm.seller_username &&
+        farm.seller_username.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -165,7 +169,9 @@ const Trial = () => {
           </IconButton>
 
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" sx={{ color:"white", }}>Farm Finder</Typography>
+            <Typography variant="h6" sx={{ color: "white" }}>
+              Farm Finder
+            </Typography>
             <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>
               Find your ideal farmland for purchase.
             </Typography>
@@ -359,7 +365,7 @@ const Trial = () => {
                           textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
                         }}
                       >
-                        SOLD OUT
+                        SOLD
                       </Typography>
                     </Box>
                   )}
@@ -399,6 +405,27 @@ const Trial = () => {
                       <Typography variant="h6" fontWeight="bold">
                         {farm.name}
                       </Typography>
+
+                      {/* Seller Username Display */}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <AccountCircleIcon
+                          sx={{ fontSize: "16px", color: "green", mr: 0.5 }}
+                        />
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: "12px",
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          <strong>Seller:</strong>{" "}
+                          {farm.username || farm.seller || "Unknown"}
+                        </Typography>
+                      </Box>
+
                       <Typography>
                         <strong>Price:</strong> {farm.price}/= Tshs
                       </Typography>
@@ -544,6 +571,8 @@ const Trial = () => {
         onClose={() => setShowMap(false)}
         farm={selectedFarm}
       />
+
+      {/* <AppFooter /> */}
     </Box>
   );
 };
