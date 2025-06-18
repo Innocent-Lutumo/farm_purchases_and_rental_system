@@ -134,7 +134,7 @@ const Purchases2 = () => {
           <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
             {showSearchInput && (
               <InputBase
-                placeholder="Search purchases..."
+                placeholder="Search by TransactionID..."
                 inputProps={{ "aria-label": "search" }}
                 value={search}
                 onChange={handleSearchChange}

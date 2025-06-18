@@ -123,7 +123,7 @@ const Purchase = () => {
           <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
             {showSearchInput && (
               <InputBase
-                placeholder="Search transactions..."
+                placeholder="Search by transactionID..."
                 inputProps={{ "aria-label": "search" }}
                 value={search}
                 onChange={handleSearchChange}
@@ -225,7 +225,7 @@ const Purchase = () => {
         }}
       >
         {/* Advertisement Section */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 2 }}>
           <AdvertisementSection />
         </Box>
 
@@ -304,8 +304,8 @@ const Purchase = () => {
                         gap: 0.5,
                       }}
                     >
-                       {/* Seller Username Display */}
-                       <Box
+                      {/* Seller Username Display */}
+                      <Box
                         sx={{ display: "flex", alignItems: "center", mb: 1 }}
                       >
                         <AccountCircleIcon

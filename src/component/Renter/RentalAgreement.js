@@ -128,8 +128,8 @@ const RentalAgreement = () => {
       console.log("Relevant landlord (match by username):", relevantLandlord);
 
       const restructuredData = {
-        id: foundContract.id, // This is the transaction ID (20 in your example)
-        farm_id: foundContract.farm.id, // This is the farm ID (8 in your example)
+        id: foundContract.id, 
+        farm_id: foundContract.farm.id, 
         farm_number: foundContract.farm.farm_number,
         created_at: foundContract.rent_date,
         location: foundContract.farm.location,

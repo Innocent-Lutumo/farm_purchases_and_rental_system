@@ -15,6 +15,7 @@ import Purchases from "./component/Seller/Purchases";
 import ProtectedRoute from "./component/Common/ProtectedRoute";
 import AdminProtectedRoute from "./component/Admin/AdminProtectedRoutes";
 import RentalAgreement from "./component/Renter/RentalAgreement";
+import PurchaseAgreement from "./component/Buyer/PurchaseAgreement";
 import AdminDashboard from "./component/Admin/Dashboard";
 import AdminLogin from "./component/Admin/AdminLogin";
 import SellerList from "./component/Admin/SellerList";
@@ -34,6 +35,7 @@ function App() {
       <Route path="/Trial" element={<Trial />} />
       <Route path="/RentPage" element={<RentPage />} />
       <Route path="/RentalAgreement" element={<RentalAgreement />} />
+      <Route path="/PurchaseAgreement" element={<PurchaseAgreement />} />
       <Route path="AdminLogin" element={<AdminLogin />} />
       <Route
         path="/SellerPage"
