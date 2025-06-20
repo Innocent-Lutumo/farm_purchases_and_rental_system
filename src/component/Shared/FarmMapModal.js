@@ -35,7 +35,7 @@ const FarmMapModal = ({ open, onClose, farm }) => {
             borderRadius: { xs: "8px", sm: "16px", md: "20px" },
             overflow: "hidden",
             boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.3)",
-            background: "linear-gradient(135deg, #e5ffe5 0%, #b2f0b2 100%)", // Green gradient
+            background: "green", // Green gradient
             border: "1px solid rgba(255, 255, 255, 0.2)",
             transform: "scale(1)",
             transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -59,7 +59,7 @@ const FarmMapModal = ({ open, onClose, farm }) => {
               width: { xs: 36, sm: 40, md: 44 },
               height: { xs: 36, sm: 40, md: 44 },
               "&:hover": {
-                backgroundColor: "rgba(76, 175, 80, 0.1)", // Green hover effect
+                backgroundColor: "rgba(76, 175, 80, 0.1)", 
                 transform: "scale(1.1)",
                 boxShadow: "0 6px 25px rgba(76, 175, 80, 0.3)",
               },

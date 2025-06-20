@@ -11,6 +11,9 @@ import {
   Typography,
   Toolbar,
   Skeleton,
+  Dialog,
+  DialogContent,
+  LinearProgress,
 } from "@mui/material";
 import {
   ShoppingBag as PurchasesIcon,
@@ -19,7 +22,7 @@ import {
   AddCircle as UploadNewIcon,
   ExitToApp as ExitToAppIcon,
 } from "@mui/icons-material";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 
 // Menu items configuration (kept as is, it's well-defined)
 const menuItems = [
@@ -49,11 +52,43 @@ const menuItems = [
   },
 ];
 
-const SellerDrawer = ({ drawerOpen, drawerWidth, theme, handleLogout }) => {
+const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Logout progress states
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutProgress, setLogoutProgress] = useState(0);
+
+  // Handle logout with progress
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    setLogoutProgress(0);
+   
+    // Simulate logout process with progress updates
+    const interval = setInterval(() => {
+      setLogoutProgress(prev => {
+        const newProgress = prev + 10;
+       
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          // Complete logout after progress reaches 100%
+          setTimeout(() => {
+            localStorage.removeItem("access");
+            sessionStorage.removeItem("access"); // Also remove from session storage
+            navigate("/LoginPage");
+          }, 200);
+          return 100;
+        }
+       
+        return newProgress;
+      });
+    }, 150); // Updates every 150ms for smooth animation
+  };
 
   // Function to get user initials from name
   const getUserInitials = (name) => {
@@ -208,123 +243,146 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme, handleLogout }) => {
   };
 
   return (
-    <Drawer
-      variant="permanent"
-      open={drawerOpen}
-      sx={{
-        width: drawerOpen ? drawerWidth : theme.spacing(7),
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-        boxSizing: "border-box",
-        transition: theme.transitions.create("width", {
-          easing: theme.transitions.easing.sharp,
-          duration: theme.transitions.duration.enteringScreen,
-        }),
-        "& .MuiDrawer-paper": {
+    <>
+      <Drawer
+        variant="permanent"
+        open={drawerOpen}
+        sx={{
           width: drawerOpen ? drawerWidth : theme.spacing(7),
-          overflowX: "hidden",
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+          boxSizing: "border-box",
           transition: theme.transitions.create("width", {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          [theme.breakpoints.up('sm')]: {
-            width: drawerOpen ? drawerWidth : theme.spacing(9),
+          "& .MuiDrawer-paper": {
+            width: drawerOpen ? drawerWidth : theme.spacing(7),
+            overflowX: "hidden",
+            transition: theme.transitions.create("width", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            [theme.breakpoints.up('sm')]: {
+              width: drawerOpen ? drawerWidth : theme.spacing(9),
+            },
           },
-        },
-      }}
-    >
-      <Toolbar />
-      <Box sx={{ overflow: "auto", px: 1 }}>
-        {/* User Info with real data */}
-        {renderUserInfo()}
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ overflow: "auto", px: 1 }}>
+          {/* User Info with real data */}
+          {renderUserInfo()}
 
-        <List>
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+          <List>
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.path;
 
-            return (
-              <ListItem
-                key={item.text}
-                component={RouterLink}
-                to={item.path}
-                button
-                sx={{
-                  backgroundColor: isActive
-                    ? theme.palette.action.selected
-                    : "transparent",
-                  borderRadius: 1,
-                  mx: 1,
-                  mb: 0.5,
-                  textDecoration: "none",
-                  color: "inherit",
-                  "&:hover": {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                  justifyContent: drawerOpen ? "initial" : "center",
-                }}
-              >
-                <ListItemIcon
+              return (
+                <ListItem
+                  key={item.text}
+                  component={RouterLink}
+                  to={item.path}
+                  button
                   sx={{
-                    minWidth: 0,
-                    mr: drawerOpen ? 3 : "auto",
-                    justifyContent: "center",
-                    display: "flex",
-                    color: isActive ? theme.palette.primary.main : "inherit",
+                    backgroundColor: isActive
+                      ? theme.palette.action.selected
+                      : "transparent",
+                    borderRadius: 1,
+                    mx: 1,
+                    mb: 0.5,
+                    textDecoration: "none",
+                    color: "inherit",
+                    "&:hover": {
+                      backgroundColor: theme.palette.action.hover,
+                    },
+                    justifyContent: drawerOpen ? "initial" : "center",
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                {drawerOpen && (
-                  <ListItemText
-                    primary={item.text}
-                    primaryTypographyProps={{
-                      fontWeight: isActive ? 600 : 400,
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: drawerOpen ? 3 : "auto",
+                      justifyContent: "center",
+                      display: "flex",
                       color: isActive ? theme.palette.primary.main : "inherit",
                     }}
-                  />
-                )}
-              </ListItem>
-            );
-          })}
-        </List>
-        <Divider sx={{ my: 1 }} />
-        <List>
-          <ListItem
-            button
-            onClick={handleLogout}
-            sx={{
-              borderRadius: 1,
-              mx: 1,
-              mb: 2,
-              "&:hover": {
-                backgroundColor: theme.palette.action.hover,
-              },
-              justifyContent: drawerOpen ? "initial" : "center",
-            }}
-          >
-            <ListItemIcon
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {drawerOpen && (
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontWeight: isActive ? 600 : 400,
+                        color: isActive ? theme.palette.primary.main : "inherit",
+                      }}
+                    />
+                  )}
+                </ListItem>
+              );
+            })}
+          </List>
+          <Divider sx={{ my: 1 }} />
+          <List>
+            <ListItem
+              button
+              onClick={handleLogout}
               sx={{
-                minWidth: 0,
-                mr: drawerOpen ? 3 : "auto",
-                justifyContent: "center",
-                display: "flex",
-                color: theme.palette.error.main,
+                borderRadius: 1,
+                mx: 1,
+                mb: 2,
+                "&:hover": {
+                  backgroundColor: theme.palette.action.hover,
+                },
+                justifyContent: drawerOpen ? "initial" : "center",
               }}
             >
-              <ExitToAppIcon />
-            </ListItemIcon>
-            {drawerOpen && (
-              <ListItemText
-                primary="Logout"
-                primaryTypographyProps={{
+              <ListItemIcon
+                sx={{
+                  minWidth: 0,
+                  mr: drawerOpen ? 3 : "auto",
+                  justifyContent: "center",
+                  display: "flex",
                   color: theme.palette.error.main,
                 }}
+              >
+                <ExitToAppIcon />
+              </ListItemIcon>
+              {drawerOpen && (
+                <ListItemText
+                  primary="Logout"
+                  primaryTypographyProps={{
+                    color: theme.palette.error.main,
+                  }}
+                />
+              )}
+            </ListItem>
+          </List>
+        </Box>
+      </Drawer>
+
+      {/* Logout Progress Dialog */}
+      {isLoggingOut && (
+        <Dialog open={isLoggingOut} disableEscapeKeyDown>
+          <DialogContent sx={{ textAlign: 'center', minWidth: 300, py: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Logging out...
+            </Typography>
+            <Box sx={{ mt: 3, mb: 2 }}>
+              <LinearProgress
+                variant="determinate"
+                value={logoutProgress}
+                sx={{ height: 8, borderRadius: 4 }}
               />
-            )}
-          </ListItem>
-        </List>
-      </Box>
-    </Drawer>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {logoutProgress}% complete
+            </Typography>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 };
 

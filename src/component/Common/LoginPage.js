@@ -1,3 +1,4 @@
+// src/pages/LoginPage.js (UPDATED to use ForgotPasswordDialog)
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -8,11 +9,14 @@ import {
   Container,
   InputAdornment,
   IconButton,
+  Alert,
 } from "@mui/material";
 import axios from "axios";
-import { Visibility, VisibilityOff, ArrowBack } from "@mui/icons-material";
+import { Visibility, VisibilityOff, ArrowBack } from "@mui/icons-material"; // Removed Email import as it's now in dialog
 import { GoogleLogin } from "@react-oauth/google";
 import { motion } from "framer-motion";
+// Import the new ForgotPasswordDialog
+import ForgotPasswordDialog from './ForgotPasswordDialog'; 
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
@@ -20,6 +24,10 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Reset password dialog state (moved resetEmail, resetLoading, etc. to ForgotPasswordDialog)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -36,6 +44,7 @@ const LoginPage = () => {
     }
 
     try {
+      // Assuming your login endpoint is at /api/login/
       const response = await axios.post("http://127.0.0.1:8000/api/login/", {
         username,
         password,
@@ -47,9 +56,10 @@ const LoginPage = () => {
       localStorage.setItem("refresh", refresh);
 
       console.log("Login successful:", response.data);
-      navigate("/SellerPage");
+      navigate("/SellerPage"); // Or your desired redirect page
     } catch (err) {
       console.error("Login failed:", err);
+      // More specific error handling if backend provides details (e.g., status codes)
       setError("Invalid username or password");
     } finally {
       setIsLoading(false);
@@ -58,10 +68,10 @@ const LoginPage = () => {
 
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setIsLoading(true);
-    // Also hide password during Google login
-    setShowPassword(false);
+    setShowPassword(false); // Hide password during Google login
     
     try {
+      // Assuming your Google login endpoint is at /api/google-login/
       const response = await axios.post(
         "http://127.0.0.1:8000/api/google-login/",
         {
@@ -74,7 +84,7 @@ const LoginPage = () => {
       localStorage.setItem("refresh", refresh);
 
       console.log("Google login successful:", response.data);
-      navigate("/SellerPage");
+      navigate("/SellerPage"); // Or your desired redirect page
     } catch (err) {
       console.error("Google login failed:", err);
       console.error("Error details:", err.response?.data);
@@ -281,7 +291,7 @@ const LoginPage = () => {
               sx={{
                 backgroundColor: "#f9f9f9",
                 borderRadius: "8px",
-                marginBottom: "20px",
+                marginBottom: "10px",
                 "& label.Mui-focused": { color: "green" },
                 "& .MuiOutlinedInput-root": {
                   "&.Mui-focused fieldset": {
@@ -309,13 +319,35 @@ const LoginPage = () => {
             />
           </motion.div>
 
+          {/* Forgot Password Link */}
+          <motion.div
+            variants={itemVariants}
+            style={{ textAlign: "right", marginBottom: "20px" }}
+          >
+            <Button
+              onClick={() => setResetDialogOpen(true)} // Open the dialog
+              sx={{
+                color: "green",
+                textTransform: "none",
+                fontSize: "0.85rem",
+                fontWeight: "500",
+                padding: "4px 8px",
+                "&:hover": {
+                  backgroundColor: "rgba(76, 175, 80, 0.1)",
+                },
+              }}
+            >
+              Forgot Password?
+            </Button>
+          </motion.div>
+
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Typography
+              <Alert
                 color="error"
                 sx={{ 
                   marginBottom: "20px", 
@@ -328,7 +360,7 @@ const LoginPage = () => {
                 }}
               >
                 {error}
-              </Typography>
+              </Alert>
             </motion.div>
           )}
 
@@ -441,6 +473,12 @@ const LoginPage = () => {
           </Typography>
         </motion.div>
       </Container>
+
+      {/* Render the extracted ForgotPasswordDialog */}
+      <ForgotPasswordDialog
+        open={resetDialogOpen}
+        onClose={() => setResetDialogOpen(false)}
+      />
     </motion.div>
   );
 };

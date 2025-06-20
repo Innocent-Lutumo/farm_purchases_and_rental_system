@@ -292,12 +292,6 @@ export default function Purchases() {
   // Handler for theme toggle
   const handleThemeToggle = () => setDarkMode((prev) => !prev);
 
-  // Handler for logout
-  const handleLogout = () => {
-    localStorage.removeItem("access");
-    navigate("/LoginPage");
-  };
-
   // Handler for drawer toggle (mobile)
   const handleDrawerToggle = () => {
     setDrawerOpen((prev) => !prev);
@@ -727,7 +721,7 @@ export default function Purchases() {
           anchorEl={anchorEl}
           handleMenuOpen={handleMenuOpen}
           handleMenuClose={handleMenuClose}
-          handleLogout={handleLogout}
+
           showSearchInput={showSearchInput}
           setShowSearchInput={setShowSearchInput}
           searchQuery={searchQuery}
@@ -739,7 +733,6 @@ export default function Purchases() {
           drawerOpen={drawerOpen}
           drawerWidth={drawerWidth}
           theme={theme}
-          handleLogout={handleLogout}
         />
 
         <Box

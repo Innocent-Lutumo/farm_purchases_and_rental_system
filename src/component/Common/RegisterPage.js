@@ -21,6 +21,7 @@ const RegisterPage = () => {
   const [formData, setFormData] = useState({
     seller_name: "",
     username: "",
+    email: "",
     seller_residence: "",
     password: "",
     confirmPassword: "",
@@ -38,6 +39,11 @@ const RegisterPage = () => {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
@@ -46,6 +52,7 @@ const RegisterPage = () => {
     const {
       seller_name,
       username,
+      email,
       seller_residence,
       password,
       confirmPassword,
@@ -54,11 +61,17 @@ const RegisterPage = () => {
     if (
       !seller_name ||
       !username ||
+      !email ||
       !seller_residence ||
       !password ||
       !confirmPassword
     ) {
       setErrors({ form: "Please fill out all the fields." });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setErrors({ email: "Please enter a valid email address." });
       return;
     }
 
@@ -88,6 +101,7 @@ const RegisterPage = () => {
       setFormData({
         seller_name: "",
         username: "",
+        email: "",
         seller_residence: "",
         password: "",
         confirmPassword: "",
@@ -288,6 +302,29 @@ const RegisterPage = () => {
                         onChange={handleChange}
                         error={!!errors.username}
                         helperText={errors.username}
+                        fullWidth
+                        variant="outlined"
+                        sx={fieldStyle}
+                      />
+                    </motion.div>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <motion.div
+                      variants={fieldVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      whileFocus={{ scale: 1.02 }}
+                    >
+                      <TextField
+                        label="Email Address"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        error={!!errors.email}
+                        helperText={errors.email}
                         fullWidth
                         variant="outlined"
                         sx={fieldStyle}

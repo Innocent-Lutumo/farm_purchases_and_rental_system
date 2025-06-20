@@ -19,83 +19,88 @@ import PurchaseAgreement from "./component/Buyer/PurchaseAgreement";
 import AdminDashboard from "./component/Admin/Dashboard";
 import AdminLogin from "./component/Admin/AdminLogin";
 import SellerList from "./component/Admin/SellerList";
+import ResetPasswordConfirmPage from "./component/Common/ResetPasswordConfirmPage";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 // import FarmNavigationMap from "./component/lee.js";
 
 function App() {
   return (
-  <>
-    <Routes>
-      <Route path="/*" element={<Home />} />
-      <Route path="/PurchasesPage" element={<Purchase />} />
-      <Route path="/PurchasesPage2" element={<Purchases2 />} />
-      <Route path="/LoginPage" element={<LoginPage />} />
-      <Route path="/RegisterPage" element={<RegistrationForm />} />
-      <Route path="/Trial" element={<Trial />} />
-      <Route path="/RentPage" element={<RentPage />} />
-      <Route path="/RentalAgreement" element={<RentalAgreement />} />
-      <Route path="/PurchaseAgreement" element={<PurchaseAgreement />} />
-      <Route path="AdminLogin" element={<AdminLogin />} />
-      <Route
-        path="/SellerPage"
-        element={
-          <ProtectedRoute>
-            <SellerPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/UploadFarmForm"
-        element={
-          <ProtectedRoute>
-            <UploadFarmForm />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/UploadedFarms"
-        element={
-          <ProtectedRoute>
-            <UploadedFarms />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/Rents"
-        element={
-          <ProtectedRoute>
-            <Rents />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/Purchases"
-        element={
-          <ProtectedRoute>
-            <Purchases />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/Dashboard"
-        element={
-          <AdminProtectedRoute>
-            <AdminDashboard />
-          </AdminProtectedRoute>
-        }
-      /> 
-      <Route
-        path="/SellerList"
-        element={
-          <AdminProtectedRoute>
-            <SellerList />
-          </AdminProtectedRoute>
-        }
-      /> 
-    </Routes> 
-  </>
-);
+    <>
+      <Routes>
+        <Route path="/*" element={<Home />} />
+        <Route path="/PurchasesPage" element={<Purchase />} />
+        <Route path="/PurchasesPage2" element={<Purchases2 />} />
+        <Route path="/LoginPage" element={<LoginPage />} />
+        <Route path="/RegisterPage" element={<RegistrationForm />} />
+        <Route path="/Trial" element={<Trial />} />
+        <Route path="/RentPage" element={<RentPage />} />
+        <Route path="/RentalAgreement" element={<RentalAgreement />} />
+        <Route path="/PurchaseAgreement" element={<PurchaseAgreement />} />
+        <Route path="AdminLogin" element={<AdminLogin />} />
+        <Route
+          path="/password-reset/:uid/:token"
+          element={<ResetPasswordConfirmPage />}
+        />
+        <Route
+          path="/SellerPage"
+          element={
+            <ProtectedRoute>
+              <SellerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/UploadFarmForm"
+          element={
+            <ProtectedRoute>
+              <UploadFarmForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/UploadedFarms"
+          element={
+            <ProtectedRoute>
+              <UploadedFarms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Rents"
+          element={
+            <ProtectedRoute>
+              <Rents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Purchases"
+          element={
+            <ProtectedRoute>
+              <Purchases />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Dashboard"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/SellerList"
+          element={
+            <AdminProtectedRoute>
+              <SellerList />
+            </AdminProtectedRoute>
+          }
+        />
+      </Routes>
+    </>
+  );
 }
 
 export default App;

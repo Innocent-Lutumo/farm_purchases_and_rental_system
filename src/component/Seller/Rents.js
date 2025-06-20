@@ -39,7 +39,6 @@ import {
 } from "@mui/material";
 import {
   LocationOn as LocationOnIcon,
-  ShoppingBag as PurchasesIcon,
   Home as RentsIcon,
   CheckCircle as AcceptedIcon,
   Delete as DeleteIcon,
@@ -116,34 +115,6 @@ const getTheme = (mode) =>
       h6: { fontWeight: 600 },
     },
   });
-
-const menuItems = [
-  {
-    text: "Purchases",
-    icon: <PurchasesIcon />,
-    path: "/Purchases",
-    description: "Track all farm purchases",
-    badge: 0,
-  },
-  {
-    text: "Rents",
-    icon: <RentsIcon />,
-    path: "/Rents",
-    description: "Manage your property rentals",
-  },
-  {
-    text: "Uploaded Farms",
-    icon: <PurchasesIcon />,
-    path: "/UploadedFarms",
-    description: "View your farm listings",
-  },
-  {
-    text: "Upload New Farm",
-    icon: <PurchasesIcon />,
-    path: "/UploadFarmForm",
-    description: "Create a new farm listing",
-  },
-];
 
 export default function Rents() {
   // State variables
@@ -764,7 +735,6 @@ export default function Rents() {
           drawerWidth={drawerWidth}
           theme={theme}
           handleLogout={handleLogout}
-          menuItems={menuItems}
         />
 
         <Box
