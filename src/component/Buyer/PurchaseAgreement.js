@@ -37,33 +37,6 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
-// Utility function for CSRF token
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
-// Safe JSON parsing utility
-const safeJsonParse = async (response) => {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : null;
-  } catch (e) {
-    console.error('Failed to parse JSON:', text);
-    throw new Error('Invalid server response format');
-  }
-};
-
 const PurchaseAgreement = () => {
   const [contractData, setContractData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +53,6 @@ const PurchaseAgreement = () => {
 
   const navigate = useNavigate();
 
-  // API Endpoints
   const PURCHASE_AGREEMENT_DETAILS_API_ENDPOINT =
     "http://127.0.0.1:8000/api/get-transactionsale/";
   const ADMIN_SELLERS_API_ENDPOINT =
@@ -118,16 +90,14 @@ const PurchaseAgreement = () => {
 
       if (!transactionsResponse.ok) {
         const errorText = await transactionsResponse.text();
-        if (errorText.startsWith('<!DOCTYPE html>')) {
-          throw new Error('Server returned HTML error page');
-        }
         throw new Error(
-          `Failed to fetch transactions: ${transactionsResponse.status} - ${errorText}`
+          `Failed to fetch transactions list. Status: ${
+            transactionsResponse.status
+          }. Response: ${errorText.substring(0, 100)}...`
         );
       }
 
-      const allTransactions = await safeJsonParse(transactionsResponse);
-
+      const allTransactions = await transactionsResponse.json();
       const foundContract = allTransactions.find(
         (transaction) => String(transaction.farm.id) === String(idToFetch)
       );
@@ -140,11 +110,13 @@ const PurchaseAgreement = () => {
       if (!adminSellersResponse.ok) {
         const errorText = await adminSellersResponse.text();
         throw new Error(
-          `Failed to fetch admin sellers: ${adminSellersResponse.status} - ${errorText}`
+          `Failed to fetch admin sellers data. Status: ${
+            adminSellersResponse.status
+          }. Response: ${errorText.substring(0, 100)}...`
         );
       }
-      const adminSellers = await safeJsonParse(adminSellersResponse);
 
+      const adminSellers = await adminSellersResponse.json();
       const relevantSeller = adminSellers.find(
         (seller) => seller.username === foundContract.farm.username
       );
@@ -161,15 +133,11 @@ const PurchaseAgreement = () => {
         description: foundContract.farm.description,
         price: foundContract.farm.price,
         payment_method: foundContract.payment_method,
-
-        // Buyer details
         full_name: foundContract.full_name,
-        phone: foundContract.contact_info,
-        email: foundContract.buyer_email,
+        buyer_phone: foundContract.contact_info,
+        buyer_email: foundContract.buyer_email,
         buyer_residence: foundContract.address,
         buyer_passport: foundContract.buyer_passport || null,
-
-        // Seller details
         seller_name: relevantSeller
           ? relevantSeller.seller_name
           : "Jina la Muuzaji Halipatikani",
@@ -184,11 +152,7 @@ const PurchaseAgreement = () => {
       setContractData(restructuredData);
     } catch (err) {
       console.error("Error fetching contract data:", err);
-      setError(
-        err.message.includes('HTML') 
-          ? 'Server error occurred. Please try again later.' 
-          : err.message
-      );
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -203,17 +167,42 @@ const PurchaseAgreement = () => {
         throw new Error("No contract data available to create agreement.");
       }
 
+      // Validate required fields
+      const requiredFields = {
+        farm_number: contractData.farm_number,
+        size: contractData.size,
+        price: contractData.price,
+        location: contractData.location,
+        full_name: contractData.full_name,
+        quality: contractData.quality,
+        buyer_email: contractData.buyer_email,
+        buyer_phone: contractData.buyer_phone,
+        buyer_residence: contractData.buyer_residence,
+      };
+
+      const missingFields = [];
+      Object.entries(requiredFields).forEach(([key, value]) => {
+        if (!value || value === undefined || value === null || value === "") {
+          missingFields.push(key);
+        }
+      });
+
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+      }
+
       const agreementPayload = {
         farm_id: contractData.farm_id,
         transaction_id: contractData.id,
+        farm_number: contractData.farm_number,
         seller_name: contractData.seller_name,
         seller_phone: contractData.seller_phone,
         seller_email: contractData.seller_email,
         seller_residence: contractData.seller_residence,
         seller_passport: contractData.seller_passport,
         buyer_name: contractData.full_name,
-        buyer_phone: contractData.phone,
-        buyer_email: contractData.email,
+        buyer_phone: contractData.buyer_phone,
+        buyer_email: contractData.buyer_email,
         buyer_residence: contractData.buyer_residence,
         buyer_passport: contractData.buyer_passport,
         farm_location: contractData.location,
@@ -222,7 +211,6 @@ const PurchaseAgreement = () => {
         farm_type: contractData.farm_type,
         farm_description: contractData.description || "",
         purchase_price: parseFloat(contractData.price),
-        payment_method: contractData.payment_method,
         agreement_date: contractData.created_at,
       };
 
@@ -230,25 +218,23 @@ const PurchaseAgreement = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          'X-CSRFToken': getCookie('csrftoken'),
         },
-        credentials: 'include',
         body: JSON.stringify(agreementPayload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
-          response.status === 403 
-            ? 'Authentication failed. Please login again.'
-            : `Server error: ${response.status} - ${errorText}`
+          `Failed to create agreement. Status: ${
+            response.status
+          }. Response: ${errorText.substring(0, 200)}`
         );
       }
 
-      const result = await safeJsonParse(response);
+      const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error || "Unknown error occurred");
+        throw new Error(result.error || "Backend reported failure");
       }
 
       setAgreementCreated(true);
@@ -257,11 +243,7 @@ const PurchaseAgreement = () => {
       setShowSuccessSnackbar(true);
     } catch (err) {
       console.error("Error creating purchase agreement:", err);
-      setModalMessage(
-        err.message.includes('HTML') 
-          ? 'Server returned invalid response'
-          : `Imeshindwa kuunda mkataba wa ununuzi: ${err.message}`
-      );
+      setModalMessage("Imeshindwa kuunda mkataba wa ununuzi: " + err.message);
       setShowErrorModal(true);
     } finally {
       setCreatingAgreement(false);
@@ -286,7 +268,9 @@ const PurchaseAgreement = () => {
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
-          `Failed to download agreement: ${response.status} - ${errorText}`
+          `Failed to download agreement PDF. Status: ${
+            response.status
+          }. Response: ${errorText.substring(0, 100)}...`
         );
       }
 
@@ -304,9 +288,7 @@ const PurchaseAgreement = () => {
       setShowSuccessSnackbar(true);
     } catch (err) {
       console.error("Error downloading PDF:", err);
-      setModalMessage(
-        `Imeshindwa kupakua mkataba wa ununuzi: ${err.message}`
-      );
+      setModalMessage("Imeshindwa kupakua mkataba wa ununuzi: " + err.message);
       setShowErrorModal(true);
     } finally {
       setDownloadingPdf(false);
@@ -316,6 +298,7 @@ const PurchaseAgreement = () => {
   const createAndDownloadAgreement = async () => {
     try {
       await createPurchaseAgreement();
+
       setTimeout(async () => {
         if (agreementId) {
           await downloadAgreementPdf(agreementId);
@@ -625,13 +608,13 @@ const PurchaseAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Phone fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.phone} />
+                    <ListItemText primary={contractData.buyer_phone} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Email fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.email} />
+                    <ListItemText primary={contractData.buyer_email} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
@@ -759,7 +742,7 @@ const PurchaseAgreement = () => {
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Signatures & Witnesses */}
+          {/* Signatures */}
           <Box sx={{ mb: 2 }}>
             <Typography
               variant="h6"
@@ -809,6 +792,8 @@ const PurchaseAgreement = () => {
                   </Typography>
                 </Box>
               </Grid>
+
+              {/* Witness 1 */}
               <Grid item xs={6}>
                 <Box
                   sx={{
@@ -819,16 +804,18 @@ const PurchaseAgreement = () => {
                   }}
                 >
                   <Typography variant="body2" fontWeight="bold">
-                    SHAHIDI WA KWANZA:
+                    SHAHIDI WA KWANZA: (Jina na Sahihi)
                   </Typography>
                   <Typography variant="caption">
-                    Jina: ______________________________ <br />
+                    Jina: _________________________
                   </Typography>
                   <Typography variant="caption">
-                    Sahihi: ___________________
+                    Sahihi: _________________________
                   </Typography>
                 </Box>
               </Grid>
+
+              {/* Witness 2 */}
               <Grid item xs={6}>
                 <Box
                   sx={{
@@ -839,13 +826,13 @@ const PurchaseAgreement = () => {
                   }}
                 >
                   <Typography variant="body2" fontWeight="bold">
-                    SHAHIDI WA PILI:
+                    SHAHIDI WA PILI: (Jina na Sahihi)
                   </Typography>
                   <Typography variant="caption">
-                    Jina: _________________________ <br />
+                    Jina: _________________________
                   </Typography>
                   <Typography variant="caption">
-                    Sahihi: __________________
+                    Sahihi: _________________________
                   </Typography>
                 </Box>
               </Grid>
@@ -900,7 +887,7 @@ const PurchaseAgreement = () => {
                           Inaunda na Kupakua...
                         </>
                       ) : (
-                        "Unda na Pakua PDF"
+                        "Unda na Pakua Mkataba"
                       )}
                     </Button>
                   </Grid>
@@ -913,7 +900,7 @@ const PurchaseAgreement = () => {
                     size="medium"
                     startIcon={<Download />}
                     onClick={() => downloadAgreementPdf()}
-                    disabled={downloadingPdf}
+                    disabled={!agreementId || downloadingPdf}
                     sx={{ mb: 1 }}
                   >
                     {downloadingPdf ? (
@@ -922,7 +909,7 @@ const PurchaseAgreement = () => {
                         Inapakua...
                       </>
                     ) : (
-                      "Pakua PDF"
+                      "Pakua Mkataba (PDF)"
                     )}
                   </Button>
                 </Grid>
@@ -932,19 +919,23 @@ const PurchaseAgreement = () => {
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ mt: 2, display: "block" }}
+              sx={{ display: "block", mt: 2 }}
             >
-              Mkataba huu umejumuishwa kikamilifu chini ya sheria za Tanzania.
-              <br />
-              Kwa maswali, wasiliana nasi kupitia mfumo wetu wa msaada.
+              Mkataba huu umejumuishwa chini ya sheria za Tanzania. Kwa maswali,
+              wasiliana na msimamizi wa mfumo.
             </Typography>
           </Box>
         </Paper>
       </Container>
 
       {/* Error Modal */}
-      <Dialog open={showErrorModal} onClose={handleCloseErrorModal}>
-        <DialogTitle>Kosa</DialogTitle>
+      <Dialog
+        open={showErrorModal}
+        onClose={handleCloseErrorModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle color="error">Kosa Limetokea</DialogTitle>
         <DialogContent>
           <Typography>{modalMessage}</Typography>
         </DialogContent>
@@ -958,9 +949,9 @@ const PurchaseAgreement = () => {
       {/* Success Snackbar */}
       <Snackbar
         open={showSuccessSnackbar}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={handleCloseSuccessSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={handleCloseSuccessSnackbar}

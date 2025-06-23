@@ -38,10 +38,7 @@ function App() {
         <Route path="/RentalAgreement" element={<RentalAgreement />} />
         <Route path="/PurchaseAgreement" element={<PurchaseAgreement />} />
         <Route path="AdminLogin" element={<AdminLogin />} />
-        <Route
-          path="/password-reset/:uid/:token"
-          element={<ResetPasswordConfirmPage />}
-        />
+        <Route path="/password-reset/:uid/:token" element={<ResetPasswordConfirmPage />} />
         <Route
           path="/SellerPage"
           element={

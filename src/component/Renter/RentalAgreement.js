@@ -53,7 +53,6 @@ const RentalAgreement = () => {
 
   const navigate = useNavigate();
 
-  // API Endpoints
   const RENTAL_AGREEMENT_DETAILS_API_ENDPOINT =
     "http://127.0.0.1:8000/api/get-transactions/";
   const ADMIN_SELLERS_API_ENDPOINT =
@@ -97,10 +96,8 @@ const RentalAgreement = () => {
           }. Response: ${errorText.substring(0, 100)}...`
         );
       }
-      const allTransactions = await transactionsResponse.json();
-      console.log("All transactions data:", allTransactions);
 
-      // FIXED: Search by farm.id instead of transaction.id
+      const allTransactions = await transactionsResponse.json();
       const foundContract = allTransactions.find(
         (transaction) => String(transaction.farm.id) === String(idToFetch)
       );
@@ -108,7 +105,6 @@ const RentalAgreement = () => {
       if (!foundContract) {
         throw new Error(`No rental agreement found for farm ID ${idToFetch}.`);
       }
-      console.log("Found contract data:", foundContract);
 
       const adminSellersResponse = await fetch(ADMIN_SELLERS_API_ENDPOINT);
       if (!adminSellersResponse.ok) {
@@ -119,17 +115,15 @@ const RentalAgreement = () => {
           }. Response: ${errorText.substring(0, 100)}...`
         );
       }
-      const adminSellers = await adminSellersResponse.json();
-      console.log("Admin sellers data:", adminSellers);
 
+      const adminSellers = await adminSellersResponse.json();
       const relevantLandlord = adminSellers.find(
         (seller) => seller.username === foundContract.farm.username
       );
-      console.log("Relevant landlord (match by username):", relevantLandlord);
 
       const restructuredData = {
-        id: foundContract.id, 
-        farm_id: foundContract.farm.id, 
+        id: foundContract.id,
+        farm_id: foundContract.farm.id,
         farm_number: foundContract.farm.farm_number,
         created_at: foundContract.rent_date,
         location: foundContract.farm.location,
@@ -138,15 +132,11 @@ const RentalAgreement = () => {
         farm_type: foundContract.farm.farm_type,
         description: foundContract.farm.description,
         price: foundContract.farm.price,
-
-        // Renter details (using fetched data)
         full_name: foundContract.full_name,
-        phone: foundContract.renter_phone,
-        email: foundContract.renter_email,
-        tenant_residence: foundContract.residence,
-        renter_passport: foundContract.renter_passport || null,
-
-        // Landlord/Admin Seller details (using fetched data)
+        renter_phone: foundContract.renter_phone,
+        renter_email: foundContract.renter_email,
+        residence: foundContract.residence,
+        // renter_passport: foundContract.renter_passport || null,
         landlord_name: relevantLandlord
           ? relevantLandlord.seller_name
           : "Jina la Mkodishaji Halipatikani",
@@ -156,6 +146,7 @@ const RentalAgreement = () => {
           ? relevantLandlord.seller_residence
           : "Makazi ya Mkodishaji Hayapatikani",
         landlord_passport: foundContract.farm.passport || null,
+        rent_duration: foundContract.rent_duration || 12,
       };
 
       setContractData(restructuredData);
@@ -176,30 +167,58 @@ const RentalAgreement = () => {
         throw new Error("No contract data available to create agreement.");
       }
 
+      // Validate required fields before sending
+      const requiredFields = {
+        farm_number: contractData.farm_number,
+        size: contractData.size,
+        price: contractData.price,
+        location: contractData.location,
+        full_name: contractData.full_name,
+        quality: contractData.quality,
+        renter_email: contractData.renter_email,
+        renter_phone: contractData.renter_phone,
+        residence: contractData.residence,
+      };
+
+      const missingFields = [];
+      Object.entries(requiredFields).forEach(([key, value]) => {
+        if (!value || value === undefined || value === null || value === "") {
+          missingFields.push(key);
+        }
+      });
+
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+      }
+
+      // Clean payload - remove duplicates
       const agreementPayload = {
-        farm_id: contractData.farm_id, 
-        transaction_id: contractData.id, 
+        // Backend database fields (based on validation errors)
+        location: contractData.location,
+        size: parseFloat(contractData.size),
+        quality: contractData.quality,
+        price: parseFloat(contractData.price),
+        full_name: contractData.full_name,
+        renter_phone: contractData.renter_phone,
+        renter_email: contractData.renter_email,
+        residence: contractData.residence,
+
+        // Additional fields that might be expected
+        farm_id: contractData.farm_id,
+        transaction_id: contractData.id,
+        farm_number: contractData.farm_number,
         landlord_name: contractData.landlord_name,
         landlord_phone: contractData.landlord_phone,
         landlord_email: contractData.landlord_email,
         landlord_residence: contractData.landlord_residence,
         landlord_passport: contractData.landlord_passport,
-        tenant_name: contractData.full_name,
-        tenant_phone: contractData.phone,
-        tenant_email: contractData.email,
-        tenant_residence: contractData.tenant_residence,
-        tenant_passport: contractData.renter_passport,
-        farm_location: contractData.location,
-        farm_size: parseFloat(contractData.size),
-        farm_quality: contractData.quality,
         farm_type: contractData.farm_type,
-        farm_description: contractData.description || "",
-        monthly_rent: parseFloat(contractData.price),
+        description: contractData.description || "",
         agreement_date: contractData.created_at,
-        duration_months: 12,
+        duration_months: contractData.rent_duration || 12,
       };
 
-      console.log("Creating agreement with payload:", agreementPayload);
+      console.log("Agreement Payload:", agreementPayload);
 
       const response = await fetch(CREATE_RENTAL_AGREEMENT_API_ENDPOINT, {
         method: "POST",
@@ -209,11 +228,61 @@ const RentalAgreement = () => {
         body: JSON.stringify(agreementPayload),
       });
 
-      const result = await response.json();
-      console.log("Create agreement response:", result);
+      // Enhanced error logging
+      console.log("Response status:", response.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      const responseText = await response.text();
+      console.log("Raw response:", responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+        console.log("Parsed response:", result);
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", parseError);
+        throw new Error(
+          `Invalid response format. Status: ${
+            response.status
+          }. Response: ${responseText.substring(0, 200)}`
+        );
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create rental agreement");
+        console.error("Response not OK:", {
+          status: response.status,
+          statusText: response.statusText,
+          result: result,
+        });
+
+        // More specific error handling
+        if (response.status === 400) {
+          throw new Error(
+            `Validation Error: ${
+              result.error || result.message || "Bad Request"
+            }`
+          );
+        } else if (response.status === 500) {
+          throw new Error(
+            `Server Error: ${
+              result.error || result.message || "Internal Server Error"
+            }`
+          );
+        } else {
+          throw new Error(
+            `HTTP ${response.status}: ${
+              result.error || result.message || "Unknown error"
+            }`
+          );
+        }
+      }
+
+      // Check if response has expected structure
+      if (!result.hasOwnProperty("success")) {
+        console.warn("Response missing 'success' property:", result);
       }
 
       if (result.success) {
@@ -221,12 +290,19 @@ const RentalAgreement = () => {
         setAgreementId(result.agreement_id);
         setSuccessMessage("Mkataba umejumuishwa kikamilifu!");
         setShowSuccessSnackbar(true);
-        console.log("Agreement created successfully:", result.agreement_id);
+        console.log(
+          "Agreement created successfully with ID:",
+          result.agreement_id
+        );
       } else {
-        throw new Error(result.error || "Unknown error occurred");
+        console.error("Backend returned success=false:", result);
+        throw new Error(
+          result.error || result.message || "Backend reported failure"
+        );
       }
     } catch (err) {
       console.error("Error creating rental agreement:", err);
+      console.error("Error stack:", err.stack);
       setModalMessage("Imeshindwa kuunda mkataba: " + err.message);
       setShowErrorModal(true);
     } finally {
@@ -244,8 +320,6 @@ const RentalAgreement = () => {
       if (!downloadId) {
         throw new Error("No agreement ID available for download.");
       }
-
-      console.log("Downloading PDF for agreement:", downloadId);
 
       const response = await fetch(
         `${DOWNLOAD_RENTAL_AGREEMENT_API_ENDPOINT}${downloadId}/`
@@ -283,10 +357,8 @@ const RentalAgreement = () => {
 
   const createAndDownloadAgreement = async () => {
     try {
-      // First create the agreement
       await createRentalAgreement();
 
-      // Wait a moment for the agreement to be fully created
       setTimeout(async () => {
         if (agreementId) {
           await downloadAgreementPdf(agreementId);
@@ -409,7 +481,6 @@ const RentalAgreement = () => {
     );
   }
 
-  // Default passport image if none is provided by the API
   const defaultPassportImage = "https://via.placeholder.com/100x120?text=Picha";
 
   return (
@@ -463,7 +534,6 @@ const RentalAgreement = () => {
               Tarehe: {formatDate(contractData.created_at)}
             </Typography>
 
-            {/* Agreement Status Indicator */}
             {agreementCreated && (
               <Box sx={{ mt: 2 }}>
                 <Chip
@@ -494,7 +564,6 @@ const RentalAgreement = () => {
                   MKODISHAJI (LANDLORD):
                 </Typography>
                 <List dense disablePadding>
-                  {/* Landlord Passport Picture */}
                   <ListItem
                     disableGutters
                     sx={{ py: 0, justifyContent: "center" }}
@@ -558,7 +627,6 @@ const RentalAgreement = () => {
                   MKODISHWA (TENANT):
                 </Typography>
                 <List dense disablePadding>
-                  {/* Renter Passport Picture */}
                   <ListItem
                     disableGutters
                     sx={{ py: 0, justifyContent: "center" }}
@@ -575,9 +643,9 @@ const RentalAgreement = () => {
                       }}
                     >
                       <img
-                        src={
-                          contractData.renter_passport || defaultPassportImage
-                        }
+                        // src={
+                        //   contractData.renter_passport || defaultPassportImage
+                        // }
                         alt="Picha ya Mkodishwa"
                         style={{
                           width: "100%",
@@ -601,19 +669,19 @@ const RentalAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Phone fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.phone} />
+                    <ListItemText primary={contractData.renter_phone} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Email fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.email} />
+                    <ListItemText primary={contractData.renter_email} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Home fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.tenant_residence} />
+                    <ListItemText primary={contractData.residence} />
                   </ListItem>
                 </List>
               </Grid>
@@ -697,7 +765,7 @@ const RentalAgreement = () => {
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Terms and Conditions (Condensed) */}
+          {/* Terms and Conditions */}
           <Box sx={{ mb: 2 }}>
             <Typography
               variant="h6"
@@ -747,7 +815,7 @@ const RentalAgreement = () => {
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Signatures & Witnesses (Simplified) */}
+          {/* Signatures */}
           <Box sx={{ mb: 2 }}>
             <Typography
               variant="h6"
@@ -797,6 +865,8 @@ const RentalAgreement = () => {
                   </Typography>
                 </Box>
               </Grid>
+
+              {/* Referee 1 */}
               <Grid item xs={6}>
                 <Box
                   sx={{
@@ -807,16 +877,18 @@ const RentalAgreement = () => {
                   }}
                 >
                   <Typography variant="body2" fontWeight="bold">
-                    SHAHIDI WA KWANZA:
+                    MDHAMINI 1: (Jina na Sahihi)
                   </Typography>
                   <Typography variant="caption">
-                    Jina: ______________________________ <br />
+                    Jina: _________________________
                   </Typography>
                   <Typography variant="caption">
-                    Sahihi: ___________________
+                    Sahihi: _________________________
                   </Typography>
                 </Box>
               </Grid>
+
+              {/* Referee 2 */}
               <Grid item xs={6}>
                 <Box
                   sx={{
@@ -827,13 +899,13 @@ const RentalAgreement = () => {
                   }}
                 >
                   <Typography variant="body2" fontWeight="bold">
-                    SHAHIDI WA PILI:
+                    MDHAMINI 2: (Jina na Sahihi)
                   </Typography>
                   <Typography variant="caption">
-                    Jina: _________________________ <br />
+                    Jina: _________________________
                   </Typography>
                   <Typography variant="caption">
-                    Sahihi: __________________
+                    Sahihi: _________________________
                   </Typography>
                 </Box>
               </Grid>
@@ -888,7 +960,7 @@ const RentalAgreement = () => {
                           Inaunda na Kupakua...
                         </>
                       ) : (
-                        "Unda na Pakua PDF"
+                        "Unda na Pakua Mkataba"
                       )}
                     </Button>
                   </Grid>
@@ -901,7 +973,7 @@ const RentalAgreement = () => {
                     size="medium"
                     startIcon={<Download />}
                     onClick={() => downloadAgreementPdf()}
-                    disabled={downloadingPdf}
+                    disabled={!agreementId || downloadingPdf}
                     sx={{ mb: 1 }}
                   >
                     {downloadingPdf ? (
@@ -910,7 +982,7 @@ const RentalAgreement = () => {
                         Inapakua...
                       </>
                     ) : (
-                      "Pakua PDF"
+                      "Pakua Mkataba (PDF)"
                     )}
                   </Button>
                 </Grid>
@@ -920,19 +992,23 @@ const RentalAgreement = () => {
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ mt: 2, display: "block" }}
+              sx={{ display: "block", mt: 2 }}
             >
-              Mkataba huu umejumuishwa kikamilifu chini ya sheria za Tanzania.
-              <br />
-              Kwa maswali, wasiliana nasi kupitia mfumo wetu wa msaada.
+              Mkataba huu umejumuishwa chini ya sheria za Tanzania. Kwa maswali,
+              wasiliana na msimamizi wa mfumo.
             </Typography>
           </Box>
         </Paper>
       </Container>
 
       {/* Error Modal */}
-      <Dialog open={showErrorModal} onClose={handleCloseErrorModal}>
-        <DialogTitle>Kosa</DialogTitle>
+      <Dialog
+        open={showErrorModal}
+        onClose={handleCloseErrorModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle color="error">Kosa Limetokea</DialogTitle>
         <DialogContent>
           <Typography>{modalMessage}</Typography>
         </DialogContent>
@@ -946,9 +1022,9 @@ const RentalAgreement = () => {
       {/* Success Snackbar */}
       <Snackbar
         open={showSuccessSnackbar}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={handleCloseSuccessSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={handleCloseSuccessSnackbar}
