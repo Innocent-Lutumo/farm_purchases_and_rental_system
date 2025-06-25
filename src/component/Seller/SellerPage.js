@@ -1,16 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Drawer,
-  List,
-  Divider,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Card,
   CardContent,
   Button,
@@ -22,31 +12,26 @@ import {
   CssBaseline,
   Paper,
   CardActionArea,
-  Tooltip,
-  Menu,
-  MenuItem,
+  Typography,
 } from "@mui/material";
 import {
-  Menu as MenuIcon,
   ShoppingBag as PurchasesIcon,
   Home as RentsIcon,
   CloudUpload as UploadIcon,
   CheckCircle as AcceptedIcon,
   AddCircle as UploadNewIcon,
-  LightMode as LightModeIcon,
-  DarkMode as DarkModeIcon,
   Refresh as RefreshIcon,
-  ExitToApp as ExitToAppIcon,
-  AccountCircle as AccountCircleIcon,
-  ChevronRight,
   Lightbulb,
   Image as ImageIcon,
   MonetizationOn as MonetaryIcon,
   HourglassEmpty as PendingIcon,
   People as LeadsIcon,
+  ChevronRight,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
+import SellerAppBar from "./SellerAppBar";
+import SellerDrawer from "./SellerDrawer";
 
 // Theme creation
 const getTheme = (mode) =>
@@ -178,9 +163,9 @@ function SellerPage() {
   const [anchorEl, setAnchorEl] = useState(null);
 
   // Dummy data for farm listing overview
-  const [totalListings, setTotalListings] = useState(15);
-  const [pendingApplications, setPendingApplications] = useState(6);
-  const [newLeads, setNewLeads] = useState(5);
+  const [totalListings] = useState(15);
+  const [pendingApplications] = useState(6);
+  const [newLeads] = useState(5);
   const [totalValueListings] = useState(4);
 
   const navigate = useNavigate();
@@ -206,14 +191,6 @@ function SellerPage() {
     navigate("/LoginPage");
   };
 
-  const handleRefresh = () => {
-    // In a real app, this would trigger re-fetching data for the overview cards
-    console.log("Refreshing dashboard data...");
-    // For now, let's just simulate a change or refresh
-    setTotalListings((prev) => prev + 1);
-    setPendingApplications((prev) => Math.max(0, prev - 1));
-    setNewLeads((prev) => prev + 1);
-  };
 
   const handleDrawerToggle = useCallback(
     () => setDrawerOpen((prev) => !prev),
@@ -245,222 +222,24 @@ function SellerPage() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
-        {/* AppBar */}
-        <AppBar
-          position="fixed"
-          sx={{ zIndex: theme.zIndex.drawer + 1, boxShadow: "none" }}
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography
-              variant="h6"
-              noWrap
-              component="div"
-              sx={{ flexGrow: 1 }}
-            >
-              Farm Seller Dashboard
-            </Typography>
+        <SellerAppBar
+          handleDrawerToggle={handleDrawerToggle}
+          darkMode={darkMode}
+          handleThemeToggle={handleThemeToggle}
+          anchorEl={anchorEl}
+          handleMenuOpen={handleMenuOpen}
+          handleMenuClose={handleMenuClose}
+          handleLogout={handleLogout}
+        />
 
-            {/* Action buttons */}
-            <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
-              <IconButton color="inherit" onClick={handleThemeToggle}>
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Refresh Dashboard">
-              <IconButton color="inherit" onClick={handleRefresh}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-
-            <IconButton
-              edge="end"
-              color="inherit"
-              onClick={handleMenuOpen}
-              sx={{ ml: 1 }}
-            >
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: theme.palette.secondary.main,
-                }}
-              >
-                U
-              </Avatar>
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              PaperProps={{
-                elevation: 3,
-                sx: { borderRadius: 2, minWidth: 180 },
-              }}
-            >
-              <Box
-                sx={{ px: 2, py: 1.5, bgcolor: theme.palette.primary.light }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold" color="white">
-                  User
-                </Typography>
-                <Typography variant="caption" color="rgba(255,255,255,0.7)">
-                  Premium Seller
-                </Typography>
-              </Box>
-              <Divider />
-              <MenuItem
-                component={Link}
-                to="/profile"
-                onClick={handleMenuClose}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <AccountCircleIcon fontSize="small" color="action" />
-                <Typography variant="body2">My Profile</Typography>
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  handleLogout();
-                  handleMenuClose();
-                }}
-                sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-              >
-                <ExitToAppIcon fontSize="small" color="error" />
-                <Typography variant="body2" color="error">
-                  Logout
-                </Typography>
-              </MenuItem>
-            </Menu>
-          </Toolbar>
-        </AppBar>
-
-        {/* Side Drawer */}
-        <Drawer
-          variant="permanent"
-          open={drawerOpen}
-          sx={{
-            width: drawerOpen ? drawerWidth : theme.spacing(7),
-            flexShrink: 0,
-            "& .MuiDrawer-paper": {
-              width: drawerOpen ? drawerWidth : theme.spacing(7),
-              boxSizing: "border-box",
-              whiteSpace: "nowrap",
-              overflowX: "hidden",
-              transition: theme.transitions.create("width", {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-            },
-          }}
-        >
-          <Toolbar />
-          <Box sx={{ overflow: "hidden", mt: 2 }}>
-            {drawerOpen && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  mb: 4,
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    mb: 1,
-                    backgroundColor: theme.palette.primary.main,
-                  }}
-                >
-                  U
-                </Avatar>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  User
-                </Typography>
-              </Box>
-            )}
-
-            <List>
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path;
-
-                return (
-                  <ListItem
-                    key={item.text}
-                    component={Link}
-                    to={item.path}
-                    button
-                    sx={{
-                      backgroundColor: isActive
-                        ? theme.palette.action.selected
-                        : "transparent",
-                      borderRadius: drawerOpen ? 1 : 0,
-                      mx: drawerOpen ? 1 : 0,
-                      mb: 0.5,
-                      textDecoration: "none",
-                      color: "inherit",
-                    }}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: drawerOpen ? 48 : "100%",
-                        color: isActive
-                          ? theme.palette.primary.main
-                          : "inherit",
-                        textAlign: "center",
-                      }}
-                    >
-                      {item.icon}
-                    </ListItemIcon>
-                    {drawerOpen && (
-                      <ListItemText
-                        primary={item.text}
-                        primaryTypographyProps={{
-                          fontWeight: isActive ? 600 : 400,
-                          color: isActive
-                            ? theme.palette.primary.main
-                            : "inherit",
-                        }}
-                      />
-                    )}
-                  </ListItem>
-                );
-              })}
-            </List>
-            <Divider sx={{ my: 0 }} />
-            <List>
-              <ListItem
-                button
-                onClick={handleLogout}
-                sx={{
-                  borderRadius: drawerOpen ? 1 : 0,
-                  mx: drawerOpen ? 1 : 0,
-                  mb: 4,
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    minWidth: drawerOpen ? 48 : "100%",
-                    textAlign: "center",
-                  }}
-                >
-                  <ExitToAppIcon />
-                </ListItemIcon>
-                {drawerOpen && <ListItemText primary="Logout" />}
-              </ListItem>
-            </List>
-          </Box>
-        </Drawer>
+        <SellerDrawer
+          drawerOpen={drawerOpen}
+          drawerWidth={drawerWidth}
+          theme={theme}
+          handleLogout={handleLogout}
+          menuItems={menuItems}
+          location={location}
+        />
 
         {/* Main Content */}
         <Box
@@ -483,8 +262,18 @@ function SellerPage() {
               Real-time dashboard metrics and farm management tools
             </Typography>
           </Box>
-          {/* --- */}
-          Farm Listing Overview
+
+          {/* Farm Listing Overview */}
+          <Typography
+            variant="h5"
+            sx={{
+              mb: 3,
+              fontWeight: "bold",
+              color: "text.primary",
+            }}
+          >
+            Farm Listing Overview
+          </Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <FarmOverviewCard
@@ -523,6 +312,7 @@ function SellerPage() {
               />
             </Grid>
           </Grid>
+
           {/* Main Navigation Cards */}
           <motion.div
             variants={containerVariants}
@@ -624,6 +414,7 @@ function SellerPage() {
               ))}
             </Grid>
           </motion.div>
+
           {/* Tips Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -708,6 +499,7 @@ function SellerPage() {
               </Grid>
             </Paper>
           </motion.div>
+
           {/* Call to Action */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

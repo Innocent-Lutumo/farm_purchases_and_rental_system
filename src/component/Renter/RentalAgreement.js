@@ -211,7 +211,6 @@ const RentalAgreement = () => {
         landlord_phone: contractData.landlord_phone,
         landlord_email: contractData.landlord_email,
         landlord_residence: contractData.landlord_residence,
-        landlord_passport: contractData.landlord_passport,
         farm_type: contractData.farm_type,
         description: contractData.description || "",
         agreement_date: contractData.created_at,

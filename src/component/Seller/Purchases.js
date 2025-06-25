@@ -128,6 +128,9 @@ export default function Purchases() {
     soldOuts: 0,
   });
   const [imageErrors, setImageErrors] = useState({});
+  const [openAvailabilityDialog, setOpenAvailabilityDialog] = useState(false);
+  const [currentFarm, setCurrentFarm] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Image gallery states
   const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
@@ -235,6 +238,23 @@ export default function Purchases() {
         );
       }
 
+      // Recalculate stats based on the current orders data
+      const totalPurchases = ordersData.length;
+      const confirmed = ordersData.filter(
+        (o) => o.status === "Confirmed"
+      ).length;
+      const pending = ordersData.filter((o) => o.status === "Pending").length;
+      const soldOuts = ordersData.filter(
+        (o) => o.farm.is_sold === true && o.status === "Confirmed"
+      ).length;
+
+      setStats({
+        totalPurchases,
+        confirmed,
+        pending,
+        soldOuts,
+      });
+
       setFilteredOrders(filtered);
     },
     [searchQuery]
@@ -253,22 +273,6 @@ export default function Purchases() {
         { headers }
       );
       setOrders(data);
-
-      // Calculate stats based on fetched data
-      const totalPurchases = data.length;
-      const confirmed = data.filter((o) => o.status === "Confirmed").length;
-      const pending = data.filter((o) => o.status === "Pending").length;
-      const soldOuts = data.filter(
-        (o) => o.farm.is_sold === true && o.status === "Confirmed"
-      ).length;
-
-      setStats({
-        totalPurchases,
-        confirmed,
-        pending,
-        soldOuts,
-      });
-
       filterOrdersByTab(data, activeTab);
     } catch (error) {
       console.error("Error fetching orders:", error.response || error);
@@ -345,24 +349,68 @@ export default function Purchases() {
     }
   };
 
-  // Handler for farm availability toggle
-  const handleFarmAvailabilityToggle = async (farmId, currentIsSold) => {
+  // Handler for opening availability dialog
+  const handleOpenAvailabilityDialog = (farmId, isSold) => {
+    setCurrentFarm({ id: farmId, isSold });
+    setOpenAvailabilityDialog(true);
+  };
+
+  // Handler for closing availability dialog
+  const handleCloseAvailabilityDialog = () => {
+    setOpenAvailabilityDialog(false);
+    setCurrentFarm(null);
+  };
+
+  // Handler for farm availability toggle with deletion
+  const handleFarmAvailabilityToggle = async () => {
+    if (!currentFarm) return;
+
+    setIsProcessing(true);
     try {
       const token = localStorage.getItem("access");
-      const newIsSoldStatus = !currentIsSold;
-      await axios.patch(
-        `${
-          process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
-        }/api/farmsale/${farmId}/`,
-        { is_sold: newIsSoldStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchOrders();
+
+      if (currentFarm.isSold) {
+        // If marking as available (is_sold=false), also delete the transaction
+        await axios.patch(
+          `${
+            process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+          }/api/farmsale/${currentFarm.id}/`,
+          { is_sold: false },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Find and delete the corresponding transaction
+        const transactionToDelete = orders.find(
+          (order) => order.farm.id === currentFarm.id
+        );
+        if (transactionToDelete) {
+          await axios.delete(
+            `${
+              process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+            }/api/sale-transactions/${transactionToDelete.id}/`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        }
+      } else {
+        // If marking as sold (is_sold=true), just update the farm status
+        await axios.patch(
+          `${
+            process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+          }/api/farmsale/${currentFarm.id}/`,
+          { is_sold: true },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      fetchOrders(); // Refresh the data
     } catch (error) {
       console.error(
         "Failed to update farm availability:",
         error.response || error
       );
+    } finally {
+      setIsProcessing(false);
+      handleCloseAvailabilityDialog();
     }
   };
 
@@ -683,7 +731,7 @@ export default function Purchases() {
               <Switch
                 checked={!order.farm.is_sold}
                 onChange={() =>
-                  handleFarmAvailabilityToggle(
+                  handleOpenAvailabilityDialog(
                     order.farm.id,
                     order.farm.is_sold
                   )
@@ -721,7 +769,6 @@ export default function Purchases() {
           anchorEl={anchorEl}
           handleMenuOpen={handleMenuOpen}
           handleMenuClose={handleMenuClose}
-
           showSearchInput={showSearchInput}
           setShowSearchInput={setShowSearchInput}
           searchQuery={searchQuery}
@@ -880,7 +927,7 @@ export default function Purchases() {
                       >
                         <Box>
                           <Typography color="text.secondary" variant="body2">
-                            Sold 
+                            Sold
                           </Typography>
                           <Typography
                             variant="h4"
@@ -1156,7 +1203,7 @@ export default function Purchases() {
                                     : "success.main"
                                 }
                               >
-                                {order.farm.price} 
+                                {order.farm.price}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -1169,7 +1216,7 @@ export default function Purchases() {
                                     : "success.main"
                                 }
                               >
-                                {order.transaction_id || "N/A"} 
+                                {order.transaction_id || "N/A"}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -1303,7 +1350,7 @@ export default function Purchases() {
                                   <Switch
                                     checked={!order.farm.is_sold}
                                     onChange={() =>
-                                      handleFarmAvailabilityToggle(
+                                      handleOpenAvailabilityDialog(
                                         order.farm.id,
                                         order.farm.is_sold
                                       )
@@ -1366,6 +1413,50 @@ export default function Purchases() {
                 }
               >
                 {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Availability Confirmation Dialog */}
+          <Dialog
+            open={openAvailabilityDialog}
+            onClose={handleCloseAvailabilityDialog}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              {currentFarm?.isSold
+                ? "Mark Farm as Available"
+                : "Mark Farm as Sold"}
+            </DialogTitle>
+            <DialogContent>
+              <Typography>
+                {currentFarm?.isSold
+                  ? "Are you sure you want to mark this farm as available to the market and remove it from purchases? This action cannot be undone."
+                  : "Are you sure you want to mark this farm as sold? This will remove it from the available listings."}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={handleCloseAvailabilityDialog}
+                color="primary"
+                variant="outlined"
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleFarmAvailabilityToggle}
+                color={currentFarm?.isSold ? "success" : "error"}
+                variant="contained"
+                disabled={isProcessing}
+                startIcon={isProcessing ? <CircularProgress size={16} /> : null}
+              >
+                {isProcessing
+                  ? "Processing..."
+                  : currentFarm?.isSold
+                  ? "Mark Available"
+                  : "Mark Sold"}
               </Button>
             </DialogActions>
           </Dialog>

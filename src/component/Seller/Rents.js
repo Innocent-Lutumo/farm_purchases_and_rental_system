@@ -135,6 +135,9 @@ export default function Rents() {
     rented: 0,
   });
   const [imageErrors, setImageErrors] = useState({});
+  const [openAvailabilityDialog, setOpenAvailabilityDialog] = useState(false);
+  const [currentFarm, setCurrentFarm] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Image gallery states
   const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
@@ -349,19 +352,62 @@ export default function Rents() {
     }
   };
 
-  // Handler for farm availability toggle
-  const handleFarmAvailabilityToggle = async (farmId, currentIsRented) => {
+  // Handler for opening availability dialog
+  const handleOpenAvailabilityDialog = (farmId, isRented) => {
+    setCurrentFarm({ id: farmId, isRented });
+    setOpenAvailabilityDialog(true);
+  };
+
+  // Handler for closing availability dialog
+  const handleCloseAvailabilityDialog = () => {
+    setOpenAvailabilityDialog(false);
+    setCurrentFarm(null);
+  };
+
+  // Handler for farm availability toggle with deletion
+  const handleFarmAvailabilityToggle = async () => {
+    if (!currentFarm) return;
+
+    setIsProcessing(true);
     try {
       const token = localStorage.getItem("access");
-      const newIsRentedStatus = !currentIsRented;
-      await axios.patch(
-        `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/farmsrent/${farmId}/`,
-        { is_rented: newIsRentedStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchOrders();
+
+      if (currentFarm.isRented) {
+        // If marking as available (is_rented=false), also delete the transaction
+        await axios.patch(
+          `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/farmsrent/${currentFarm.id}/`,
+          { is_rented: false },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Find and delete the corresponding transaction
+        const transactionToDelete = orders.find(
+          (order) => order.farm.id === currentFarm.id
+        );
+        if (transactionToDelete) {
+          await axios.delete(
+            `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/rent-transactions/${transactionToDelete.id}/`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        }
+      } else {
+        // If marking as rented (is_rented=true), just update the farm status
+        await axios.patch(
+          `${process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000'}/api/farmsrent/${currentFarm.id}/`,
+          { is_rented: true },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      fetchOrders(); // Refresh the data
     } catch (error) {
-      console.error("Failed to update farm availability:", error.response || error);
+      console.error(
+        "Failed to update farm availability:",
+        error.response || error
+      );
+    } finally {
+      setIsProcessing(false);
+      handleCloseAvailabilityDialog();
     }
   };
 
@@ -684,7 +730,7 @@ export default function Rents() {
               <Switch
                 checked={!order.farm.is_rented}
                 onChange={() =>
-                  handleFarmAvailabilityToggle(
+                  handleOpenAvailabilityDialog(
                     order.farm.id,
                     order.farm.is_rented
                   )
@@ -1072,7 +1118,6 @@ export default function Rents() {
                                     variant="body2"
                                     fontWeight={600}
                                     sx={{
-                                      textDecoration: order.farm.is_rented ? "line-through" : "none",
                                       color: order.farm.is_rented ? "text.secondary" : "text.primary",
                                     }}
                                   >
@@ -1268,7 +1313,7 @@ export default function Rents() {
                                   <Switch
                                     checked={!order.farm.is_rented}
                                     onChange={() =>
-                                      handleFarmAvailabilityToggle(
+                                      handleOpenAvailabilityDialog(
                                         order.farm.id,
                                         order.farm.is_rented
                                       )
@@ -1301,15 +1346,14 @@ export default function Rents() {
           <Dialog
             open={openDeleteDialog}
             onClose={() => setOpenDeleteDialog(false)}
-            aria-labelledby="delete-dialog-title"
-            aria-describedby="delete-dialog-description"
+            maxWidth="sm"
+            fullWidth
           >
-            <DialogTitle id="delete-dialog-title">
-              Confirm Deletion
-            </DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogContent>
               <Typography>
-                Are you sure you want to delete this rental transaction? This action cannot be undone.
+                Are you sure you want to delete this transaction? This action
+                cannot be undone.
               </Typography>
             </DialogContent>
             <DialogActions>
@@ -1325,15 +1369,55 @@ export default function Rents() {
                 color="error"
                 variant="contained"
                 disabled={isDeleting}
+                startIcon={
+                  isDeleting ? <CircularProgress size={16} /> : <DeleteIcon />
+                }
               >
-                {isDeleting ? (
-                  <>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Availability Confirmation Dialog */}
+          <Dialog
+            open={openAvailabilityDialog}
+            onClose={handleCloseAvailabilityDialog}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              {currentFarm?.isRented
+                ? "Mark Farm as Available"
+                : "Mark Farm as Rented"}
+            </DialogTitle>
+            <DialogContent>
+              <Typography>
+                {currentFarm?.isRented
+                  ? "Are you sure you want to mark this farm as available to the market and remove it from rentals? This action cannot be undone."
+                  : "Are you sure you want to mark this farm as rented? This will remove it from the available listings."}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={handleCloseAvailabilityDialog}
+                color="primary"
+                variant="outlined"
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleFarmAvailabilityToggle}
+                color={currentFarm?.isRented ? "success" : "error"}
+                variant="contained"
+                disabled={isProcessing}
+                startIcon={isProcessing ? <CircularProgress size={16} /> : null}
+              >
+                {isProcessing
+                  ? "Processing..."
+                  : currentFarm?.isRented
+                  ? "Mark Available"
+                  : "Mark Rented"}
               </Button>
             </DialogActions>
           </Dialog>
@@ -1346,133 +1430,161 @@ export default function Rents() {
             fullWidth
             sx={{
               "& .MuiDialog-paper": {
-                maxHeight: "90vh",
-                m: 2,
+                bgcolor: "background.paper",
+                borderRadius: 2,
               },
             }}
           >
-            <DialogTitle
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                pb: 1,
-              }}
-            >
-              <Typography variant="h6">
-                Farm Images ({currentImageIndex + 1} of {selectedImages.length})
-              </Typography>
-              <IconButton
-                onClick={handleCloseImageGallery}
-                size="small"
+            <DialogTitle>
+              <Box
                 sx={{
-                  color: "text.secondary",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                <CloseIcon />
-              </IconButton>
+                <Typography variant="h6">
+                  Farm Images ({currentImageIndex + 1} of{" "}
+                  {selectedImages.length})
+                </Typography>
+                <IconButton onClick={handleCloseImageGallery}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
             </DialogTitle>
-            <DialogContent sx={{ p: 0, position: "relative" }}>
-              {selectedImages.length > 0 && (
+            <DialogContent>
+              {selectedImages.length > 0 ? (
+                <>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 400,
+                    }}
+                  >
+                    <img
+                      src={selectedImages[currentImageIndex]}
+                      alt={`Farm ${currentImageIndex + 1}`}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "70vh",
+                        objectFit: "contain",
+                        borderRadius: 8,
+                      }}
+                      onError={(e) => {
+                        e.target.src =
+                          "https://via.placeholder.com/500x300?text=Image+Not+Available";
+                      }}
+                    />
+
+                    {selectedImages.length > 1 && (
+                      <>
+                        <IconButton
+                          onClick={handlePreviousImage}
+                          sx={{
+                            position: "absolute",
+                            left: 16,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            bgcolor: "rgba(0, 0, 0, 0.5)",
+                            color: "white",
+                            "&:hover": {
+                              bgcolor: "rgba(0, 0, 0, 0.7)",
+                            },
+                          }}
+                        >
+                          <PrevIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={handleNextImage}
+                          sx={{
+                            position: "absolute",
+                            right: 16,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            bgcolor: "rgba(0, 0, 0, 0.5)",
+                            color: "white",
+                            "&:hover": {
+                              bgcolor: "rgba(0, 0, 0, 0.7)",
+                            },
+                          }}
+                        >
+                          <NextIcon />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
+
+                  {selectedImages.length > 1 && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        gap: 1,
+                        mt: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {selectedImages.map((image, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 1,
+                            overflow: "hidden",
+                            cursor: "pointer",
+                            border: index === currentImageIndex ? 2 : 1,
+                            borderColor:
+                              index === currentImageIndex
+                                ? "primary.main"
+                                : "divider",
+                            opacity: index === currentImageIndex ? 1 : 0.7,
+                            "&:hover": {
+                              opacity: 1,
+                            },
+                          }}
+                          onClick={() => setCurrentImageIndex(index)}
+                        >
+                          <img
+                            src={image}
+                            alt={`Thumbnail ${index + 1}`}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                            onError={(e) => {
+                              e.target.src =
+                                "https://via.placeholder.com/60x60?text=Image";
+                            }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </>
+              ) : (
                 <Box
                   sx={{
-                    position: "relative",
-                    width: "100%",
-                    height: "60vh",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    bgcolor: "black",
+                    minHeight: 300,
+                    color: "text.secondary",
                   }}
                 >
-                  <img
-                    src={selectedImages[currentImageIndex]}
-                    alt={`Farm ${currentImageIndex + 1}`}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                  
-                  {selectedImages.length > 1 && (
-                    <>
-                      <IconButton
-                        onClick={handlePreviousImage}
-                        sx={{
-                          position: "absolute",
-                          left: 16,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          bgcolor: "rgba(0, 0, 0, 0.5)",
-                          color: "white",
-                          "&:hover": {
-                            bgcolor: "rgba(0, 0, 0, 0.7)",
-                          },
-                        }}
-                      >
-                        <PrevIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={handleNextImage}
-                        sx={{
-                          position: "absolute",
-                          right: 16,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          bgcolor: "rgba(0, 0, 0, 0.5)",
-                          color: "white",
-                          "&:hover": {
-                            bgcolor: "rgba(0, 0, 0, 0.7)",
-                          },
-                        }}
-                      >
-                        <NextIcon />
-                      </IconButton>
-                    </>
-                  )}
+                  <BrokenImageIcon sx={{ fontSize: 64, mb: 2 }} />
+                  <Typography variant="h6">No images available</Typography>
                 </Box>
               )}
             </DialogContent>
-            {selectedImages.length > 1 && (
-              <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  {selectedImages.map((image, index) => (
-                    <Box
-                      key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      sx={{
-                        width: 60,
-                        height: 60,
-                        border: index === currentImageIndex ? 2 : 1,
-                        borderColor: index === currentImageIndex ? "primary.main" : "divider",
-                        borderRadius: 1,
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        "&:hover": {
-                          borderColor: "primary.main",
-                        },
-                      }}
-                    >
-                      <img
-                        src={image}
-                        alt={`Thumbnail ${index + 1}`}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-              </DialogActions>
-            )}
           </Dialog>
         </Box>
       </Box>
     </ThemeProvider>
   );
 }
-                             

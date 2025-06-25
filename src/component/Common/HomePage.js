@@ -10,35 +10,37 @@ import {
   CardContent,
   Box,
   Grid,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import img5 from "./images/img5.jpg";
 import SellIcon from "@mui/icons-material/Sell";
 import HomeIcon from "@mui/icons-material/Home";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
-
 const Home = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const farmOptions = [
     {
-      icon: <ShoppingCartIcon sx={{ fontSize: 60, color: "#4caf50" }} />,
+      icon: <ShoppingCartIcon sx={{ fontSize: "3.75rem", color: "#4caf50" }} />,
       title: "Buy Farm",
-      description:
-        "Find the perfect farmland to purchase with ease and confidence.",
+      description: "Find the perfect farmland to purchase with ease and confidence.",
       link: "/trial",
       backgroundImage: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
     {
-      icon: <HomeIcon sx={{ fontSize: 60, color: "#ff9800" }} />,
+      icon: <HomeIcon sx={{ fontSize: "3.75rem", color: "#ff9800" }} />,
       title: "Rent Farm",
       description: "Explore rental options for profitable land utilization.",
       link: "/RentPage",
       backgroundImage: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
     {
-      icon: <SellIcon sx={{ fontSize: 60, color: "#f44336" }} />,
+      icon: <SellIcon sx={{ fontSize: "3.75rem", color: "#f44336" }} />,
       title: "Sell Farm",
-      description:
-        "Learn how to sell your farmland efficiently and profitably.",
+      description: "Learn how to sell your farmland efficiently and profitably.",
       link: "/LoginPage",
       backgroundImage: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
@@ -64,7 +66,7 @@ const Home = () => {
   ];
   
   return (
-    <Box>
+    <Box sx={{ overflowX: "hidden" }}>
       {/* Enhanced Navbar with Header */}
       <AppBar position="static" sx={{ background: "green" }}>
         <Toolbar sx={{ flexDirection: "column", py: 2 }}>
@@ -72,7 +74,7 @@ const Home = () => {
             S/N 19
           </Typography>
           <Typography
-            variant="h4"
+            variant={isMobile ? "h5" : "h4"}
             sx={{
               fontWeight: "bold",
               color: "white",
@@ -88,7 +90,7 @@ const Home = () => {
       {/* Hero Section with Farm Background */}
       <Box
         sx={{
-          height: "500px",
+          height: { xs: "60vh", sm: "500px" },
           backgroundImage: "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1600&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -101,21 +103,24 @@ const Home = () => {
       >
         <Container>
           <Typography
-            variant="h2"
+            variant={isMobile ? "h3" : "h2"}
             sx={{
               fontWeight: "bold",
               mb: 2,
               textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
+              px: isMobile ? 2 : 0,
+              fontSize: { xs: "2rem", sm: "3rem" }
             }}
           >
             Your Gateway to Premium Farmland
           </Typography>
           <Typography
-            variant="h6"
+            variant={isMobile ? "body1" : "h6"}
             sx={{
               maxWidth: "600px",
               margin: "auto",
               textShadow: "1px 1px 2px rgba(0,0,0,0.7)",
+              px: isMobile ? 2 : 0,
             }}
           >
             Discover, rent, buy, and sell the finest farmlands with our comprehensive farm management platform
@@ -124,10 +129,10 @@ const Home = () => {
       </Box>
 
       {/* Main Content */}
-      <Container sx={{ textAlign: "center", my: 6 }}>
+      <Container sx={{ textAlign: "center", my: { xs: 4, md: 6 }, px: { xs: 2, sm: 3 } }}>
         {/* About Section with Navigation Links */}
         <Typography
-          variant="h6"
+          variant={isMobile ? "body1" : "h6"}
           sx={{
             maxWidth: "800px",
             margin: "auto",
@@ -146,6 +151,7 @@ const Home = () => {
               fontWeight: "bold",
               textDecoration: "none",
               "&:hover": { textDecoration: "underline" },
+              display: "inline",
             }}
           >
             buy your dream farmland
@@ -159,6 +165,7 @@ const Home = () => {
               fontWeight: "bold",
               textDecoration: "none",
               "&:hover": { textDecoration: "underline" },
+              display: "inline",
             }}
           >
             rental opportunities
@@ -172,6 +179,7 @@ const Home = () => {
               fontWeight: "bold",
               textDecoration: "none",
               "&:hover": { textDecoration: "underline" },
+              display: "inline",
             }}
           >
             sell your farmland
@@ -181,7 +189,13 @@ const Home = () => {
 
         <Typography
           variant="body1"
-          sx={{ maxWidth: "700px", margin: "auto", color: "#666", mb: 5 }}
+          sx={{ 
+            maxWidth: "700px", 
+            margin: "auto", 
+            color: "#666", 
+            mb: { xs: 3, md: 5 },
+            px: { xs: 1, sm: 0 }
+          }}
         >
           Our system provides detailed land information, competitive pricing,
           direct seller contacts, and precise GPS-based locations for seamless
@@ -205,8 +219,8 @@ const Home = () => {
               component={Link}
               to={option.link}
               sx={{
-                width: 280,
-                height: 300,
+                width: { xs: "100%", sm: 280 },
+                height: { xs: 250, sm: 300 },
                 borderRadius: 4,
                 boxShadow: 3,
                 textDecoration: "none",
@@ -233,12 +247,13 @@ const Home = () => {
                 color: "white",
                 position: "relative",
                 zIndex: 1,
+                width: "100%",
               }}>
                 <Box sx={{ mb: 2 }}>
-                  {React.cloneElement(option.icon, { sx: { fontSize: 60, color: "white" } })}
+                  {React.cloneElement(option.icon, { sx: { fontSize: { xs: "3rem", sm: "3.75rem" }, color: "white" } })}
                 </Box>
                 <Typography
-                  variant="h6"
+                  variant={isMobile ? "h6" : "h5"}
                   sx={{ fontWeight: "bold", color: "white", mb: 1 }}
                 >
                   {option.title}
@@ -254,12 +269,10 @@ const Home = () => {
           ))}
         </Box>
 
-        {/* --- */}
-
         {/* Farm Gallery Section */}
-        <Box sx={{ my: 8 }}>
+        <Box sx={{ my: { xs: 4, md: 8 } }}>
           <Typography
-            variant="h4"
+            variant={isMobile ? "h5" : "h4"}
             sx={{
               fontWeight: "bold",
               color: "green",
@@ -277,6 +290,7 @@ const Home = () => {
               color: "#666",
               mb: 4,
               textAlign: "center",
+              px: { xs: 1, sm: 0 }
             }}
           >
             Explore our diverse collection of premium agricultural properties across different farming sectors
@@ -287,8 +301,7 @@ const Home = () => {
               <Grid item xs={12} sm={6} md={3} key={index}>
                 <Card
                   sx={{
-                    // Removed fixed height to allow content to dictate height
-                    minHeight: 250, // Ensures a minimum height
+                    minHeight: { xs: 200, sm: 250 },
                     borderRadius: 3,
                     overflow: "hidden",
                     boxShadow: 3,
@@ -298,24 +311,25 @@ const Home = () => {
                       boxShadow: 6,
                     },
                     cursor: "pointer",
-                    display: 'flex', // Added flex display
-                    flexDirection: 'column', // Stack content vertically
+                    display: 'flex',
+                    flexDirection: 'column',
                   }}
                 >
                   <Box
                     sx={{
-                      flexGrow: 1, // Allows this box to take up available space
+                      flexGrow: 1,
                       backgroundImage: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.5)), url(${farm.url})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
                       display: "flex",
                       alignItems: "flex-end",
                       p: 2,
-                      width: '100%', // Ensure the image box takes full width
+                      width: '100%',
+                      height: '100%',
                     }}
                   >
                     <Typography
-                      variant="h6"
+                      variant={isMobile ? "subtitle1" : "h6"}
                       sx={{
                         color: "white",
                         fontWeight: "bold",
@@ -331,20 +345,18 @@ const Home = () => {
           </Grid>
         </Box>
 
-        {/* --- */}
-
         {/* Call to Action Section */}
         <Box
           sx={{
-            my: 6,
-            p: 4,
+            my: { xs: 4, md: 6 },
+            p: { xs: 2, md: 4 },
             backgroundImage: "linear-gradient(135deg, #4caf50, #8bc34a)",
             borderRadius: 4,
             color: "white",
           }}
         >
           <Typography
-            variant="h5"
+            variant={isMobile ? "h6" : "h5"}
             sx={{ fontWeight: "bold", mb: 2 }}
           >
             Ready to Start Your Agricultural Journey?

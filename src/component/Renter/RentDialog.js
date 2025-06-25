@@ -16,17 +16,35 @@ import {
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
-  Send as SendIcon, // Icon for submit
-  Cancel as CancelIcon, // Icon for cancel
-  Done as DoneIcon, // Icon for done (success)
-  Close as CloseIcon, // Icon for close
-  Warning as WarningIcon, // Icon for alert title
+  Send as SendIcon, 
+  Cancel as CancelIcon, 
+  Done as DoneIcon, 
+  Close as CloseIcon, 
+  Warning as WarningIcon, 
 } from "@mui/icons-material";
+import { keyframes } from "@emotion/react";
+
+// Animation for the checkmark
+const tickAnimation = keyframes`
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+`;
 
 const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionComplete, setTransactionComplete] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
+  const [showTick, setShowTick] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [renterEmail, setRenterEmail] = useState("");
@@ -50,8 +68,11 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
     setAlertMessage("");
   };
 
-  const generateRandomId = () =>
-    Math.floor(1000000000 + Math.random() * 9000000000);
+  const generateRandomId = () => {
+    const id = Math.floor(1000000000 + Math.random() * 9000000000);
+    setTransactionId(id.toString());
+    return id;
+  };
 
   const handleSubmit = async () => {
     if (!fullName || !renterEmail || !renterPhone || !residence) {
@@ -63,7 +84,6 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
     }
 
     const newTransactionId = generateRandomId();
-    setTransactionId(newTransactionId);
     setIsSubmitting(true);
 
     try {
@@ -129,6 +149,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
       }
 
       setTransactionComplete(true);
+      setTimeout(() => setShowTick(true), 500);
     } catch (error) {
       console.error("Failed to submit rental:", error);
       showCustomAlert(
@@ -148,6 +169,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
     setNationalId("");
     setTransactionComplete(false);
     setTransactionId(null);
+    setShowTick(false);
   };
 
   const handleClose = () => {
@@ -159,6 +181,25 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
     }
     closeCustomAlert();
     onClose();
+  };
+
+  const textFieldStyles = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "8px",
+      "& fieldset": {
+        borderColor: "#ddd",
+        transition: "border-color 0.3s ease",
+      },
+      "&:hover fieldset": {
+        borderColor: "green",
+        boxShadow: "0 0 0 1px rgba(0, 128, 0, 0.1)",
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "green",
+        boxShadow: "0 0 0 2px rgba(0, 128, 0, 0.1)",
+      },
+    },
+    "& label.Mui-focused": { color: "green" },
   };
 
   return (
@@ -192,99 +233,106 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
 
         <DialogContent sx={{ px: 3, py: 3 }}>
           {transactionComplete ? (
-            <Fade in={transactionComplete} timeout={500}>
-              <Box sx={{ textAlign: "center", my: 2 }}>
-                <CheckCircleIcon
-                  sx={{
-                    fontSize: 80,
-                    color: "#4CAF50",
-                    mb: 2,
-                  }}
-                />
-
-                <Typography
-                  variant="h5"
-                  sx={{
-                    color: "#4CAF50",
-                    mb: 2,
-                    fontWeight: 600,
-                  }}
-                >
-                  Rental Successful!
-                </Typography>
-
-                <Box
-                  sx={{
-                    p: 3,
-                    borderRadius: 2,
-                    border: "1px solid #E0E0E0",
-                    mb: 3,
-                    backgroundColor: "#F9F9F9", 
-                  }}
-                >
-                  <Typography
-                    variant="body1"
+            <Box sx={{ 
+              textAlign: "center", 
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%'
+            }}>
+              {/* Checkmark Animation */}
+              <Box
+                sx={{
+                  position: "relative",
+                  width: 60,
+                  height: 60,
+                  margin: "0 auto 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {!showTick && (
+                  <CircularProgress
+                    size={60}
+                    thickness={2}
+                    sx={{ color: "rgba(0, 128, 0, 0.2)", position: "absolute" }}
+                  />
+                )}
+                {showTick && (
+                  <CheckCircleIcon
                     sx={{
-                      mb: 1,
-                      fontWeight: 600,
-                      color: "#424242",
+                      fontSize: 60,
+                      color: "green",
+                      animation: `${tickAnimation} 0.6s ease-in-out`,
                     }}
-                  >
+                  />
+                )}
+              </Box>
+
+              <DialogTitle sx={{ 
+                color: "green", 
+                fontSize: "1.5rem", 
+                fontWeight: "bold",
+                p: 0,
+                mb: 1
+              }}>
+                Rental Successful!
+              </DialogTitle>
+
+              <Box sx={{
+                flex: 1,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
+                <Typography variant="body1" sx={{ mb: 1.5 }}>
+                  Your rental request has been processed successfully.
+                </Typography>
+                
+                {/* Transaction ID Box */}
+                <Box sx={{ 
+                  backgroundColor: "#f5f5f5", 
+                  p: 1.5, 
+                  borderRadius: "6px",
+                  borderLeft: "3px solid green",
+                  mb: 1.5
+                }}>
+                  <Typography variant="body2" sx={{ fontWeight: "bold" }}>
                     Transaction ID:
                   </Typography>
-                  <Typography
-                    sx={{
-                      color: "#1B5E20", 
-                      fontWeight: "bold",
-                      fontSize: "1.3rem",
-                      fontFamily: "monospace",
-                      textAlign: "center",
-                      p: 1.5,
-                      borderRadius: 1,
-                      backgroundColor: "#E8F5E8", 
-                      border: "1px solid #C8E6C9",
-                    }}
-                  >
+                  <Typography variant="subtitle1" sx={{ color: "green", fontWeight: "bold" }}>
                     {transactionId}
                   </Typography>
                 </Box>
 
-                <Box
-                  sx={{
-                    p: 3,
-                    borderRadius: 2,
-                    border: "1px solid #E0E0E0",
-                    backgroundColor: "#F9F9F9", 
-                  }}
-                >
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      mb: 1,
-                      fontWeight: 600,
-                      color: "#424242",
-                    }}
-                  >
-                    Transaction ID has sent to:
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: "#1976D2",
-                      fontWeight: "bold",
-                      fontSize: "1rem",
-                      p: 1.5,
-                      borderRadius: 1,
-                      backgroundColor: "#E3F2FD",
-                      border: "1px solid #BBDEFB",
-                      textAlign: "center",
-                    }}
-                  >
-                    {renterEmail} <br />
-                    Keep it safe for the History tracking of your farm
+                {/* Email Info */}
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  Confirmation sent to:
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  fontWeight: "bold",
+                  color: "green",
+                  mb: 1.5
+                }}>
+                  {renterEmail}
+                </Typography>
+
+                {/* Important Notice */}
+                <Box sx={{
+                  backgroundColor: "#fff8e1",
+                  p: 1.5,
+                  borderRadius: "6px",
+                  border: "1px solid #ffd54f",
+                  mb: 1.5
+                }}>
+                  <Typography variant="body2" sx={{ fontStyle: "italic", fontSize: '0.875rem' }}>
+                    <strong>Important:</strong> Keep this transaction ID safe for future reference.
                   </Typography>
                 </Box>
               </Box>
-            </Fade>
+            </Box>
           ) : (
             <Box sx={{ mt: 1 }}>
               <Grid container spacing={2}>
@@ -295,11 +343,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                      "& .MuiInputLabel-root": { fontWeight: 400 },
-                    }}
+                    sx={textFieldStyles}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -310,11 +354,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
                     value={renterEmail}
                     onChange={(e) => setRenterEmail(e.target.value)}
                     required
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                      "& .MuiInputLabel-root": { fontWeight: 400 },
-                    }}
+                    sx={textFieldStyles}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -325,11 +365,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
                     value={renterPhone}
                     onChange={(e) => setRenterPhone(e.target.value)}
                     required
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                      "& .MuiInputLabel-root": { fontWeight: 400 },
-                    }}
+                    sx={textFieldStyles}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -339,11 +375,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
                     value={residence}
                     onChange={(e) => setResidence(e.target.value)}
                     required
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                      "& .MuiInputLabel-root": { fontWeight: 400 },
-                    }}
+                    sx={textFieldStyles}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -352,11 +384,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
                     fullWidth
                     value={nationalId}
                     onChange={(e) => setNationalId(e.target.value)}
-                    variant="outlined"
-                    sx={{
-                      "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                      "& .MuiInputLabel-root": { fontWeight: 400 },
-                    }}
+                    sx={textFieldStyles}
                   />
                 </Grid>
               </Grid>
@@ -381,14 +409,14 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
               size="medium"
               startIcon={isSubmitting ? null : <SendIcon />}
               sx={{
-                borderRadius: 1,
-                px: 3,
+                borderRadius: "20px",
+                px: 4,
                 py: 1,
                 fontSize: "1rem",
                 fontWeight: 500,
                 backgroundColor: "green",
                 "&:hover": {
-                  backgroundColor: "#1976D2",
+                  backgroundColor: "#2E7D32",
                 },
                 "&:disabled": {
                   backgroundColor: "#BDBDBD",
@@ -412,8 +440,8 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
             size="medium"
             startIcon={transactionComplete ? <DoneIcon /> : <CancelIcon />}
             sx={{
-              borderRadius: 1,
-              px: 3,
+              borderRadius: "20px",
+              px: 4,
               py: 1,
               fontSize: "1rem",
               fontWeight: 500,
@@ -440,7 +468,7 @@ const RentDialog = ({ open, onClose, farm, onRentSuccess }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Custom Alert Modal - simplified further */}
+      {/* Custom Alert Modal */}
       <Modal
         open={showAlertModal}
         onClose={closeCustomAlert}

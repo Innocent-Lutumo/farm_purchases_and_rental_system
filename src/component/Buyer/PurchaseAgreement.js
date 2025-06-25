@@ -103,7 +103,9 @@ const PurchaseAgreement = () => {
       );
 
       if (!foundContract) {
-        throw new Error(`No purchase agreement found for farm ID ${idToFetch}.`);
+        throw new Error(
+          `No purchase agreement found for farm ID ${idToFetch}.`
+        );
       }
 
       const adminSellersResponse = await fetch(ADMIN_SELLERS_API_ENDPOINT);
@@ -132,12 +134,11 @@ const PurchaseAgreement = () => {
         farm_type: foundContract.farm.farm_type,
         description: foundContract.farm.description,
         price: foundContract.farm.price,
-        payment_method: foundContract.payment_method,
         full_name: foundContract.full_name,
-        buyer_phone: foundContract.contact_info,
+        contact_info: foundContract.contact_info,
         buyer_email: foundContract.buyer_email,
-        buyer_residence: foundContract.address,
-        buyer_passport: foundContract.buyer_passport || null,
+        address: foundContract.address,
+        // buyer_passport: foundContract.buyer_passport || null,
         seller_name: relevantSeller
           ? relevantSeller.seller_name
           : "Jina la Muuzaji Halipatikani",
@@ -176,8 +177,8 @@ const PurchaseAgreement = () => {
         full_name: contractData.full_name,
         quality: contractData.quality,
         buyer_email: contractData.buyer_email,
-        buyer_phone: contractData.buyer_phone,
-        buyer_residence: contractData.buyer_residence,
+        contact_info: contractData.contact_info,
+        address: contractData.address,
       };
 
       const missingFields = [];
@@ -192,26 +193,26 @@ const PurchaseAgreement = () => {
       }
 
       const agreementPayload = {
+        location: contractData.location,
+        size: parseFloat(contractData.size),
+        quality: contractData.quality,
+        price: parseFloat(contractData.price),
+        full_name: contractData.full_name,
+        contact_info: contractData.contact_info,
+        buyer_email: contractData.buyer_email,
+        address: contractData.address,
+
+        // Additional fields that might be expected
         farm_id: contractData.farm_id,
         transaction_id: contractData.id,
         farm_number: contractData.farm_number,
-        seller_name: contractData.seller_name,
-        seller_phone: contractData.seller_phone,
-        seller_email: contractData.seller_email,
-        seller_residence: contractData.seller_residence,
-        seller_passport: contractData.seller_passport,
-        buyer_name: contractData.full_name,
-        buyer_phone: contractData.buyer_phone,
-        buyer_email: contractData.buyer_email,
-        buyer_residence: contractData.buyer_residence,
-        buyer_passport: contractData.buyer_passport,
-        farm_location: contractData.location,
-        farm_size: parseFloat(contractData.size),
-        farm_quality: contractData.quality,
+        landlord_name: contractData.seller_name,
+        landlord_phone: contractData.seller_phone,
+        landlord_email: contractData.seller_email,
+        landlord_residence: contractData.seller_residence,
         farm_type: contractData.farm_type,
-        farm_description: contractData.description || "",
-        purchase_price: parseFloat(contractData.price),
-        agreement_date: contractData.created_at,
+        description: contractData.description || "",
+        purpose: contractData.intended_use || "",
       };
 
       const response = await fetch(CREATE_PURCHASE_AGREEMENT_API_ENDPOINT, {
@@ -306,7 +307,9 @@ const PurchaseAgreement = () => {
       }, 1000);
     } catch (err) {
       console.error("Error in create and download flow:", err);
-      setModalMessage("Imeshindwa kuunda na kupakua mkataba wa ununuzi: " + err.message);
+      setModalMessage(
+        "Imeshindwa kuunda na kupakua mkataba wa ununuzi: " + err.message
+      );
       setShowErrorModal(true);
     }
   };
@@ -608,7 +611,7 @@ const PurchaseAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Phone fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.buyer_phone} />
+                    <ListItemText primary={contractData.contact_info} />
                   </ListItem>
                   <ListItem disableGutters sx={{ py: 0 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
@@ -620,7 +623,7 @@ const PurchaseAgreement = () => {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <Home fontSize="small" color="success" />
                     </ListItemIcon>
-                    <ListItemText primary={contractData.buyer_residence} />
+                    <ListItemText primary={contractData.address} />
                   </ListItem>
                 </List>
               </Grid>
