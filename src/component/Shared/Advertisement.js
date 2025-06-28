@@ -47,8 +47,6 @@ const AdvertisementSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fullText = "Don't Just Look at Pictures";
-
   // Auto-scrolling ads effect
   useEffect(() => {
     const interval = setInterval(() => {
@@ -58,6 +56,8 @@ const AdvertisementSection = () => {
   }, []);
 
   // Typing effect
+  const fullText = "Don't Just Look at Pictures";
+
   useEffect(() => {
     const typingSpeed = isDeleting ? 50 : 100;
     const pauseTime = isDeleting ? 1000 : 2000;
@@ -80,7 +80,7 @@ const AdvertisementSection = () => {
   }, [currentIndex, isDeleting, fullText]);
 
   const cardStyles = {
-    height: "200px", // Reduced from 300px to 200px
+    height: "200px",
     borderRadius: 3,
     boxShadow: "0 8px 32px rgba(34, 139, 87, 0.15)",
     display: "flex",
@@ -98,8 +98,8 @@ const AdvertisementSection = () => {
       sx={{
         background:
           "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 25%, #bbf7d0 50%, #dcfce7 75%, #f0fdf4 100%)",
-        minHeight: "230px", 
-        py: 3, 
+        minHeight: "230px",
+        py: 3,
         position: "relative",
         overflow: "hidden",
         "&::before": {

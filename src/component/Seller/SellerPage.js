@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Card,
@@ -13,6 +13,8 @@ import {
   Paper,
   CardActionArea,
   Typography,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import {
   ShoppingBag as PurchasesIcon,
@@ -23,9 +25,6 @@ import {
   Refresh as RefreshIcon,
   Lightbulb,
   Image as ImageIcon,
-  MonetizationOn as MonetaryIcon,
-  HourglassEmpty as PendingIcon,
-  People as LeadsIcon,
   ChevronRight,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
@@ -41,7 +40,7 @@ const getTheme = (mode) =>
       primary: { main: "#2e7d32" },
       secondary: { main: "#f50057" },
       background: {
-        default: mode === "light" ? "#f5f5f5" : "#121212",
+        default: mode === "light" ? "#f5f5f5" : "#121212",  //change light to dark
         paper: mode === "light" ? "#ffffff" : "#1e1e1e",
       },
     },
@@ -111,7 +110,7 @@ const menuItems = [
   },
 ];
 
-// New: Farm Listing Overview Card component
+// Farm Listing Overview Card component
 const FarmOverviewCard = ({ title, value, icon, color, subtitle }) => (
   <Card>
     <CardContent>
@@ -162,11 +161,13 @@ function SellerPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
-  // Dummy data for farm listing overview
-  const [totalListings] = useState(15);
-  const [pendingApplications] = useState(6);
-  const [newLeads] = useState(5);
-  const [totalValueListings] = useState(4);
+  // States for real-time stats
+  const [totalListings, setTotalListings] = useState(0);
+  const [purchaseRequests, setPurchaseRequests] = useState(0);
+  const [rentalRequests, setRentalRequests] = useState(0);
+  const [farmsUploaded, setFarmsUploaded] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -191,13 +192,127 @@ function SellerPage() {
     navigate("/LoginPage");
   };
 
-
   const handleDrawerToggle = useCallback(
     () => setDrawerOpen((prev) => !prev),
     []
   );
 
   const handleThemeToggle = useCallback(() => setDarkMode((prev) => !prev), []);
+
+  // Helper function to get data count from API response
+  const getDataCount = (data) => {
+    if (typeof data === 'number') return data;
+    if (data && typeof data.count === 'number') return data.count;
+    if (data && typeof data.length === 'number') return data.length;
+    if (Array.isArray(data)) return data.length;
+    if (data && data.results && Array.isArray(data.results)) return data.results.length;
+    if (data && data.data && Array.isArray(data.data)) return data.data.length;
+    return 0;
+  };
+
+  // Data Fetching Logic
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoadingStats(true);
+      setStatsError(null);
+
+      try {
+        const token = localStorage.getItem("access");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+
+        const headers = { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        // Fetch all data in parallel
+        const [
+          purchaseRes,
+          rentalRes,
+          uploadedRes,
+        ] = await Promise.all([
+          fetch("http://127.0.0.1:8000/api/sale-transactions/", { headers }),
+          fetch("http://127.0.0.1:8000/api/rent-transactions/", { headers }),
+          fetch("http://127.0.0.1:8000/api/all-farms/", { headers }),
+        ]);
+
+        // Check for HTTP errors
+        if (!purchaseRes.ok) {
+          console.warn("Purchase requests API failed:", purchaseRes.status, purchaseRes.statusText);
+        }
+        if (!rentalRes.ok) {
+          console.warn("Rental requests API failed:", rentalRes.status, rentalRes.statusText);
+        }
+        if (!uploadedRes.ok) {
+          console.warn("Uploaded farms API failed:", uploadedRes.status, uploadedRes.statusText);
+        }
+
+        // Parse responses
+        let purchaseData = 0, rentalData = 0, uploadedData = 0;
+
+        try {
+          if (purchaseRes.ok) {
+            const data = await purchaseRes.json();
+            purchaseData = getDataCount(data);
+            console.log("Purchase data:", data, "Count:", purchaseData);
+          }
+        } catch (e) {
+          console.error("Error parsing purchase data:", e);
+        }
+
+        try {
+          if (rentalRes.ok) {
+            const data = await rentalRes.json();
+            rentalData = getDataCount(data);
+            console.log("Rental data:", data, "Count:", rentalData);
+          }
+        } catch (e) {
+          console.error("Error parsing rental data:", e);
+        }
+
+        try {
+          if (uploadedRes.ok) {
+            const data = await uploadedRes.json();
+            uploadedData = getDataCount(data);
+            console.log("Uploaded data:", data, "Count:", uploadedData);
+          }
+        } catch (e) {
+          console.error("Error parsing uploaded data:", e);
+        }
+
+        // Update states
+        setPurchaseRequests(purchaseData);
+        setRentalRequests(rentalData);
+        setFarmsUploaded(uploadedData);
+        
+        // Calculate total listings as sum of all other stats
+        const total = purchaseData + rentalData + uploadedData;
+        setTotalListings(total);
+
+        console.log("Final stats:", {
+          purchases: purchaseData,
+          rentals: rentalData,
+          uploaded: uploadedData,
+          total: total
+        });
+
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        setStatsError(`Failed to load dashboard statistics: ${error.message}`);
+        // Reset all values to 0 on error
+        setPurchaseRequests(0);
+        setRentalRequests(0);
+        setFarmsUploaded(0);
+        setTotalListings(0);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -237,7 +352,6 @@ function SellerPage() {
           drawerWidth={drawerWidth}
           theme={theme}
           handleLogout={handleLogout}
-          menuItems={menuItems}
           location={location}
         />
 
@@ -274,44 +388,62 @@ function SellerPage() {
           >
             Farm Listing Overview
           </Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <FarmOverviewCard
-                title="Total Listings"
-                value={totalListings}
-                icon={<UploadIcon color="primary" />}
-                color="primary.main"
-                subtitle="Your active and inactive farms"
-              />
+          {loadingStats ? (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 100 }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading statistics...</Typography>
+            </Box>
+          ) : statsError ? (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {statsError}
+              <Button 
+                variant="text" 
+                onClick={() => window.location.reload()} 
+                sx={{ ml: 2 }}
+              >
+                Retry
+              </Button>
+            </Alert>
+          ) : (
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <FarmOverviewCard
+                  title="Total Listings"
+                  value={totalListings}
+                  icon={<Lightbulb color="primary" />}
+                  color="primary.main"
+                  subtitle="Sum of all your farm activities"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FarmOverviewCard
+                  title="Purchase Requests"
+                  value={purchaseRequests}
+                  color="warning.main"
+                  icon={<PurchasesIcon color="warning" />}
+                  subtitle="Total purchase inquiries for your farms"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FarmOverviewCard
+                  title="Rental Requests"
+                  value={rentalRequests}
+                  color="success.main"
+                  icon={<RentsIcon color="success" />}
+                  subtitle="Total rental requests for your farms"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FarmOverviewCard
+                  title="Farms Uploaded"
+                  value={farmsUploaded}
+                  color="info.main"
+                  icon={<UploadIcon color="info" />}
+                  subtitle="All uploaded farms for sale and rent"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FarmOverviewCard
-                title="Purchases requests"
-                value={pendingApplications}
-                color="warning.main"
-                icon={<PendingIcon color="warning" />}
-                subtitle="Total purchase inquiries for your farms"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FarmOverviewCard
-                title="Rental requests"
-                value={`${totalValueListings.toLocaleString()}`}
-                color="success.main"
-                icon={<MonetaryIcon color="success" />}
-                subtitle="Total rental requests for your farms"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FarmOverviewCard
-                title="Farms uploaded"
-                value={newLeads}
-                color="info.main"
-                icon={<LeadsIcon color="info" />}
-                subtitle="Recent uploaded farms"
-              />
-            </Grid>
-          </Grid>
+          )}
 
           {/* Main Navigation Cards */}
           <motion.div

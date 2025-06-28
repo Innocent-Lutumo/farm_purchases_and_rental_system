@@ -27,13 +27,13 @@ import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 // Menu items configuration (kept as is, it's well-defined)
 const menuItems = [
   {
-    text: "Purchased farms",
+    text: "Purchases requests",
     icon: <PurchasesIcon />,
     path: "/Purchases",
     description: "Track all farm purchase",
   },
   {
-    text: "Rented farms",
+    text: "Rental requests",
     icon: <RentsIcon />,
     path: "/Rents",
     description: "Manage your property rentals",
@@ -55,11 +55,11 @@ const menuItems = [
 const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Logout progress states
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutProgress, setLogoutProgress] = useState(0);
@@ -68,12 +68,12 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
   const handleLogout = () => {
     setIsLoggingOut(true);
     setLogoutProgress(0);
-   
+
     // Simulate logout process with progress updates
     const interval = setInterval(() => {
-      setLogoutProgress(prev => {
+      setLogoutProgress((prev) => {
         const newProgress = prev + 10;
-       
+
         if (newProgress >= 100) {
           clearInterval(interval);
           // Complete logout after progress reaches 100%
@@ -84,7 +84,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
           }, 200);
           return 100;
         }
-       
+
         return newProgress;
       });
     }, 150); // Updates every 150ms for smooth animation
@@ -92,12 +92,12 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
 
   // Function to get user initials from name
   const getUserInitials = (name) => {
-    if (!name) return "U"; 
+    if (!name) return "U";
     return name
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase())
       .join("")
-      .substring(0, 2); 
+      .substring(0, 2);
   };
 
   // Fetch user data from API
@@ -105,21 +105,25 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        
+
         // Get token from localStorage or wherever you store it
-        const token = localStorage.getItem('access') || sessionStorage.getItem('access');
-        
+        const token =
+          localStorage.getItem("access") || sessionStorage.getItem("access");
+
         if (!token) {
-          throw new Error('No authentication token found');
+          throw new Error("No authentication token found");
         }
 
-        const response = await fetch('http://127.0.0.1:8000/api/admin-sellers-list/', { 
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/admin-sellers-list/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -128,22 +132,22 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
         const data = await response.json();
         // Extract user data from the farm data response
         if (data && data.length > 0) {
-          const farmData = data[0]; 
+          const farmData = data[0];
           setUserData({
             username: farmData.username,
             email: farmData.email,
             passport: farmData.passport,
           });
         } else {
-          throw new Error('No farm data found');
+          throw new Error("No farm data found");
         }
       } catch (err) {
-        console.error('Failed to fetch user data:', err);
+        console.error("Failed to fetch user data:", err);
         setError(err.message);
         // Fallback to default values or handle error as needed
         setUserData({
-          username: 'User',
-          email: 'user@example.com',
+          username: "User",
+          email: "user@example.com",
           passport: null,
         });
       } finally {
@@ -199,7 +203,11 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
           >
             ?
           </Avatar>
-          <Typography variant="subtitle1" fontWeight="bold" color="text.secondary">
+          <Typography
+            variant="subtitle1"
+            fontWeight="bold"
+            color="text.secondary"
+          >
             Unable to load user
           </Typography>
         </Box>
@@ -228,10 +236,12 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
             fontWeight: "bold",
           }}
         >
-          {!userData?.avatar && !userData?.profilePicture && getUserInitials(userData?.name || userData?.fullName)}
+          {!userData?.avatar &&
+            !userData?.profilePicture &&
+            getUserInitials(userData?.name || userData?.fullName)}
         </Avatar>
         <Typography variant="subtitle1" fontWeight="bold">
-          {userData?.name || userData?.fullName || 'User'}
+          {userData?.name || userData?.fullName || "User"}
         </Typography>
         {userData?.email && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -263,7 +273,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
-            [theme.breakpoints.up('sm')]: {
+            [theme.breakpoints.up("sm")]: {
               width: drawerOpen ? drawerWidth : theme.spacing(9),
             },
           },
@@ -315,7 +325,9 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
                       primary={item.text}
                       primaryTypographyProps={{
                         fontWeight: isActive ? 600 : 400,
-                        color: isActive ? theme.palette.primary.main : "inherit",
+                        color: isActive
+                          ? theme.palette.primary.main
+                          : "inherit",
                       }}
                     />
                   )}
@@ -365,7 +377,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
       {/* Logout Progress Dialog */}
       {isLoggingOut && (
         <Dialog open={isLoggingOut} disableEscapeKeyDown>
-          <DialogContent sx={{ textAlign: 'center', minWidth: 300, py: 4 }}>
+          <DialogContent sx={{ textAlign: "center", minWidth: 300, py: 4 }}>
             <Typography variant="h6" gutterBottom>
               Logging out...
             </Typography>

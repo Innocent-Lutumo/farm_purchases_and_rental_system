@@ -48,7 +48,7 @@ const RegisterPage = () => {
     e.preventDefault();
     setErrors({});
     setSuccessMessage("");
-
+  
     const {
       seller_name,
       username,
@@ -57,7 +57,8 @@ const RegisterPage = () => {
       password,
       confirmPassword,
     } = formData;
-
+  
+    // Client-side validation
     if (
       !seller_name ||
       !username ||
@@ -69,22 +70,22 @@ const RegisterPage = () => {
       setErrors({ form: "Please fill out all the fields." });
       return;
     }
-
+  
     if (!validateEmail(email)) {
       setErrors({ email: "Please enter a valid email address." });
       return;
     }
-
+  
     if (password.length < 6) {
       setErrors({ password: "Password must be at least 6 characters long." });
       return;
     }
-
+  
     if (password !== confirmPassword) {
       setErrors({ confirmPassword: "Passwords do not match." });
       return;
     }
-
+  
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/api/register/",
@@ -93,11 +94,11 @@ const RegisterPage = () => {
           headers: { "Content-Type": "application/json" },
         }
       );
-
+  
       console.log("Registration successful:", response.data);
       setSuccessMessage("Registration successful! You can now log in.");
       setOpenSnackbar(true);
-
+  
       setFormData({
         seller_name: "",
         username: "",
@@ -108,11 +109,66 @@ const RegisterPage = () => {
       });
     } catch (error) {
       console.error("Error during registration:", error);
-      setErrors({
-        server:
-          error.response?.data?.detail ||
-          "Registration failed. Please try again.",
-      });
+      
+      if (error.response && error.response.data) {
+        const backendErrors = error.response.data;
+        const newErrors = {};
+        
+        // Handle field-specific errors
+        if (backendErrors.username) {
+          newErrors.username = Array.isArray(backendErrors.username) 
+            ? backendErrors.username[0] 
+            : backendErrors.username;
+        }
+        
+        if (backendErrors.email) {
+          newErrors.email = Array.isArray(backendErrors.email) 
+            ? backendErrors.email[0] 
+            : backendErrors.email;
+        }
+        
+        if (backendErrors.seller_name) {
+          newErrors.seller_name = Array.isArray(backendErrors.seller_name) 
+            ? backendErrors.seller_name[0] 
+            : backendErrors.seller_name;
+        }
+        
+        if (backendErrors.seller_residence) {
+          newErrors.seller_residence = Array.isArray(backendErrors.seller_residence) 
+            ? backendErrors.seller_residence[0] 
+            : backendErrors.seller_residence;
+        }
+        
+        if (backendErrors.password) {
+          newErrors.password = Array.isArray(backendErrors.password) 
+            ? backendErrors.password[0] 
+            : backendErrors.password;
+        }
+        
+        // Handle non-field errors (general server errors)
+        if (backendErrors.non_field_errors) {
+          newErrors.form = Array.isArray(backendErrors.non_field_errors) 
+            ? backendErrors.non_field_errors[0] 
+            : backendErrors.non_field_errors;
+        }
+        
+        // Handle detail message (common in Django REST framework)
+        if (backendErrors.detail && Object.keys(newErrors).length === 0) {
+          newErrors.server = backendErrors.detail;
+        }
+        
+        // If no specific field errors found, show general error
+        if (Object.keys(newErrors).length === 0) {
+          newErrors.server = "Registration failed. Please try again.";
+        }
+        
+        setErrors(newErrors);
+      } else {
+        // Network error or other issues
+        setErrors({
+          server: "Network error. Please check your connection and try again.",
+        });
+      }
     }
   };
 

@@ -219,8 +219,8 @@ const Home = () => {
               component={Link}
               to={option.link}
               sx={{
-                width: { xs: "100%", sm: 280 },
-                height: { xs: 250, sm: 300 },
+                width: { xs: "100%", sm: 250 },
+                height: { xs: 180, sm: 250 },
                 borderRadius: 4,
                 boxShadow: 3,
                 textDecoration: "none",

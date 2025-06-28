@@ -459,7 +459,7 @@ const Trial = () => {
                         sx={{ mt: 2, fontSize: 10 }}
                         disabled={farm.is_sold}
                       >
-                        {farm.is_sold ? "SOLD OUT" : "Click to Purchase"}
+                        {farm.is_sold ? "SOLD" : "Click to Purchase"}
                       </Button>
                     </CardContent>
                   </Box>

@@ -1,145 +1,147 @@
-// src/pages/LoginPage.js (UPDATED to use ForgotPasswordDialog)
+// src/pages/LoginPage.js (UPDATED to use ForgotPasswordDialog and fix navigation)
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  TextField,
-  Button,
-  Box,
-  Typography,
-  Container,
-  InputAdornment,
-  IconButton,
-  Alert,
+    TextField,
+    Button,
+    Box,
+    Typography,
+    Container,
+    InputAdornment,
+    IconButton,
+    Alert,
 } from "@mui/material";
-import axios from "axios";
-import { Visibility, VisibilityOff, ArrowBack } from "@mui/icons-material"; // Removed Email import as it's now in dialog
+import axios from "axios"; // Using direct axios here, consider using your centralized api instance from services/api.js
+import { Visibility, VisibilityOff, ArrowBack } from "@mui/icons-material";
 import { GoogleLogin } from "@react-oauth/google";
 import { motion } from "framer-motion";
 // Import the new ForgotPasswordDialog
-import ForgotPasswordDialog from './ForgotPasswordDialog'; 
+import ForgotPasswordDialog from './ForgotPasswordDialog';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Reset password dialog state (moved resetEmail, resetLoading, etc. to ForgotPasswordDialog)
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
-  
-  const navigate = useNavigate();
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // Ensure password is hidden when form is submitted
-    setShowPassword(false);
+    // Reset password dialog state
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
-    if (!username || !password) {
-      setError("Please fill in both fields");
-      setIsLoading(false);
-      return;
-    }
+    const navigate = useNavigate();
 
-    try {
-      // Assuming your login endpoint is at /api/login/
-      const response = await axios.post("http://127.0.0.1:8000/api/login/", {
-        username,
-        password,
-      });
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
 
-      const { access, refresh } = response.data;
+        // Ensure password is hidden when form is submitted
+        setShowPassword(false);
 
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
-
-      console.log("Login successful:", response.data);
-      navigate("/SellerPage"); // Or your desired redirect page
-    } catch (err) {
-      console.error("Login failed:", err);
-      // More specific error handling if backend provides details (e.g., status codes)
-      setError("Invalid username or password");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLoginSuccess = async (credentialResponse) => {
-    setIsLoading(true);
-    setShowPassword(false); // Hide password during Google login
-    
-    try {
-      // Assuming your Google login endpoint is at /api/google-login/
-      const response = await axios.post(
-        "http://127.0.0.1:8000/api/google-login/",
-        {
-          access: credentialResponse.credential, 
+        if (!username || !password) {
+            setError("Please fill in both fields");
+            setIsLoading(false);
+            return;
         }
-      );
 
-      const { access, refresh } = response.data; 
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
+        try {
+            // Using direct axios here. Consider replacing with your `api` instance from `src/services/api.js`
+            // Example: const response = await api.post("/login/", { username, password });
+            const response = await axios.post("http://127.0.0.1:8000/api/login/", {
+                username,
+                password,
+            });
 
-      console.log("Google login successful:", response.data);
-      navigate("/SellerPage"); // Or your desired redirect page
-    } catch (err) {
-      console.error("Google login failed:", err);
-      console.error("Error details:", err.response?.data);
-      setError("Google login failed: " + (err.response?.data?.error || err.message));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+            const { access, refresh } = response.data;
 
-  const handleBack = () => {
-    navigate(-1); // Go back to previous page
-  };
+            localStorage.setItem("access", access);
+            localStorage.setItem("refresh", refresh);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(prevShow => !prevShow);
-  };
+            console.log("Login successful:", response.data);
+            navigate("/SellerPage", { replace: true }); 
+        } catch (err) {
+            console.error("Login failed:", err);
+            // More specific error handling if backend provides details (e.g., status codes)
+            setError(err.response?.data?.error || "Invalid username or password");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-        staggerChildren: 0.1,
-      },
-    },
-  };
+    const handleGoogleLoginSuccess = async (credentialResponse) => {
+        setIsLoading(true);
+        setShowPassword(false); // Hide password during Google login
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: "easeOut" },
-    },
-  };
+        try {
+            // Using direct axios here. Consider replacing with your `api` instance from `src/services/api.js`
+            // Example: const response = await api.post("/google-login/", { access: credentialResponse.credential });
+            const response = await axios.post(
+                "http://127.0.0.1:8000/api/google-login/",
+                {
+                    access: credentialResponse.credential,
+                }
+            );
 
-  const buttonVariants = {
-    hover: { 
-      scale: 1.05,
-      boxShadow: "0 6px 20px rgba(0, 0, 0, 0.15)",
-      transition: { duration: 0.2 }
-    },
-    tap: { scale: 0.95 },
-  };
+            const { access, refresh } = response.data;
+            localStorage.setItem("access", access);
+            localStorage.setItem("refresh", refresh);
 
-  const textFieldVariants = {
-    focus: {
-      scale: 1.02,
-      transition: { duration: 0.2 }
-    }
-  };
+            console.log("Google login successful:", response.data);
+            navigate("/SellerPage", { replace: true }); // <--- FIX APPLIED HERE
+        } catch (err) {
+            console.error("Google login failed:", err);
+            console.error("Error details:", err.response?.data);
+            setError("Google login failed: " + (err.response?.data?.error || err.message));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleBack = () => {
+        navigate(-1); // Go back to previous page
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(prevShow => !prevShow);
+    };
+
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0, y: 50 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                duration: 0.6,
+                ease: "easeOut",
+                staggerChildren: 0.1,
+            },
+        },
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.5, ease: "easeOut" },
+        },
+    };
+
+    const buttonVariants = {
+        hover: {
+            scale: 1.05,
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.15)",
+            transition: { duration: 0.2 }
+        },
+        tap: { scale: 0.95 },
+    };
+
+    const textFieldVariants = {
+        focus: {
+            scale: 1.02,
+            transition: { duration: 0.2 }
+        }
+    };
 
   return (
     <motion.div

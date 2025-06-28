@@ -2,7 +2,6 @@ import React, {
   useState,
   useEffect,
   useRef,
-  useMemo,
   useCallback,
 } from "react";
 import {
@@ -12,32 +11,61 @@ import {
   Alert,
   AppBar,
   Toolbar,
+  Chip,
+  Divider,
 } from "@mui/material";
 
 // IMPORTANT: Replace with your actual API key from environment variables
 const Maps_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
 
 const SimpleFarmDirections = ({
-  farm = { name: "Demo Farm", lat: -6.169, lng: 39.189 }, // Default to Dar es Salaam farm
+  farm, // Now expects the full farm object from Trial component
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [apiLoadAttempted, setApiLoadAttempted] = useState(false);
+  const [farmCoordinates, setFarmCoordinates] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const directionsServiceRef = useRef(null);
   const directionsRendererRef = useRef(null);
+  const geocoderRef = useRef(null);
 
-  // Memoize farm coordinates
-  const farmCoordinates = useMemo(
-    () => ({
-      lat: parseFloat(farm.lat) || -6.169,
-      lng: parseFloat(farm.lng) || 39.189,
-    }),
-    [farm.lat, farm.lng]
-  );
+  // Function to geocode farm location
+  const geocodeFarmLocation = useCallback(async (locationName) => {
+    if (!window.google || !window.google.maps.Geocoder) {
+      throw new Error("Google Maps Geocoder not available");
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!geocoderRef.current) {
+        geocoderRef.current = new window.google.maps.Geocoder();
+      }
+
+      geocoderRef.current.geocode(
+        { 
+          address: locationName,
+          region: 'TZ', 
+          componentRestrictions: { country: 'TZ' }
+        },
+        (results, status) => {
+          if (status === 'OK' && results && results.length > 0) {
+            const location = results[0].geometry.location;
+            resolve({
+              lat: location.lat(),
+              lng: location.lng(),
+              formatted_address: results[0].formatted_address
+            });
+          } else {
+            reject(new Error(`Geocoding failed: ${status}`));
+          }
+        }
+      );
+    });
+  }, []);
 
   // Check if all required APIs are loaded
   const checkAPIsReady = useCallback(() => {
@@ -47,7 +75,8 @@ const SimpleFarmDirections = ({
       window.google.maps.Map &&
       window.google.maps.DirectionsService &&
       window.google.maps.DirectionsRenderer &&
-      window.google.maps.DirectionsStatus
+      window.google.maps.DirectionsStatus &&
+      window.google.maps.Geocoder
     );
   }, []);
 
@@ -97,7 +126,6 @@ const SimpleFarmDirections = ({
       setTimeout(() => {
         if (checkAPIsReady()) {
           setMapReady(true);
-          setLoading(false);
         } else {
           setError("Google Maps API loaded but required services are missing.");
           setLoading(false);
@@ -145,6 +173,31 @@ const SimpleFarmDirections = ({
     };
   }, [mapReady, apiLoadAttempted, checkAPIsReady]);
 
+  // Geocode farm location when map is ready
+  useEffect(() => {
+    if (!mapReady || !farm?.location) {
+      if (!farm?.location) {
+        setError("No farm location provided");
+        setLoading(false);
+      }
+      return;
+    }
+
+    const getFarmCoordinates = async () => {
+      try {
+        setLoading(true);
+        const coordinates = await geocodeFarmLocation(farm.location);
+        setFarmCoordinates(coordinates);
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        setError(`Could not find location: ${farm.location}. Please check the farm address.`);
+        setLoading(false);
+      }
+    };
+
+    getFarmCoordinates();
+  }, [mapReady, farm?.location, geocodeFarmLocation]);
+
   // Initiate API loading
   useEffect(() => {
     if (!mapReady && !error && !apiLoadAttempted) {
@@ -152,33 +205,50 @@ const SimpleFarmDirections = ({
     }
   }, [loadGoogleMapsScript, mapReady, error, apiLoadAttempted]);
 
-  // Initialize map and get directions when ready
+  // Initialize map and get directions when coordinates are ready
   useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
+    if (!mapReady || !mapRef.current || !farmCoordinates) return;
 
     try {
-      // Initialize map
+      // Initialize map centered between user and farm (will adjust when user location is found)
       const map = new window.google.maps.Map(mapRef.current, {
         center: farmCoordinates,
-        zoom: 13,
+        zoom: 10,
         mapTypeId: window.google.maps.MapTypeId.ROADMAP,
       });
 
       mapInstanceRef.current = map;
 
-      // Add farm marker
-      new window.google.maps.Marker({
+      // Add farm marker with custom icon
+      const farmMarker = new window.google.maps.Marker({
         position: farmCoordinates,
         map: map,
-        title: farm.name,
+        title: `${farm.name} - ${farm.location}`,
         icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
+          path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+          scale: 8,
           fillColor: "#4CAF50",
           fillOpacity: 1,
-          strokeColor: "#fff",
-          strokeWeight: 3,
+          strokeColor: "#2E7D32",
+          strokeWeight: 2,
         },
+      });
+
+      // Add info window for farm
+      const farmInfoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding: 8px; max-width: 200px;">
+            <h3 style="margin: 0 0 8px 0; color: #2E7D32;">${farm.name}</h3>
+            <p style="margin: 4px 0;"><strong>Location:</strong> ${farm.location}</p>
+            <p style="margin: 4px 0;"><strong>Size:</strong> ${farm.size}</p>
+            <p style="margin: 4px 0;"><strong>Price:</strong> ${farm.price}/= Tshs</p>
+            ${farm.seller ? `<p style="margin: 4px 0;"><strong>Seller:</strong> ${farm.seller}</p>` : ''}
+          </div>
+        `
+      });
+
+      farmMarker.addListener('click', () => {
+        farmInfoWindow.open(map, farmMarker);
       });
 
       // Initialize directions services
@@ -187,14 +257,23 @@ const SimpleFarmDirections = ({
         map: map,
         polylineOptions: {
           strokeColor: "#1976D2",
-          strokeWeight: 4,
+          strokeWeight: 5,
           strokeOpacity: 0.8,
         },
+        markerOptions: {
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#2196F3",
+            fillOpacity: 1,
+            strokeColor: "#1565C0",
+            strokeWeight: 2,
+          }
+        }
       });
 
       // Get user location and show directions
       if (navigator.geolocation) {
-        setLoading(true);
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const userLocation = {
@@ -202,33 +281,33 @@ const SimpleFarmDirections = ({
               lng: position.coords.longitude,
             };
 
-            new window.google.maps.Marker({
-              position: userLocation,
-              map: map,
-              title: "Your Location",
-              icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: "#2196F3",
-                fillOpacity: 1,
-                strokeColor: "#fff",
-                strokeWeight: 3,
-              },
-            });
-
+            // Calculate and display directions
             const request = {
               origin: userLocation,
               destination: farmCoordinates,
               travelMode: window.google.maps.TravelMode.DRIVING,
               provideRouteAlternatives: true,
+              unitSystem: window.google.maps.UnitSystem.METRIC,
             };
 
             directionsServiceRef.current.route(request, (result, status) => {
               if (status === window.google.maps.DirectionsStatus.OK) {
                 directionsRendererRef.current.setDirections(result);
+                
+                // Extract route information
+                const route = result.routes[0];
+                if (route && route.legs && route.legs.length > 0) {
+                  const leg = route.legs[0];
+                  setRouteInfo({
+                    distance: leg.distance.text,
+                    duration: leg.duration.text,
+                    startAddress: leg.start_address,
+                    endAddress: leg.end_address
+                  });
+                }
               } else {
                 console.error("Directions error:", status, result);
-                setError(`Directions service failed: ${status}. Please check your API key has Directions API enabled.`);
+                setError(`Unable to calculate route: ${status}. Please check if the location is accessible by road.`);
               }
               setLoading(false);
             });
@@ -236,9 +315,11 @@ const SimpleFarmDirections = ({
           (error) => {
             let errorMessage = "Could not get your location.";
             if (error.code === error.PERMISSION_DENIED) {
-              errorMessage = "Location access denied. Please enable permissions.";
+              errorMessage = "Location access denied. Please enable location permissions and refresh.";
             } else if (error.code === error.TIMEOUT) {
               errorMessage = "Location request timed out. Please try again.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+              errorMessage = "Location information unavailable.";
             }
             setError(errorMessage);
             setLoading(false);
@@ -246,7 +327,7 @@ const SimpleFarmDirections = ({
           {
             enableHighAccuracy: true,
             timeout: 15000,
-            maximumAge: 60000,
+            maximumAge: 300000, // 5 minutes
           }
         );
       } else {
@@ -264,7 +345,17 @@ const SimpleFarmDirections = ({
         directionsRendererRef.current.setMap(null);
       }
     };
-  }, [mapReady, farmCoordinates, farm.name]);
+  }, [mapReady, farmCoordinates, farm]);
+
+  if (!farm) {
+    return (
+      <Box sx={{ p: 2, textAlign: "center" }}>
+        <Alert severity="warning">
+          No farm selected for navigation.
+        </Alert>
+      </Box>
+    );
+  }
 
   if (error) {
     return (
@@ -274,24 +365,24 @@ const SimpleFarmDirections = ({
           textAlign: "center",
           border: "1px solid #ccc",
           borderRadius: 2,
-          maxWidth: 400,
+          maxWidth: 500,
           mx: "auto",
-          mt: 4,
+          mt: 2,
         }}
       >
         <Alert severity="error">
           {error}
           {error.includes("Directions service failed") && (
-            <div style={{ marginTop: 8 }}>
+            <Box sx={{ mt: 1 }}>
               <Typography variant="body2">
                 This usually means:
               </Typography>
-              <ul style={{ textAlign: "left", paddingLeft: 20 }}>
+              <ul style={{ textAlign: "left", paddingLeft: 20, margin: 8 }}>
                 <li>Directions API is not enabled for your API key</li>
                 <li>Your API key has restrictions</li>
                 <li>Billing is not enabled for your Google Cloud project</li>
               </ul>
-            </div>
+            </Box>
           )}
         </Alert>
       </Box>
@@ -301,12 +392,12 @@ const SimpleFarmDirections = ({
   return (
     <Box
       sx={{
-        maxWidth: 400,
+        maxWidth: 600,
         mx: "auto",
         border: "1px solid #ccc",
         borderRadius: 2,
         overflow: "hidden",
-        mt: 4,
+        mt: 2,
         boxShadow: 3,
       }}
     >
@@ -315,17 +406,44 @@ const SimpleFarmDirections = ({
         sx={{ background: "linear-gradient(135deg, #1976D2, #4CAF50)" }}
       >
         <Toolbar variant="dense">
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, textAlign: "center", color: "white" }}
-          >
-            Navigation to {farm.name}
-          </Typography>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ color: "white", fontSize: "1.1rem" }}
+            >
+              Navigation to {farm.name}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: "0.85rem" }}>
+              {farm.location}
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ position: "relative", height: 350 }}>
+      {/* Route Information */}
+      {routeInfo && (
+        <Box sx={{ p: 2, backgroundColor: "#f5f5f5" }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            <Chip 
+              label={`Distance: ${routeInfo.distance}`} 
+              size="small" 
+              color="primary" 
+              variant="outlined" 
+            />
+            <Chip 
+              label={`Duration: ${routeInfo.duration}`} 
+              size="small" 
+              color="success" 
+              variant="outlined" 
+            />
+          </Box>
+        </Box>
+      )}
+
+      <Divider />
+
+      <Box sx={{ position: "relative", height: 400 }}>
         <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
         {loading && (
           <Box
@@ -348,9 +466,11 @@ const SimpleFarmDirections = ({
           >
             <CircularProgress size={30} />
             <Typography variant="body2">
-              {mapReady
-                ? "Getting your location and directions..."
-                : "Loading map services..."}
+              {!mapReady
+                ? "Loading map services..."
+                : !farmCoordinates
+                ? `Finding location: ${farm.location}...`
+                : "Getting your location and calculating route..."}
             </Typography>
           </Box>
         )}
