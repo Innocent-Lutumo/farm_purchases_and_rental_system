@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AppFooter from "../Shared/AppFooter";
 import {
@@ -7,91 +7,484 @@ import {
   Typography,
   Container,
   Card,
-  CardContent,
   Box,
   Grid,
   useTheme,
   useMediaQuery,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Fade,
+  Fab,
+  Zoom,
+  CircularProgress,
+  Chip,
+  Tooltip,
 } from "@mui/material";
-import img5 from "./images/img5.jpg";
-import SellIcon from "@mui/icons-material/Sell";
-import HomeIcon from "@mui/icons-material/Home";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import {
+  Menu as MenuIcon,
+  Close as CloseIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Home as HomeIcon,
+  Sell as SellIcon,
+  Dashboard as DashboardIcon,
+  Agriculture as AgricultureIcon,
+  // Info as InfoIcon,
+  ArrowBackIos as ArrowBackIosIcon,
+  ArrowForwardIos as ArrowForwardIosIcon,
+} from "@mui/icons-material";
 
 const Home = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [animationTrigger, setAnimationTrigger] = useState(false);
+  const [currentFarmIndex, setCurrentFarmIndex] = useState(0);
+  const [farms, setFarms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setAnimationTrigger(true);
+
+    const fetchFarms = async () => {
+      try {
+        setLoading(true);
+        const [salesResponse, rentResponse] = await Promise.all([
+          fetch("http://127.0.0.1:8000/api/farmsale/validated/"),
+          fetch("http://127.0.0.1:8000/api/farmsrent/validated/"),
+        ]);
+
+        if (!salesResponse.ok || !rentResponse.ok) {
+          throw new Error("Failed to fetch farm data");
+        }
+
+        const [salesData, rentData] = await Promise.all([
+          salesResponse.json(),
+          rentResponse.json(),
+        ]);
+
+        const combinedFarms = [
+          ...salesData.map((farm) => ({
+            ...farm,
+            type: "sale",
+            displayPrice: farm.price
+              ? `$${parseFloat(farm.price).toLocaleString()}`
+              : "Price not available",
+            size: farm.size ? `${farm.size} acres` : "Size not available",
+            mainImage:
+              farm.images?.[0]?.image ||
+              "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+          })),
+          ...rentData.map((farm) => ({
+            ...farm,
+            type: "rent",
+            displayPrice: farm.price
+              ? `$${parseFloat(farm.price).toLocaleString()}/month`
+              : "Rent not available",
+            size: farm.size ? `${farm.size} acres` : "Size not available",
+            mainImage:
+              farm.images?.[0]?.image ||
+              "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+          })),
+        ];
+
+        setFarms(combinedFarms);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching farm data:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchFarms();
+
+    const interval = setInterval(() => {
+      if (farms.length > 0) {
+        setCurrentFarmIndex((prevIndex) =>
+          prevIndex === farms.length - 1 ? 0 : prevIndex + 1
+        );
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [farms.length]);
+
+  const handleNext = () => {
+    if (farms.length > 0) {
+      setCurrentFarmIndex((prevIndex) =>
+        prevIndex === farms.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  };
+
+  const handlePrev = () => {
+    if (farms.length > 0) {
+      setCurrentFarmIndex((prevIndex) =>
+        prevIndex === 0 ? farms.length - 1 : prevIndex - 1
+      );
+    }
+  };
+
+  const navigationItems = [
+    { text: "Buy Farm", icon: <ShoppingCartIcon />, link: "/trial" },
+    { text: "Rent Farm", icon: <HomeIcon />, link: "/RentPage" },
+    { text: "Sell Farm", icon: <SellIcon />, link: "/LoginPage" },
+    { text: "Admin Dashboard", icon: <DashboardIcon />, link: "/Dashboard" },
+    // { text: "About", icon: <InfoIcon />, link: "/about" },
+  ];
 
   const farmOptions = [
     {
-      icon: <ShoppingCartIcon sx={{ fontSize: "3.75rem", color: "#4caf50" }} />,
-      title: "Buy Farm",
-      description: "Find the perfect farmland to purchase with ease and confidence.",
+      icon: <ShoppingCartIcon sx={{ fontSize: "1.5rem" }} />,
+      title: "Buy Farmland",
+      description:
+        "Discover premium agricultural properties with verified ownership.",
       link: "/trial",
-      backgroundImage: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
     {
-      icon: <HomeIcon sx={{ fontSize: "3.75rem", color: "#ff9800" }} />,
-      title: "Rent Farm",
-      description: "Explore rental options for profitable land utilization.",
+      icon: <HomeIcon sx={{ fontSize: "1.5rem" }} />,
+      title: "Rent Farmland",
+      description: "Access fertile lands with flexible rental terms.",
       link: "/RentPage",
-      backgroundImage: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
     {
-      icon: <SellIcon sx={{ fontSize: "3.75rem", color: "#f44336" }} />,
-      title: "Sell Farm",
-      description: "Learn how to sell your farmland efficiently and profitably.",
+      icon: <SellIcon sx={{ fontSize: "1.5rem" }} />,
+      title: "Sell Farmland",
+      description: "Connect with verified buyers for your property.",
       link: "/LoginPage",
-      backgroundImage: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     },
   ];
 
-  const farmGallery = [
-    {
-      url: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80",
-      title: "Premium Vineyard Estate"
-    },
-    {
-      url: img5,
-      title: "Golden Sunflower Fields"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80",
-      title: "Organic Harvest Paradise"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80",
-      title: "Expansive Countryside Ranch"
+  const toggleDrawer = (open) => (event) => {
+    if (
+      event.type === "keydown" &&
+      (event.key === "Tab" || event.key === "Shift")
+    ) {
+      return;
     }
-  ];
-  
-  return (
-    <Box sx={{ overflowX: "hidden" }}>
-      {/* Enhanced Navbar with Header */}
-      <AppBar position="static" sx={{ background: "green" }}>
-        <Toolbar sx={{ flexDirection: "column", py: 2 }}>
-          <Typography variant="h6" sx={{ alignSelf: "flex-start", mb: 1 }}>
-            S/N 19
-          </Typography>
-          <Typography
-            variant={isMobile ? "h5" : "h4"}
+    setDrawerOpen(open);
+  };
+
+  const FeaturedFarmCard = () => (
+    <Card
+      sx={{
+        borderRadius: 3,
+        overflow: "hidden",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        position: "relative",
+        minHeight: loading ? "400px" : "auto",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: loading ? "center" : "flex-start",
+        height: "100%",
+        transition: "transform 0.3s ease-in-out",
+        "&:hover": {
+          transform: "translateY(-5px)",
+          boxShadow: "0 15px 40px rgba(0,0,0,0.15)",
+        },
+      }}
+    >
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <CircularProgress color="success" />
+        </Box>
+      ) : error ? (
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography color="error">Error loading farms: {error}</Typography>
+        </Box>
+      ) : farms.length > 0 ? (
+        <>
+          <Box
             sx={{
-              fontWeight: "bold",
-              color: "white",
-              textAlign: "center",
-              width: "100%",
+              height: "250px",
+              backgroundImage: `url(http://127.0.0.1:8000${farms[currentFarmIndex]?.mainImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          <Box sx={{ p: 3, bgcolor: "background.paper", flexGrow: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "#2e7d32",
+                mb: 2,
+                textAlign: "center",
+              }}
+            >
+              Featured Farm
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: "bold", color: "#333" }}
+              >
+                {farms[currentFarmIndex]?.farm_number || "Farm"}
+              </Typography>
+              <Chip
+                label={
+                  farms[currentFarmIndex]?.type === "sale"
+                    ? "For Sale"
+                    : "For Rent"
+                }
+                color={
+                  farms[currentFarmIndex]?.type === "sale"
+                    ? "success"
+                    : "success"
+                }
+                size="small"
+              />
+            </Box>
+
+            {/* Grid Layout for Farm Details */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Typography variant="body2" sx={{ color: "#666" }}>
+                <strong>Location:</strong>{" "}
+                {farms[currentFarmIndex]?.location || "Location not specified"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#666" }}>
+                <strong>Size:</strong>{" "}
+                {farms[currentFarmIndex]?.size || "Size not specified"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#666" }}>
+                <strong>Soil Quality:</strong>{" "}
+                {farms[currentFarmIndex]?.quality || "Not specified"}
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  color: "#4caf50",
+                  alignSelf: "center",
+                  justifySelf: "end",
+                }}
+              >
+                {farms[currentFarmIndex]?.price || "Price not available"} TZS 
+              </Typography>
+            </Box>
+          </Box>
+        </>
+      ) : (
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography>No farms available</Typography>
+        </Box>
+      )}
+
+      {farms.length > 1 && (
+        <>
+          <IconButton
+            onClick={handlePrev}
+            sx={{
+              position: "absolute",
+              left: 10,
+              top: "40%",
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(255,255,255,0.8)",
+              "&:hover": { bgcolor: "white" },
             }}
           >
-            Farm Purchase and Rental System
-          </Typography>
+            <ArrowBackIosIcon />
+          </IconButton>
+          <IconButton
+            onClick={handleNext}
+            sx={{
+              position: "absolute",
+              right: 10,
+              top: "40%",
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(255,255,255,0.8)",
+              "&:hover": { bgcolor: "white" },
+            }}
+          >
+            <ArrowForwardIosIcon />
+          </IconButton>
+        </>
+      )}
+    </Card>
+  );
+
+  const ServicesCard = () => (
+    <Card
+      sx={{
+        borderRadius: 3,
+        overflow: "hidden",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+        transition: "transform 0.3s ease-in-out",
+        "&:hover": {
+          transform: "translateY(-5px)",
+          boxShadow: "0 15px 40px rgba(0,0,0,0.15)",
+        },
+      }}
+    >
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            color: "#2e7d32",
+            mb: 3,
+            textAlign: "center",
+          }}
+        >
+          Our Services
+        </Typography>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {farmOptions.map((option, index) => (
+            <Card
+              key={index}
+              component={Link}
+              to={option.link}
+              sx={{
+                p: 2,
+                textAlign: "center",
+                textDecoration: "none",
+                borderRadius: 2,
+                transition: "all 0.2s ease-in-out",
+                backgroundColor: "white",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+                  backgroundColor: "#f8f9fa",
+                },
+              }}
+            >
+              <Box sx={{ color: "#4caf50", mb: 1 }}>{option.icon}</Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: "bold", mb: 1, fontSize: "0.9rem" }}
+              >
+                {option.title}
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#666",
+                  fontSize: "0.8rem",
+                  lineHeight: 1.3,
+                }}
+              >
+                {option.description}
+              </Typography>
+            </Card>
+          ))}
+        </Box>
+      </Box>
+    </Card>
+  );
+
+  return (
+    <Box sx={{ backgroundColor: "#fafafa" }}>
+      {/* Navigation Bar */}
+      <AppBar
+        position="fixed"
+        sx={{ background: "linear-gradient(135deg, #2e7d32, #4caf50)" }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            onClick={toggleDrawer(true)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <AgricultureIcon sx={{ fontSize: "2rem" }} />
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              S/N19 Farm Finder
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Hero Section with Farm Background */}
+      {/* Side Navigation */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={toggleDrawer(false)}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: 280,
+            background:
+              "linear-gradient(180deg,rgb(10, 127, 64) 0%,rgb(46, 107, 69) 100%)",
+            color: "white",
+            borderRadius: "20px 20px 20px 20px",
+            marginLeft: 1,
+            boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+            Navigation
+          </Typography>
+          <IconButton onClick={toggleDrawer(false)} sx={{ color: "white" }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <List sx={{ px: 2 }}>
+          {navigationItems.map((item, index) => (
+            <ListItem
+              key={index}
+              component={Link}
+              to={item.link}
+              onClick={toggleDrawer(false)}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                color: "white",
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                },
+              }}
+            >
+              <ListItemIcon sx={{ color: "white", minWidth: 40 }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItem>
+          ))}
+        </List>
+      </Drawer>
+
+      {/* Hero Section */}
       <Box
         sx={{
-          height: { xs: "60vh", sm: "500px" },
-          backgroundImage: "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1600&q=80')",
+          height: "90vh",
+          backgroundImage:
+            "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           display: "flex",
@@ -99,278 +492,104 @@ const Home = () => {
           justifyContent: "center",
           color: "white",
           textAlign: "center",
+          position: "relative",
         }}
       >
         <Container>
-          <Typography
-            variant={isMobile ? "h3" : "h2"}
+          <Fade in={animationTrigger} timeout={1000}>
+            <Box>
+              <Typography
+                variant={isMobile ? "h3" : "h2"}
+                sx={{
+                  fontWeight: "bold",
+                  mb: 2,
+                  textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
+                }}
+              >
+                Your Gateway to Premium Farmland
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  maxWidth: "600px",
+                  margin: "auto",
+                  textShadow: "1px 1px 2px rgba(0,0,0,0.7)",
+                  opacity: 0.9,
+                }}
+              >
+                Discover, rent, buy, and sell the finest farmlands with our
+                platform.
+              </Typography>
+            </Box>
+          </Fade>
+
+          {/* Admin Panel Icon */}
+          <Box
             sx={{
-              fontWeight: "bold",
-              mb: 2,
-              textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
-              px: isMobile ? 2 : 0,
-              fontSize: { xs: "2rem", sm: "3rem" }
+              position: "absolute",
+              bottom: 40,
+              right: 40,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
             }}
           >
-            Your Gateway to Premium Farmland
-          </Typography>
-          <Typography
-            variant={isMobile ? "body1" : "h6"}
-            sx={{
-              maxWidth: "600px",
-              margin: "auto",
-              textShadow: "1px 1px 2px rgba(0,0,0,0.7)",
-              px: isMobile ? 2 : 0,
-            }}
-          >
-            Discover, rent, buy, and sell the finest farmlands with our comprehensive farm management platform
-          </Typography>
+            <Zoom in={animationTrigger} timeout={2000}>
+              <Fab
+                color="success"
+                component={Link}
+                to="/Dashboard"
+                sx={{
+                  background:
+                    "linear-gradient(45deg,rgb(5, 110, 12),rgb(10, 117, 24))",
+                  "&:hover": { transform: "scale(1.1)" },
+                  transition: "transform 0.2s ease-in-out",
+                }}
+              >
+                <Tooltip title="Admin Dashboard" arrow>
+                  <DashboardIcon />
+                </Tooltip>
+              </Fab>
+            </Zoom>
+          </Box>
         </Container>
       </Box>
 
-      {/* Main Content */}
-      <Container sx={{ textAlign: "center", my: { xs: 4, md: 6 }, px: { xs: 2, sm: 3 } }}>
-        {/* About Section with Navigation Links */}
+      {/* Featured Farms & Services Section */}
+      <Container sx={{ py: 6 }}>
         <Typography
-          variant={isMobile ? "body1" : "h6"}
+          variant="h4"
           sx={{
-            maxWidth: "800px",
-            margin: "auto",
-            color: "#333",
+            textAlign: "center",
+            fontWeight: "bold",
             mb: 4,
-            lineHeight: 1.8,
+            color: "#2e7d32",
           }}
         >
-          Welcome to our comprehensive farm management platform. Whether you're
-          looking to{" "}
-          <Typography
-            component={Link}
-            to="/trial"
-            sx={{
-              color: "#4caf50",
-              fontWeight: "bold",
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-              display: "inline",
-            }}
-          >
-            buy your dream farmland
-          </Typography>
-          , find{" "}
-          <Typography
-            component={Link}
-            to="/RentPage"
-            sx={{
-              color: "#ff9800",
-              fontWeight: "bold",
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-              display: "inline",
-            }}
-          >
-            rental opportunities
-          </Typography>{" "}
-          for profitable agriculture, or{" "}
-          <Typography
-            component={Link}
-            to="/LoginPage"
-            sx={{
-              color: "#f44336",
-              fontWeight: "bold",
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-              display: "inline",
-            }}
-          >
-            sell your farmland
-          </Typography>{" "}
-          to the right buyer, we've got you covered.
+          Featured Farms & Our Services
         </Typography>
 
-        <Typography
-          variant="body1"
-          sx={{ 
-            maxWidth: "700px", 
-            margin: "auto", 
-            color: "#666", 
-            mb: { xs: 3, md: 5 },
-            px: { xs: 1, sm: 0 }
-          }}
-        >
-          Our system provides detailed land information, competitive pricing,
-          direct seller contacts, and precise GPS-based locations for seamless
-          navigation and decision-making.
-        </Typography>
-
-        {/* Service Cards with Background Images */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: 3,
-            justifyContent: "center",
-            flexWrap: "wrap",
-            mt: 4,
-            mb: 6,
-          }}
-        >
-          {farmOptions.map((option, index) => (
-            <Card
-              key={index}
-              component={Link}
-              to={option.link}
-              sx={{
-                width: { xs: "100%", sm: 250 },
-                height: { xs: 180, sm: 250 },
-                borderRadius: 4,
-                boxShadow: 3,
-                textDecoration: "none",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                transition: "all 0.3s ease-in-out",
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(${option.backgroundImage})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                "&:hover": {
-                  transform: "translateY(-8px)",
-                  boxShadow: 6,
-                },
-                cursor: "pointer",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <CardContent sx={{
-                textAlign: "center",
-                p: 3,
-                color: "white",
-                position: "relative",
-                zIndex: 1,
-                width: "100%",
-              }}>
-                <Box sx={{ mb: 2 }}>
-                  {React.cloneElement(option.icon, { sx: { fontSize: { xs: "3rem", sm: "3.75rem" }, color: "white" } })}
-                </Box>
-                <Typography
-                  variant={isMobile ? "h6" : "h5"}
-                  sx={{ fontWeight: "bold", color: "white", mb: 1 }}
-                >
-                  {option.title}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}
-                >
-                  {option.description}
-                </Typography>
-              </CardContent>
-            </Card>
-          ))}
-        </Box>
-
-        {/* Farm Gallery Section */}
-        <Box sx={{ my: { xs: 4, md: 8 } }}>
-          <Typography
-            variant={isMobile ? "h5" : "h4"}
-            sx={{
-              fontWeight: "bold",
-              color: "green",
-              mb: 2,
-              textAlign: "center",
-            }}
-          >
-            Featured Farmlands
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{
-              maxWidth: "600px",
-              margin: "auto",
-              color: "#666",
-              mb: 4,
-              textAlign: "center",
-              px: { xs: 1, sm: 0 }
-            }}
-          >
-            Explore our diverse collection of premium agricultural properties across different farming sectors
-          </Typography>
-
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            {farmGallery.map((farm, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
-                <Card
-                  sx={{
-                    minHeight: { xs: 200, sm: 250 },
-                    borderRadius: 3,
-                    overflow: "hidden",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                      transform: "scale(1.05)",
-                      boxShadow: 6,
-                    },
-                    cursor: "pointer",
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      flexGrow: 1,
-                      backgroundImage: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.5)), url(${farm.url})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      display: "flex",
-                      alignItems: "flex-end",
-                      p: 2,
-                      width: '100%',
-                      height: '100%',
-                    }}
-                  >
-                    <Typography
-                      variant={isMobile ? "subtitle1" : "h6"}
-                      sx={{
-                        color: "white",
-                        fontWeight: "bold",
-                        textShadow: "1px 1px 2px rgba(0,0,0,0.7)",
-                      }}
-                    >
-                      {farm.title}
-                    </Typography>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
+        <Grid container spacing={4} alignItems="stretch">
+          {/* Featured Farm Card - Takes up more space */}
+          <Grid item xs={12} md={7}>
+            <Fade in={animationTrigger} timeout={1500}>
+              <Box sx={{ height: "100%" }}>
+                <FeaturedFarmCard />
+              </Box>
+            </Fade>
           </Grid>
-        </Box>
 
-        {/* Call to Action Section */}
-        <Box
-          sx={{
-            my: { xs: 4, md: 6 },
-            p: { xs: 2, md: 4 },
-            backgroundImage: "linear-gradient(135deg, #4caf50, #8bc34a)",
-            borderRadius: 4,
-            color: "white",
-          }}
-        >
-          <Typography
-            variant={isMobile ? "h6" : "h5"}
-            sx={{ fontWeight: "bold", mb: 2 }}
-          >
-            Ready to Start Your Agricultural Journey?
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{ mb: 3, opacity: 0.9 }}
-          >
-            Join thousands of satisfied farmers and investors who trust our platform for their agricultural needs
-          </Typography>
-        </Box>
+          {/* Services Card - Grouped together in one card */}
+          <Grid item xs={12} md={5}>
+            <Fade in={animationTrigger} timeout={1800}>
+              <Box sx={{ height: "100%" }}>
+                <ServicesCard />
+              </Box>
+            </Fade>
+          </Grid>
+        </Grid>
       </Container>
 
-      {/* Footer */}
       <AppFooter />
     </Box>
   );

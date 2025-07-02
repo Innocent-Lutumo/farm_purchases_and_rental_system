@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { jwtDecode } from 'jwt-decode';
 import {
   AppBar,
   Toolbar,
@@ -10,40 +11,158 @@ import {
   MenuItem,
   Box,
   Divider,
-  InputBase, // Import InputBase for the search input
+  InputBase,
+  CircularProgress,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles"; // Import alpha for styling
+import { alpha } from "@mui/material/styles";
 import {
   Menu as MenuIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
-  Refresh as RefreshIcon,
-  ExitToApp as ExitToAppIcon,
   AccountCircle as AccountCircleIcon,
-  Search as SearchIcon, // Import SearchIcon
+  Search as SearchIcon,
 } from "@mui/icons-material";
+
+// Custom hook for fetching user data
+const useUserData = () => {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem("access");
+
+      if (!token) {
+        setError("No authentication token found");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Decode JWT to get current user info
+        let currentUserId, currentUserEmail;
+        try {
+          const decodedToken = jwtDecode(token);
+          currentUserId = decodedToken.user_id; 
+          currentUserEmail = decodedToken.email;
+        } catch (decodeError) {
+          console.error("Failed to decode token:", decodeError);
+          throw new Error("Invalid authentication token");
+        }
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/admin-sellers-list/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Find the current user in the sellers list
+        const currentUserData = data.find(
+          (seller) =>
+            seller.id === currentUserId ||
+            seller.email === currentUserEmail ||
+            seller.user_id === currentUserId
+        );
+
+        if (currentUserData) {
+          setUserData({
+            username: currentUserData.username,
+            email: currentUserData.email,
+            passport: currentUserData.passport,
+          });
+        } else {
+          throw new Error("Current user not found in sellers list");
+        }
+      } catch (err) {
+        console.error("Failed to fetch user data:", err);
+        setError(err.message);
+
+        // Fallback user data
+        setUserData({
+          username: "User",
+          email: "user@example.com",
+          passport: null,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  return { userData, loading, error };
+};
 
 const SellerAppBar = ({
   handleDrawerToggle,
   darkMode,
   handleThemeToggle,
-  fetchFarms, // This prop is used by UploadedFarms for refresh
   anchorEl,
   handleMenuOpen,
   handleMenuClose,
-  handleLogout,
-  // New props for search functionality
   showSearchInput,
   setShowSearchInput,
-  searchQuery, // Renamed from 'search' to match UploadedFarms
-  handleSearchChange, // Renamed from 'handleSearchChange' to be more descriptive
-  handleSearchSubmit, // New prop for triggering search on Enter or explicit button click
+  searchQuery,
+  handleSearchChange,
+  handleSearchSubmit,
 }) => {
-  // Handle search submission (e.g., on Enter key press in the input)
+  const { userData, loading, error } = useUserData();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const handleKeyDown = (event) => {
-    if (event.key === 'Enter') {
+    if (event.key === "Enter") {
       handleSearchSubmit();
     }
+  };
+
+  const getUserInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase())
+      .join("")
+      .substring(0, 2);
+  };
+
+  useEffect(() => {
+    if (error) {
+      setSnackbarOpen(true);
+    }
+  }, [error]);
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  const handleDialogOpen = () => {
+    setDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
   };
 
   return (
@@ -64,7 +183,6 @@ const SellerAppBar = ({
           Farm Seller Dashboard
         </Typography>
 
-        {/* Search Input and Button */}
         <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
           {showSearchInput && (
             <InputBase
@@ -72,12 +190,12 @@ const SellerAppBar = ({
               inputProps={{ "aria-label": "search" }}
               value={searchQuery}
               onChange={handleSearchChange}
-              onKeyDown={handleKeyDown} // Add onKeyDown event listener
+              onKeyDown={handleKeyDown}
               sx={{
                 color: "inherit",
                 "& .MuiInputBase-input": {
                   padding: (theme) => theme.spacing(1, 1, 1, 0),
-                  paddingLeft: `calc(1em + 24px)`, // Space for the search icon if it were inside
+                  paddingLeft: `calc(1em + 24px)`,
                   transition: (theme) => theme.transitions.create("width"),
                   width: "120px",
                   "&:focus": {
@@ -100,12 +218,8 @@ const SellerAppBar = ({
             color="inherit"
             onClick={() => {
               setShowSearchInput(!showSearchInput);
-              // Optionally trigger search when the search icon is clicked to close the input
-              // if (!showSearchInput && searchQuery) {
-              //   handleSearchSubmit();
-              // }
               if (showSearchInput && searchQuery) {
-                handleSearchSubmit(); // Trigger search when closing input if there's a query
+                handleSearchSubmit();
               }
             }}
           >
@@ -113,16 +227,9 @@ const SellerAppBar = ({
           </IconButton>
         </Box>
 
-        {/* Action buttons */}
         <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
           <IconButton color="inherit" onClick={handleThemeToggle}>
             {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Refresh">
-          <IconButton color="inherit" onClick={fetchFarms}>
-            <RefreshIcon />
           </IconButton>
         </Tooltip>
 
@@ -139,7 +246,11 @@ const SellerAppBar = ({
               backgroundColor: (theme) => theme.palette.secondary.main,
             }}
           >
-            U
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              getUserInitials(userData?.username)
+            )}
           </Avatar>
         </IconButton>
 
@@ -154,36 +265,54 @@ const SellerAppBar = ({
         >
           <Box sx={{ px: 2, py: 1.5, bgcolor: "primary.light" }}>
             <Typography variant="subtitle2" fontWeight="bold" color="white">
-              User
-            </Typography>
-            <Typography variant="caption" color="rgba(255,255,255,0.7)">
-              Premium Seller
+              {loading ? "Loading..." : userData?.username || "User"}
             </Typography>
           </Box>
           <Divider />
           <MenuItem
-            component="a"
-            href="/profile"
-            onClick={handleMenuClose}
+            onClick={handleDialogOpen} // Open dialog on click
             sx={{ py: 1.5, display: "flex", gap: 1.5 }}
           >
             <AccountCircleIcon fontSize="small" color="action" />
             <Typography variant="body2">My Profile</Typography>
           </MenuItem>
           <Divider />
-          <MenuItem
-            onClick={() => {
-              handleLogout();
-              handleMenuClose();
-            }}
-            sx={{ py: 1.5, display: "flex", gap: 1.5 }}
-          >
-            <ExitToAppIcon fontSize="small" color="error" />
-            <Typography variant="body2" color="error">
-              Logout
-            </Typography>
-          </MenuItem>
         </Menu>
+
+        {/* Snackbar for error messages */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={6000}
+          onClose={handleSnackbarClose}
+          message={error}
+        />
+
+        {/* Dialog for user data */}
+        <Dialog open={dialogOpen} onClose={handleDialogClose}>
+          <DialogTitle color="green">User Profile</DialogTitle>
+          <DialogContent>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <Box>
+                <Typography variant="body1">
+                  <strong>Username:</strong> {userData?.username || "N/A"}
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Email:</strong> {userData?.email || "N/A"}
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Passport:</strong> {userData?.passport || "N/A"}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDialogClose} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Toolbar>
     </AppBar>
   );

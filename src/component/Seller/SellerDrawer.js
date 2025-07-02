@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { jwtDecode } from 'jwt-decode';
 import {
   Drawer,
   List,
@@ -24,7 +25,7 @@ import {
 } from "@mui/icons-material";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 
-// Menu items configuration (kept as is, it's well-defined)
+// Menu items configuration
 const menuItems = [
   {
     text: "Purchases requests",
@@ -69,17 +70,15 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
     setIsLoggingOut(true);
     setLogoutProgress(0);
 
-    // Simulate logout process with progress updates
     const interval = setInterval(() => {
       setLogoutProgress((prev) => {
         const newProgress = prev + 10;
 
         if (newProgress >= 100) {
           clearInterval(interval);
-          // Complete logout after progress reaches 100%
           setTimeout(() => {
             localStorage.removeItem("access");
-            sessionStorage.removeItem("access"); // Also remove from session storage
+            sessionStorage.removeItem("access");
             navigate("/LoginPage");
           }, 200);
           return 100;
@@ -87,7 +86,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
 
         return newProgress;
       });
-    }, 150); // Updates every 150ms for smooth animation
+    }, 150);
   };
 
   // Function to get user initials from name
@@ -105,13 +104,21 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-
-        // Get token from localStorage or wherever you store it
-        const token =
-          localStorage.getItem("access") || sessionStorage.getItem("access");
+        const token = localStorage.getItem("access");
 
         if (!token) {
           throw new Error("No authentication token found");
+        }
+
+        // Decode JWT to get current user info
+        let currentUserId, currentUserEmail;
+        try {
+          const decodedToken = jwtDecode(token);
+          currentUserId = decodedToken.user_id; // or decodedToken.id
+          currentUserEmail = decodedToken.email;
+        } catch (decodeError) {
+          console.error("Failed to decode token:", decodeError);
+          throw new Error("Invalid authentication token");
         }
 
         const response = await fetch(
@@ -130,21 +137,27 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
         }
 
         const data = await response.json();
-        // Extract user data from the farm data response
-        if (data && data.length > 0) {
-          const farmData = data[0];
+
+        // Find the current user in the sellers list
+        const currentUserData = data.find(
+          (seller) =>
+            seller.id === currentUserId ||
+            seller.email === currentUserEmail ||
+            seller.user_id === currentUserId
+        );
+
+        if (currentUserData) {
           setUserData({
-            username: farmData.username,
-            email: farmData.email,
-            passport: farmData.passport,
+            username: currentUserData.username,
+            email: currentUserData.email,
+            passport: currentUserData.passport,
           });
         } else {
-          throw new Error("No farm data found");
+          throw new Error("Current user not found in sellers list");
         }
       } catch (err) {
         console.error("Failed to fetch user data:", err);
         setError(err.message);
-        // Fallback to default values or handle error as needed
         setUserData({
           username: "User",
           email: "user@example.com",
@@ -195,7 +208,7 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
               width: 64,
               height: 64,
               mb: 2,
-              backgroundColor: theme.palette.grey[400],
+              backgroundColor: theme.palette.blue[400],
               color: theme.palette.getContrastText(theme.palette.grey[400]),
               fontSize: "1.5rem",
               fontWeight: "bold",
@@ -225,7 +238,6 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
         }}
       >
         <Avatar
-          src={userData?.avatar || userData?.profilePicture} // Try both common field names
           sx={{
             width: 64,
             height: 64,
@@ -236,12 +248,10 @@ const SellerDrawer = ({ drawerOpen, drawerWidth, theme }) => {
             fontWeight: "bold",
           }}
         >
-          {!userData?.avatar &&
-            !userData?.profilePicture &&
-            getUserInitials(userData?.name || userData?.fullName)}
+          {getUserInitials(userData?.username || "User")}
         </Avatar>
         <Typography variant="subtitle1" fontWeight="bold">
-          {userData?.name || userData?.fullName || "User"}
+          {userData?.username || "User"}
         </Typography>
         {userData?.email && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>

@@ -43,7 +43,6 @@ import {
   People as PeopleIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
-  Refresh as RefreshIcon,
   ExitToApp as ExitToAppIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
@@ -372,16 +371,6 @@ const SellerList = () => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Refresh Sellers">
-              <IconButton
-                color="inherit"
-                onClick={fetchSellers}
-                disabled={loading}
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-
             <IconButton edge="end" color="inherit" sx={{ ml: 1 }}>
               <Avatar
                 sx={{
@@ -497,12 +486,14 @@ const SellerList = () => {
                   borderRadius: drawerOpen ? 1 : 0,
                   mx: drawerOpen ? 1 : 0,
                   mb: 0.5,
+                  color: "red",
                 }}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: drawerOpen ? 48 : "100%",
                     textAlign: "center",
+                    color: "red",
                   }}
                 >
                   <ExitToAppIcon />

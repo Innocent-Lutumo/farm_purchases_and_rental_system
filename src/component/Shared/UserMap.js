@@ -326,8 +326,8 @@ const SimpleFarmDirections = ({
           },
           {
             enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 300000, // 5 minutes
+            timeout: 150000,
+            maximumAge: 300000, 
           }
         );
       } else {

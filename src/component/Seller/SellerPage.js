@@ -40,7 +40,7 @@ const getTheme = (mode) =>
       primary: { main: "#2e7d32" },
       secondary: { main: "#f50057" },
       background: {
-        default: mode === "light" ? "#f5f5f5" : "#121212",  //change light to dark
+        default: mode === "light" ? "#f5f5f5" : "#121212",  
         paper: mode === "light" ? "#ffffff" : "#1e1e1e",
       },
     },
