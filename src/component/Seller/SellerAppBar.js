@@ -167,7 +167,7 @@ const SellerAppBar = ({
 
   return (
     <AppBar
-      position="fixed"
+      position="fixed" color="success"
       sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, boxShadow: "none" }}
     >
       <Toolbar>

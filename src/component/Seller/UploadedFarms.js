@@ -55,6 +55,7 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import ToggleButton from "@mui/material/ToggleButton";
 import ViewFarmDialog from "./ViewFarmDialog";
 import EditFarmDialog from "./EditFarmDialog";
+import FarmMapModal from "../Shared/FarmMapModal";
 
 const BASE_URL = "http://127.0.0.1:8000";
 
@@ -147,6 +148,7 @@ const UploadedFarms = () => {
   const [imageIndexes, setImageIndexes] = useState({});
   const [error, setError] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showSearchInput, setShowSearchInput] = useState(false);
@@ -158,11 +160,18 @@ const UploadedFarms = () => {
   const [previewImages, setPreviewImages] = useState([]);
   const [selectedPassportFile, setSelectedPassportFile] = useState(null);
   const [previewPassport, setPreviewPassport] = useState(null);
-  const [selectedOwnershipCertificateFile, setSelectedOwnershipCertificateFile] = useState(null);
-  const [previewOwnershipCertificate, setPreviewOwnershipCertificate] = useState(null);
+  const [
+    selectedOwnershipCertificateFile,
+    setSelectedOwnershipCertificateFile,
+  ] = useState(null);
+  const [previewOwnershipCertificate, setPreviewOwnershipCertificate] =
+    useState(null);
 
   const navigate = useNavigate();
-  const theme = useMemo(() => getTheme(darkMode ? "dark" : "light"), [darkMode]);
+  const theme = useMemo(
+    () => getTheme(darkMode ? "dark" : "light"),
+    [darkMode]
+  );
   const drawerWidth = 240;
 
   useEffect(() => {
@@ -200,10 +209,18 @@ const UploadedFarms = () => {
 
   useEffect(() => {
     return () => {
-      if (previewPassport && typeof previewPassport === "string" && previewPassport.startsWith("blob:")) {
+      if (
+        previewPassport &&
+        typeof previewPassport === "string" &&
+        previewPassport.startsWith("blob:")
+      ) {
         URL.revokeObjectURL(previewPassport);
       }
-      if (previewOwnershipCertificate && typeof previewOwnershipCertificate === "string" && previewOwnershipCertificate.startsWith("blob:")) {
+      if (
+        previewOwnershipCertificate &&
+        typeof previewOwnershipCertificate === "string" &&
+        previewOwnershipCertificate.startsWith("blob:")
+      ) {
         URL.revokeObjectURL(previewOwnershipCertificate);
       }
     };
@@ -222,10 +239,14 @@ const UploadedFarms = () => {
       };
 
       const res = await axios.get(`${BASE_URL}/api/all-farms/`, config);
-      const data = Array.isArray(res.data) ? res.data.map((farm) => farm.data || farm) : [];
+      const data = Array.isArray(res.data)
+        ? res.data.map((farm) => farm.data || farm)
+        : [];
 
       const userEmail = localStorage.getItem("user_email");
-      const userFarms = userEmail ? data.filter((farm) => farm.email === userEmail) : data;
+      const userFarms = userEmail
+        ? data.filter((farm) => farm.email === userEmail)
+        : data;
 
       userFarms.forEach((farm) => {
         farm.uniqueId = `${farm.id}-${farm.farm_type}`;
@@ -247,6 +268,17 @@ const UploadedFarms = () => {
     }
   };
 
+  const handleLocationClick = (farm) => {
+    setSelectedFarm(farm);
+    setShowMap(true);
+  };
+
+  // Handler for closing the map modal
+  const handleMapModalClose = () => {
+    setShowMap(false);
+    setSelectedFarm(null);
+  };
+
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
@@ -266,7 +298,9 @@ const UploadedFarms = () => {
 
     if (farm.passport) setPreviewPassport(`${BASE_URL}${farm.passport}`);
     if (farm.ownership_certificate) {
-      setPreviewOwnershipCertificate(`${BASE_URL}${farm.ownership_certificate}`);
+      setPreviewOwnershipCertificate(
+        `${BASE_URL}${farm.ownership_certificate}`
+      );
     }
 
     setOpenEditDialog(true);
@@ -325,7 +359,10 @@ const UploadedFarms = () => {
       }
 
       const newUniqueId = `${editedFarm.id}-${editedFarm.farm_type}`;
-      if (newUniqueId !== originalFarmUniqueId && farms.find((farm) => farm.uniqueId === newUniqueId)) {
+      if (
+        newUniqueId !== originalFarmUniqueId &&
+        farms.find((farm) => farm.uniqueId === newUniqueId)
+      ) {
         setError("A farm with the same ID and type already exists.");
         return;
       }
@@ -347,9 +384,13 @@ const UploadedFarms = () => {
       });
 
       selectedFiles.forEach((file) => formData.append("images", file));
-      if (selectedPassportFile) formData.append("passport", selectedPassportFile);
+      if (selectedPassportFile)
+        formData.append("passport", selectedPassportFile);
       if (selectedOwnershipCertificateFile) {
-        formData.append("ownership_certificate", selectedOwnershipCertificateFile);
+        formData.append(
+          "ownership_certificate",
+          selectedOwnershipCertificateFile
+        );
       }
 
       const config = {
@@ -384,11 +425,19 @@ const UploadedFarms = () => {
         let errorMessage = "Failed to update farm. Please try again.";
         if (error.response?.data) {
           if (error.response.data.passport?.includes("No file was submitted")) {
-            errorMessage = "Passport: Please select a file or leave it empty if not changing.";
-          } else if (error.response.data.ownership_certificate?.includes("No file was submitted")) {
-            errorMessage = "Ownership Certificate: Please select a file or leave it empty if not changing.";
+            errorMessage =
+              "Passport: Please select a file or leave it empty if not changing.";
+          } else if (
+            error.response.data.ownership_certificate?.includes(
+              "No file was submitted"
+            )
+          ) {
+            errorMessage =
+              "Ownership Certificate: Please select a file or leave it empty if not changing.";
           } else {
-            errorMessage = `Failed to update farm: ${JSON.stringify(error.response.data)}`;
+            errorMessage = `Failed to update farm: ${JSON.stringify(
+              error.response.data
+            )}`;
           }
         } else if (error.message) {
           errorMessage = `Failed to update farm: ${error.message}`;
@@ -418,7 +467,9 @@ const UploadedFarms = () => {
         config
       );
 
-      const updatedFarms = farms.filter((farm) => farm.uniqueId !== selectedFarm.uniqueId);
+      const updatedFarms = farms.filter(
+        (farm) => farm.uniqueId !== selectedFarm.uniqueId
+      );
       setFarms(updatedFarms);
       setFilteredFarms(updatedFarms);
       setOpenDeleteDialog(false);
@@ -430,7 +481,9 @@ const UploadedFarms = () => {
         window.location.href = "/LoginPage";
       } else {
         setError(
-          `Failed to delete farm: ${error.response?.data?.detail || error.message || "Please try again."}`
+          `Failed to delete farm: ${
+            error.response?.data?.detail || error.message || "Please try again."
+          }`
         );
       }
     }
@@ -466,9 +519,13 @@ const UploadedFarms = () => {
     localStorage.removeItem("access");
     navigate("/LoginPage");
   };
-  const handleDrawerToggle = useCallback(() => setDrawerOpen((prev) => !prev), []);
+  const handleDrawerToggle = useCallback(
+    () => setDrawerOpen((prev) => !prev),
+    []
+  );
   const handleThemeToggle = useCallback(() => setDarkMode((prev) => !prev), []);
-  const handleViewModeChange = (event, newMode) => newMode !== null && setViewMode(newMode);
+  const handleViewModeChange = (event, newMode) =>
+    newMode !== null && setViewMode(newMode);
   const handleChangePage = (event, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
@@ -493,7 +550,10 @@ const UploadedFarms = () => {
   };
 
   const paginatedFarms = useMemo(() => {
-    return filteredFarms.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    return filteredFarms.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
   }, [filteredFarms, page, rowsPerPage]);
 
   return (
@@ -527,7 +587,9 @@ const UploadedFarms = () => {
           sx={{
             flexGrow: 1,
             p: 3,
-            width: `calc(100% - ${drawerOpen ? drawerWidth : theme.spacing(7)}px)`,
+            width: `calc(100% - ${
+              drawerOpen ? drawerWidth : theme.spacing(7)
+            }px)`,
             mt: 8,
           }}
         >
@@ -554,19 +616,26 @@ const UploadedFarms = () => {
               <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                 <Chip
                   icon={<CheckCircle size={16} />}
-                  label={`Validated: ${farms.filter((f) => f.is_validated && !f.is_rejected).length}`}
+                  label={`Validated: ${
+                    farms.filter((f) => f.is_validated && !f.is_rejected).length
+                  }`}
                   color="success"
                   variant="outlined"
                 />
                 <Chip
                   icon={<XCircle size={16} />}
-                  label={`Rejected: ${farms.filter((f) => f.is_rejected).length}`}
+                  label={`Rejected: ${
+                    farms.filter((f) => f.is_rejected).length
+                  }`}
                   color="error"
                   variant="outlined"
                 />
                 <Chip
                   icon={<Clock size={16} />}
-                  label={`Pending: ${farms.filter((f) => !f.is_validated && !f.is_rejected).length}`}
+                  label={`Pending: ${
+                    farms.filter((f) => !f.is_validated && !f.is_rejected)
+                      .length
+                  }`}
                   color="warning"
                   variant="outlined"
                 />
@@ -574,7 +643,14 @@ const UploadedFarms = () => {
             </Box>
           </Paper>
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2, alignItems: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              mb: 2,
+              alignItems: "center",
+            }}
+          >
             <ToggleButtonGroup
               value={viewMode}
               exclusive
@@ -583,29 +659,48 @@ const UploadedFarms = () => {
             >
               <ToggleButton value="table" aria-label="table view">
                 <TableIcon size={20} />
-                <Typography variant="button" sx={{ ml: 1, display: { xs: "none", sm: "block" } }}>
+                <Typography
+                  variant="button"
+                  sx={{ ml: 1, display: { xs: "none", sm: "block" } }}
+                >
                   Table View
                 </Typography>
               </ToggleButton>
               <ToggleButton value="card" aria-label="card view">
                 <CardIcon size={20} />
-                <Typography variant="button" sx={{ ml: 1, display: { xs: "none", sm: "block" } }}>
+                <Typography
+                  variant="button"
+                  sx={{ ml: 1, display: { xs: "none", sm: "block" } }}
+                >
                   Card View
                 </Typography>
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
 
-          {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
 
           {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 8, color: "primary.main" }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 8,
+                color: "primary.main",
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : filteredFarms.length === 0 ? (
             <Box sx={{ width: "100%", mt: 3, textAlign: "center", py: 4 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                {searchQuery ? `No farms found for "${searchQuery}"` : "No farms found"}
+                {searchQuery
+                  ? `No farms found for "${searchQuery}"`
+                  : "No farms found"}
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 {searchQuery
@@ -634,7 +729,11 @@ const UploadedFarms = () => {
               </Button>
             </Box>
           ) : viewMode === "table" ? (
-            <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3 }}>
+            <TableContainer
+              component={Paper}
+              elevation={2}
+              sx={{ borderRadius: 3 }}
+            >
               <Table sx={{ minWidth: 650 }} aria-label="farms table">
                 <TableHead>
                   <TableRow>
@@ -644,7 +743,7 @@ const UploadedFarms = () => {
                     <TableCell>Quality</TableCell>
                     <TableCell>Size (Acres)</TableCell>
                     <TableCell>Contact</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>Verification Status</TableCell>
                     <TableCell align="center">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -652,8 +751,26 @@ const UploadedFarms = () => {
                   {paginatedFarms.map((farm) => {
                     const statusInfo = getValidationStatusInfo(farm);
                     return (
-                      <TableRow key={farm.uniqueId} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                        <TableCell component="th" scope="row">{farm.location}</TableCell>
+                      <TableRow
+                        key={farm.uniqueId}
+                        sx={{
+                          "&:last-child td, &:last-child th": { border: 0 },
+                        }}
+                      >
+                        <TableCell component="th" scope="row">
+                          <Tooltip title="Show on Map">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleLocationClick(farm)}
+                            >
+                              <LocationOnIcon
+                                fontSize="small"
+                                color="success"
+                              />
+                            </IconButton>
+                          </Tooltip>
+                          {farm.location}
+                        </TableCell>
                         <TableCell>{farm.farm_type}</TableCell>
                         <TableCell>{farm.price}</TableCell>
                         <TableCell>{farm.quality}</TableCell>
@@ -668,7 +785,11 @@ const UploadedFarms = () => {
                           />
                         </TableCell>
                         <TableCell align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            justifyContent="center"
+                          >
                             <Tooltip title="View details">
                               <IconButton
                                 onClick={() => handleViewDetailsClick(farm)}
@@ -715,7 +836,11 @@ const UploadedFarms = () => {
               />
             </TableContainer>
           ) : (
-            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               <Grid container spacing={3}>
                 {filteredFarms.map((farm) => {
                   const statusInfo = getValidationStatusInfo(farm);
@@ -764,8 +889,15 @@ const UploadedFarms = () => {
                             {farm.images?.length > 0 ? (
                               <CardMedia
                                 component="img"
-                                sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                image={`${BASE_URL}${farm.images[imageIndexes[farm.uniqueId] || 0]?.image}`}
+                                sx={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                                image={`${BASE_URL}${
+                                  farm.images[imageIndexes[farm.uniqueId] || 0]
+                                    ?.image
+                                }`}
                                 alt={`${farm.location} farm`}
                               />
                             ) : (
@@ -796,7 +928,9 @@ const UploadedFarms = () => {
                                     top: "50%",
                                     transform: "translateY(-50%)",
                                     backgroundColor: "rgba(255,255,255,0.7)",
-                                    "&:hover": { backgroundColor: "rgba(255,255,255,0.9)" },
+                                    "&:hover": {
+                                      backgroundColor: "rgba(255,255,255,0.9)",
+                                    },
                                     zIndex: 1,
                                   }}
                                   size="small"
@@ -814,7 +948,9 @@ const UploadedFarms = () => {
                                     top: "50%",
                                     transform: "translateY(-50%)",
                                     backgroundColor: "rgba(255,255,255,0.7)",
-                                    "&:hover": { backgroundColor: "rgba(255,255,255,0.9)" },
+                                    "&:hover": {
+                                      backgroundColor: "rgba(255,255,255,0.9)",
+                                    },
                                     zIndex: 1,
                                   }}
                                   size="small"
@@ -834,31 +970,74 @@ const UploadedFarms = () => {
                                     fontSize: "0.75rem",
                                   }}
                                 >
-                                  {(imageIndexes[farm.uniqueId] || 0) + 1}/{farm.images.length}
+                                  {(imageIndexes[farm.uniqueId] || 0) + 1}/
+                                  {farm.images.length}
                                 </Box>
                               </>
                             )}
                           </Box>
 
                           <CardContent sx={{ flexGrow: 1, pt: 2 }}>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                              <LocationOnIcon color="primary" sx={{ mr: 0.5, fontSize: "1rem" }} />
-                              <Typography variant="caption" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <LocationOnIcon
+                                color="primary"
+                                sx={{ mr: 0.5, fontSize: "1rem" }}
+                              />
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 {farm.location}
                               </Typography>
                             </Box>
-                            <Typography variant="h6" component="div" sx={{ mb: 1 }}>
-                              {farm.farm_type === "Sale" ? "Farm for Sale" : "Farm for Rent"}
+                            <Typography
+                              variant="h6"
+                              component="div"
+                              sx={{ mb: 1 }}
+                            >
+                              {farm.farm_type === "Sale"
+                                ? "Farm for Sale"
+                                : "Farm for Rent"}
                             </Typography>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                              <AttachMoneyIcon color="action" sx={{ mr: 0.5, fontSize: "1rem" }} />
-                              <Typography variant="body2" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <AttachMoneyIcon
+                                color="action"
+                                sx={{ mr: 0.5, fontSize: "1rem" }}
+                              />
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 Price: {farm.price}TZS
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                              <SquareFootIcon color="action" sx={{ mr: 0.5, fontSize: "1rem" }} />
-                              <Typography variant="body2" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <SquareFootIcon
+                                color="action"
+                                sx={{ mr: 0.5, fontSize: "1rem" }}
+                              />
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 Size: {farm.size} acres
                               </Typography>
                             </Box>
@@ -917,7 +1096,9 @@ const UploadedFarms = () => {
         handlePassportFileChange={handlePassportFileChange}
         selectedOwnershipCertificateFile={selectedOwnershipCertificateFile}
         previewOwnershipCertificate={previewOwnershipCertificate}
-        handleOwnershipCertificateFileChange={handleOwnershipCertificateFileChange}
+        handleOwnershipCertificateFileChange={
+          handleOwnershipCertificateFileChange
+        }
       />
 
       <ViewFarmDialog
@@ -933,8 +1114,24 @@ const UploadedFarms = () => {
         getValidationStatusInfo={getValidationStatusInfo}
       />
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+      <FarmMapModal
+        open={showMap}
+        onClose={handleMapModalClose}
+        farm={selectedFarm}
+      />
+
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            color: "error.main",
+          }}
+        >
           <Trash2 size={24} /> Confirm Deletion
         </DialogTitle>
         <DialogContent>
@@ -945,7 +1142,11 @@ const UploadedFarms = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+          >
             Delete
           </Button>
         </DialogActions>

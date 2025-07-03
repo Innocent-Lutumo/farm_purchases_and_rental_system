@@ -40,7 +40,7 @@ const getTheme = (mode) =>
       primary: { main: "#2e7d32" },
       secondary: { main: "#f50057" },
       background: {
-        default: mode === "light" ? "#f5f5f5" : "#121212",  
+        default: mode === "light" ? "#f5f5f5" : "#121212",
         paper: mode === "light" ? "#ffffff" : "#1e1e1e",
       },
     },
@@ -201,11 +201,12 @@ function SellerPage() {
 
   // Helper function to get data count from API response
   const getDataCount = (data) => {
-    if (typeof data === 'number') return data;
-    if (data && typeof data.count === 'number') return data.count;
-    if (data && typeof data.length === 'number') return data.length;
+    if (typeof data === "number") return data;
+    if (data && typeof data.count === "number") return data.count;
+    if (data && typeof data.length === "number") return data.length;
     if (Array.isArray(data)) return data.length;
-    if (data && data.results && Array.isArray(data.results)) return data.results.length;
+    if (data && data.results && Array.isArray(data.results))
+      return data.results.length;
     if (data && data.data && Array.isArray(data.data)) return data.data.length;
     return 0;
   };
@@ -222,17 +223,13 @@ function SellerPage() {
           throw new Error("No authentication token found");
         }
 
-        const headers = { 
+        const headers = {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         };
 
         // Fetch all data in parallel
-        const [
-          purchaseRes,
-          rentalRes,
-          uploadedRes,
-        ] = await Promise.all([
+        const [purchaseRes, rentalRes, uploadedRes] = await Promise.all([
           fetch("http://127.0.0.1:8000/api/sale-transactions/", { headers }),
           fetch("http://127.0.0.1:8000/api/rent-transactions/", { headers }),
           fetch("http://127.0.0.1:8000/api/all-farms/", { headers }),
@@ -240,17 +237,31 @@ function SellerPage() {
 
         // Check for HTTP errors
         if (!purchaseRes.ok) {
-          console.warn("Purchase requests API failed:", purchaseRes.status, purchaseRes.statusText);
+          console.warn(
+            "Purchase requests API failed:",
+            purchaseRes.status,
+            purchaseRes.statusText
+          );
         }
         if (!rentalRes.ok) {
-          console.warn("Rental requests API failed:", rentalRes.status, rentalRes.statusText);
+          console.warn(
+            "Rental requests API failed:",
+            rentalRes.status,
+            rentalRes.statusText
+          );
         }
         if (!uploadedRes.ok) {
-          console.warn("Uploaded farms API failed:", uploadedRes.status, uploadedRes.statusText);
+          console.warn(
+            "Uploaded farms API failed:",
+            uploadedRes.status,
+            uploadedRes.statusText
+          );
         }
 
         // Parse responses
-        let purchaseData = 0, rentalData = 0, uploadedData = 0;
+        let purchaseData = 0,
+          rentalData = 0,
+          uploadedData = 0;
 
         try {
           if (purchaseRes.ok) {
@@ -286,7 +297,7 @@ function SellerPage() {
         setPurchaseRequests(purchaseData);
         setRentalRequests(rentalData);
         setFarmsUploaded(uploadedData);
-        
+
         // Calculate total listings as sum of all other stats
         const total = purchaseData + rentalData + uploadedData;
         setTotalListings(total);
@@ -295,9 +306,8 @@ function SellerPage() {
           purchases: purchaseData,
           rentals: rentalData,
           uploaded: uploadedData,
-          total: total
+          total: total,
         });
-
       } catch (error) {
         console.error("Error fetching stats:", error);
         setStatsError(`Failed to load dashboard statistics: ${error.message}`);
@@ -389,16 +399,23 @@ function SellerPage() {
             Farm Listing Overview
           </Typography>
           {loadingStats ? (
-            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 100 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: 100,
+              }}
+            >
               <CircularProgress />
               <Typography sx={{ ml: 2 }}>Loading statistics...</Typography>
             </Box>
           ) : statsError ? (
             <Alert severity="error" sx={{ mb: 3 }}>
               {statsError}
-              <Button 
-                variant="text" 
-                onClick={() => window.location.reload()} 
+              <Button
+                variant="text"
+                onClick={() => window.location.reload()}
                 sx={{ ml: 2 }}
               >
                 Retry
@@ -412,7 +429,7 @@ function SellerPage() {
                   value={totalListings}
                   icon={<Lightbulb color="primary" />}
                   color="primary.main"
-                  subtitle="Sum of all your farm activities"
+                  subtitle="Sum of all your farm activities for your account"
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>

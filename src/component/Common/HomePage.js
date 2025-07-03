@@ -109,7 +109,7 @@ const Home = () => {
           prevIndex === farms.length - 1 ? 0 : prevIndex + 1
         );
       }
-    }, 5000);
+     }, 5000);   // time interval image change
 
     return () => clearInterval(interval);
   }, [farms.length]);

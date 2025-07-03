@@ -34,13 +34,13 @@ const ResetPasswordPage = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/users/reset_password_confirm/`, {
+      await axios.post(`${API_URL}/auth/users/password_reset_confirm/`, {
         uid,
         token,
         new_password: newPassword,
       });
       setSuccess(true);
-      setTimeout(() => navigate("/login"), 3000); // Redirect after success
+      setTimeout(() => navigate("/login"), 3000); 
     } catch (err) {
       setError(
         err.response?.data?.detail || 

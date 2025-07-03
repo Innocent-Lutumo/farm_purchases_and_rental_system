@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import FarmMapModal from "../Shared/FarmMapModal";
 import {
   AppBar,
   Toolbar,
@@ -53,6 +54,7 @@ import {
   ExitToApp as ExitToAppIcon,
   Image as ImageIcon,
   Close as CloseIcon,
+  LocationOn as LocationOnIcon,
 } from "@mui/icons-material";
 import axios from "axios";
 
@@ -283,7 +285,9 @@ function AdminDashboard() {
   const [activeView, setActiveView] = useState("table");
   const [loading, setLoading] = useState(false);
   const [expandedFarm, setExpandedFarm] = useState(null);
+  const [selectedFarm, setSelectedFarm] = useState(null);
   const [singleImageModalOpen, setSingleImageModalOpen] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [selectedSingleImage, setSelectedSingleImage] = useState(null);
 
   // Menu items configuration
@@ -301,6 +305,17 @@ function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("access");
     navigate("/AdminLogin");
+  };
+
+  const handleLocationClick = (farm) => {
+    setSelectedFarm(farm);
+    setShowMap(true);
+  };
+
+  // Handler for closing the map modal
+  const handleMapModalClose = () => {
+    setShowMap(false);
+    setSelectedFarm(null);
   };
 
   // Theme setup
@@ -533,7 +548,7 @@ function AdminDashboard() {
               cursor: "pointer",
             }}
             onClick={(e) => {
-              e.stopPropagation(); 
+              e.stopPropagation();
               setSelectedSingleImage(fullImageUrl);
               setSingleImageModalOpen(true);
             }}
@@ -744,12 +759,14 @@ function AdminDashboard() {
                   sx={{
                     minWidth: drawerOpen ? 48 : "100%",
                     textAlign: "center",
-                    color: "red"
+                    color: "red",
                   }}
                 >
                   <ExitToAppIcon />
                 </ListItemIcon>
-                {drawerOpen && <ListItemText primary="Logout" sx={{ color: "red"}}/>}
+                {drawerOpen && (
+                  <ListItemText primary="Logout" sx={{ color: "red" }} />
+                )}
               </ListItem>
             </List>
           </Box>
@@ -910,7 +927,7 @@ function AdminDashboard() {
                       <TableCell>Type</TableCell>
                       <TableCell>Farm Images</TableCell>
                       <TableCell>Ownership Certificate</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell>verification Status</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -930,7 +947,22 @@ function AdminDashboard() {
                           )}
                         </TableCell>
                         <TableCell>{farm.username}</TableCell>
-                        <TableCell>{farm.location}</TableCell>
+                        <TableCell>
+                          <Box display="flex" alignItems="center">
+                            <Tooltip title="Show on Map">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleLocationClick(farm)}
+                              >
+                                <LocationOnIcon
+                                  fontSize="small"
+                                  color="success"
+                                />
+                              </IconButton>
+                            </Tooltip>
+                            {farm.location}
+                          </Box>
+                        </TableCell>
                         <TableCell>{farm.price}</TableCell>
                         <TableCell>{farm.size}</TableCell>
                         <TableCell>{farm.farm_number}</TableCell>
@@ -1165,7 +1197,8 @@ function AdminDashboard() {
                       <strong>Quality:</strong> {expandedFarm.quality}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      <strong>Description:</strong> {expandedFarm.description || "N/A"}
+                      <strong>Description:</strong>{" "}
+                      {expandedFarm.description || "N/A"}
                     </Typography>
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>
@@ -1194,7 +1227,7 @@ function AdminDashboard() {
                     </Box>
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" color="text.secondary">
-                          <strong>Ownership Certificate:</strong>
+                        <strong>Ownership Certificate:</strong>
                       </Typography>
                       {renderSingleImageThumbnail(
                         expandedFarm.ownership_certificate,
@@ -1249,7 +1282,8 @@ function AdminDashboard() {
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircleIcon />}
-                        onClick={() =>{ handleValidate(expandedFarm, "approve");
+                        onClick={() => {
+                          handleValidate(expandedFarm, "approve");
                           handleCloseExpanded();
                         }}
                       >
@@ -1259,7 +1293,8 @@ function AdminDashboard() {
                         variant="outlined"
                         color="error"
                         startIcon={<CancelIcon />}
-                        onClick={() => { handleValidate(expandedFarm, "reject");
+                        onClick={() => {
+                          handleValidate(expandedFarm, "reject");
                           handleCloseExpanded();
                         }}
                       >
@@ -1317,6 +1352,12 @@ function AdminDashboard() {
           </Modal>
         </Box>
       </Box>
+
+      <FarmMapModal
+        open={showMap}
+        onClose={handleMapModalClose}
+        farm={selectedFarm}
+      />
     </ThemeProvider>
   );
 }

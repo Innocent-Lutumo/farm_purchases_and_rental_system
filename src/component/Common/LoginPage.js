@@ -60,7 +60,7 @@ const LoginPage = () => {
             navigate("/SellerPage", { replace: true }); 
         } catch (err) {
             console.error("Login failed:", err);
-            // More specific error handling if backend provides details (e.g., status codes)
+
             setError(err.response?.data?.error || "Invalid username or password");
         } finally {
             setIsLoading(false);
@@ -69,11 +69,10 @@ const LoginPage = () => {
 
     const handleGoogleLoginSuccess = async (credentialResponse) => {
         setIsLoading(true);
-        setShowPassword(false); // Hide password during Google login
+        setShowPassword(false); 
 
         try {
-            // Using direct axios here. Consider replacing with your `api` instance from `src/services/api.js`
-            // Example: const response = await api.post("/google-login/", { access: credentialResponse.credential });
+            
             const response = await axios.post(
                 "http://127.0.0.1:8000/api/google-login/",
                 {
@@ -86,7 +85,7 @@ const LoginPage = () => {
             localStorage.setItem("refresh", refresh);
 
             console.log("Google login successful:", response.data);
-            navigate("/SellerPage", { replace: true }); // <--- FIX APPLIED HERE
+            navigate("/SellerPage", { replace: true }); 
         } catch (err) {
             console.error("Google login failed:", err);
             console.error("Error details:", err.response?.data);
@@ -97,7 +96,7 @@ const LoginPage = () => {
     };
 
     const handleBack = () => {
-        navigate(-1); // Go back to previous page
+        navigate(-1); 
     };
 
     const togglePasswordVisibility = () => {
