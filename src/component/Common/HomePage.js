@@ -109,7 +109,7 @@ const Home = () => {
           prevIndex === farms.length - 1 ? 0 : prevIndex + 1
         );
       }
-     }, 5000);   // time interval image change
+    }, 5000); // time interval image change
 
     return () => clearInterval(interval);
   }, [farms.length]);
@@ -278,7 +278,7 @@ const Home = () => {
                   justifySelf: "end",
                 }}
               >
-                {farms[currentFarmIndex]?.price || "Price not available"} TZS 
+                {farms[currentFarmIndex]?.price || "Price not available"} TZS
               </Typography>
             </Box>
           </Box>

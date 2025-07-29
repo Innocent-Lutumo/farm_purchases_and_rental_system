@@ -400,7 +400,7 @@ const RentPage = () => {
                         <strong>Price:</strong> {farm.price}/= Tshs
                       </Typography>
                       <Typography>
-                        <strong>Size:</strong> {farm.size}
+                        <strong>Size:</strong> {farm.size} Acres
                       </Typography>
                       <Typography>
                         <strong>Quality:</strong> {farm.quality}

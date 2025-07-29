@@ -104,3 +104,15 @@ function App() {
 }
 
 export default App;
+
+
+// import React from "react";
+// import ButtonView from "./component/Exercises/Button.js";
+
+// const App = () => {
+//   return (
+//     <div> <ButtonView /> </div>
+//   );
+// };
+
+// export default App;
